@@ -1,7 +1,7 @@
 
-  # TCC - Prototipo APP
+  # RaizesDigitaisAPP
 
-  This is a code bundle for TCC - Prototipo APP. The original project is available at https://www.figma.com/design/fM2mTdBbJXPwJdKabq14EK/TCC---Prototipo-APP.
+  This is a code bundle for RaizesDigitaisAPP. The original project is available at https://www.figma.com/design/fM2mTdBbJXPwJdKabq14EK/TCC---Prototipo-APP.
 
   ## Running the code
 
