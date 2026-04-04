@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { db } from "./config/database.js";
 import animaisRouter from "./routes/animais.js";
+import usuariosRouter from "./routes/usuarios.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // Rotas da API
 app.use("/api/animais", animaisRouter);
+app.use("/api/usuarios", usuariosRouter);
 
 // Serve o frontend
 app.use(express.static(path.join(__dirname, "../../build")));
