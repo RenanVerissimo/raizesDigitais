@@ -96,7 +96,7 @@ function InputField({
                 style={[
                     styles.inputWrapper,
                     {
-                        borderColor: focused ? colors.primary : colors.border,
+                        borderColor: focused ? colors.primary : "transparent",
                         backgroundColor: "#f8fafc",
                     },
                 ]}
@@ -116,9 +116,11 @@ function InputField({
                     keyboardType={keyboardType ?? "default"}
                     autoCapitalize={autoCapitalize ?? "none"}
                     autoCorrect={false}
+                    underlineColorAndroid="transparent"
+                    selectionColor={colors.primary}
                     onFocus={() => setFocused(true)}
                     onBlur={() => setFocused(false)}
-                    style={[styles.input, { color: colors.foreground, paddingRight: rightIcon ? 44 : 16 }]}
+                    style={[styles.input, { color: colors.foreground, paddingRight: rightIcon ? 44 : 16, borderWidth: 0, outlineStyle: "none" as any }]}
                 />
                 {rightIcon && onRightIconPress && (
                     <TouchableOpacity
@@ -242,15 +244,18 @@ export default function LoginScreen() {
 
     return (
         <LinearGradient colors={["#1e3a8a", "#3b82f6", "#60a5fa"]} style={styles.gradient}>
-            <FloatingIcon source={require("../../assets/garrafa-de-leite.png")} size={32} top="15%" left={40} duration={3000} delay={0} name={"phone"} />
-            <FloatingIcon name="trending-up" size={28} top="7%" right={50} duration={4000} delay={500} />
+
 
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                 <ScrollView
                     contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }]}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
+                    showsHorizontalScrollIndicator={false}
+                    bounces={false}
                 >
+                    <FloatingIcon source={require("../../assets/garrafa-de-leite.png")} size={32} top="15%" left={40} duration={3000} delay={0} name={"phone"} />
+                    <FloatingIcon name="trending-up" size={28} top="7%" right={50} duration={4000} delay={500} />
                     <View style={styles.header}>
                         <View style={styles.logoWrapper}>
                             <View style={styles.logoContainer}>
@@ -296,8 +301,7 @@ export default function LoginScreen() {
                                     <LinearGradient colors={["#3b82f6", "#2563eb"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
                                         {isLoading ? <ActivityIndicator color="#fff" /> : (
                                             <View style={styles.submitContent}>
-                                                <Text style={styles.submitText}>Entrar no Sistema</Text>
-                                                <Feather name="zap" size={16} color="#ffffff" />
+                                                <Text style={styles.submitText}>Entrar</Text>
                                             </View>
                                         )}
                                     </LinearGradient>
