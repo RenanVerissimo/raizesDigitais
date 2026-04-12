@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { styles } from "./styles";
 import { FloatingIconProps, InputFieldProps } from "../../interfaces/interfaces";
+import { useNavigation } from "@react-navigation/native";
 
 
 const colors = {
@@ -185,6 +186,7 @@ function FloatingImage({ source, size, top, left, right, bottom, delay, duration
 }
 export default function LoginScreen() {
     const insets = useSafeAreaInsets();
+    const navigation = useNavigation<any>();
 
     const [isLogin, setIsLogin] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
@@ -209,8 +211,8 @@ export default function LoginScreen() {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsLoading(true);
         setTimeout(() => {
-            Alert.alert("Sucesso", "Login realizado com sucesso!");
             setIsLoading(false);
+            navigation.replace("Dashboard");
         }, 800);
     }
 
