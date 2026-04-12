@@ -1,0 +1,25 @@
+import { Feather } from "@expo/vector-icons";
+
+export interface FloatingIconProps {
+    name: React.ComponentProps<typeof Feather>["name"];
+    size: number;
+    top?: number | `${number}%`;
+    left?: number | `${number}%`;
+    right?: number | `${number}%`;
+    bottom?: number | `${number}%`;
+    delay?: number;
+    duration?: number;
+}
+
+export interface InputFieldProps {
+    label: string;
+    icon: React.ComponentProps<typeof Feather>["name"];
+    value: string;
+    onChangeText: (v: string) => void;
+    placeholder?: string;
+    keyboardType?: "default" | "email-address" | "phone-pad" | "numeric";
+    secureTextEntry?: boolean;
+    rightIcon?: React.ComponentProps<typeof Feather>["name"];
+    onRightIconPress?: () => void;
+    autoCapitalize?: "none" | "sentences" | "words" | "characters";
+}
