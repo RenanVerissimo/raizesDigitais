@@ -106,7 +106,7 @@ export default function Dashboard() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#0a0a0a" }}>Últimos Registros</Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => navigation.navigate("ProducaoHistorico")}>
                                 <Text style={{ fontSize: 13, color: "#4a90e2" }}>Ver todos</Text>
                             </TouchableOpacity>
                         </View>
@@ -143,7 +143,7 @@ export default function Dashboard() {
                         })}
                     </View>
 
-                    <TouchableOpacity activeOpacity={0.85}>
+                    <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate("ProducaoRegistro")}>
                         <LinearGradient
                             colors={["#4a90e2", "#357abd"]}
                             start={{ x: 0, y: 0 }}
@@ -166,7 +166,8 @@ export default function Dashboard() {
                             <MaterialCommunityIcons name="cow" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Animais</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("ProducaoHistorico")}>
                             <Feather name="clock" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Histórico</Text>
                         </TouchableOpacity>
