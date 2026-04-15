@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -10,6 +10,8 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { listarProducoesRecentes } from "../../services/api";
+import { Producao } from "../../interfaces/interfaces";
 
 export default function Dashboard() {
     const insets = useSafeAreaInsets();
@@ -29,6 +31,8 @@ export default function Dashboard() {
         { id: 1, data: "2026-04-12", manha: 25, tarde: 20, total: 45, qualidade: "excellent" },
         { id: 2, data: "2026-04-11", manha: 22, tarde: 18, total: 40, qualidade: "good" },
         { id: 3, data: "2026-04-10", manha: 20, tarde: 21, total: 41, qualidade: "good" },
+        { id: 4, data: "2026-04-10", manha: 20, tarde: 21, total: 41, qualidade: "good" },
+        { id: 5, data: "2026-04-10", manha: 20, tarde: 21, total: 41, qualidade: "good" },
     ];
 
     function getQualidadeStyle(qualidade: string) {
@@ -40,6 +44,18 @@ export default function Dashboard() {
     function handleLogout() {
         navigation.replace("Login");
     }
+
+    const [producoesRecentes, setProducoesRecentes] = useState<Producao[]>([]);
+
+    useEffect(() => {
+        listarProducoesRecentes()
+            .then((data) => {
+                setProducoesRecentes(data);
+                console.log("produções recentes:", data);
+            })
+            .catch((err) => console.error("Erro:", err));
+    }, []);
+
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -110,7 +126,7 @@ export default function Dashboard() {
                                 <Text style={{ fontSize: 13, color: "#4a90e2" }}>Ver todos</Text>
                             </TouchableOpacity>
                         </View>
-                        {recentProductions.map((prod, index) => {
+                        {producoesRecentes.map((prod, index) => {
                             const q = getQualidadeStyle(prod.qualidade);
                             return (
                                 <View
@@ -120,7 +136,7 @@ export default function Dashboard() {
                                         justifyContent: "space-between",
                                         alignItems: "center",
                                         paddingVertical: 12,
-                                        borderBottomWidth: index < recentProductions.length - 1 ? 1 : 0,
+                                        borderBottomWidth: index < producoesRecentes.length - 1 ? 1 : 0,
                                         borderBottomColor: "#f1f5f9",
                                     }}
                                 >
@@ -129,11 +145,11 @@ export default function Dashboard() {
                                             {new Date(prod.data).toLocaleDateString("pt-BR")}
                                         </Text>
                                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-                                            Manhã: {prod.manha}L | Tarde: {prod.tarde}L
+                                            Manhã: {prod.producao_manha}L | Tarde: {prod.producao_tarde}L
                                         </Text>
                                     </View>
                                     <View style={{ alignItems: "flex-end" }}>
-                                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{prod.total}L</Text>
+                                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_total}L</Text>
                                         <View style={{ backgroundColor: q.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 4 }}>
                                             <Text style={{ fontSize: 11, color: q.text, fontWeight: "500" }}>{q.label}</Text>
                                         </View>

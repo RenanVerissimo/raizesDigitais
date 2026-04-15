@@ -23,3 +23,14 @@ export interface InputFieldProps {
     onRightIconPress?: () => void;
     autoCapitalize?: "none" | "sentences" | "words" | "characters";
 }
+
+export interface Producao {
+    id: number;
+    data: string;
+    producao_manha: number;
+    producao_tarde: number;
+    producao_total: number;
+    qualidade: string;
+    observacoes: string | null;
+    criado_em: string;
+}

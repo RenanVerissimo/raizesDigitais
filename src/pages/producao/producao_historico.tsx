@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -12,14 +12,9 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-
-const mockProductions = [
-    { id: 1, data: "2026-04-12", manha: 25, tarde: 20, total: 45, qualidade: "excellent", observacoes: "Leite de boa qualidade" },
-    { id: 2, data: "2026-04-11", manha: 22, tarde: 18, total: 40, qualidade: "good", observacoes: "" },
-    { id: 3, data: "2026-04-10", manha: 20, tarde: 21, total: 41, qualidade: "good", observacoes: "Clima quente" },
-    { id: 4, data: "2026-04-09", manha: 18, tarde: 15, total: 33, qualidade: "regular", observacoes: "" },
-    { id: 5, data: "2026-04-08", manha: 24, tarde: 22, total: 46, qualidade: "excellent", observacoes: "" },
-];
+import { Producao } from "../../interfaces/interfaces";
+import { listarProducoes } from "../../services/api";
+import { formatarData } from "../../utils/formatters";
 
 export default function ProducaoHistorico() {
     const insets = useSafeAreaInsets();
@@ -27,14 +22,24 @@ export default function ProducaoHistorico() {
 
     const [searchTerm, setSearchTerm] = useState("");
     const [filterQuality, setFilterQuality] = useState<"all" | "excellent" | "good" | "regular">("all");
+    const [allProducoes, setAllProducoes] = useState<Producao[]>([]);
 
-    const filteredProductions = mockProductions.filter((prod) => {
+    useEffect(() => {
+        listarProducoes()
+            .then((data) => {
+                setAllProducoes(data);
+                console.log("todas produções:", data);
+            })
+            .catch((err) => console.error("Erro:", err));
+    }, []);
+
+    const filteredProductions = allProducoes.filter((prod) => {
         const matchesSearch = prod.data.includes(searchTerm) || prod.observacoes?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesQuality = filterQuality === "all" || prod.qualidade === filterQuality;
         return matchesSearch && matchesQuality;
     });
 
-    const totalLiters = filteredProductions.reduce((sum, p) => sum + p.total, 0);
+    const totalLiters = filteredProductions.reduce((sum, p) => sum + Number(p.producao_total), 0);
 
     function getQualidadeStyle(qualidade: string) {
         if (qualidade === "excellent") return { bg: "#dcfce7", text: "#15803d", label: "Excelente" };
@@ -133,18 +138,18 @@ export default function ProducaoHistorico() {
                             const q = getQualidadeStyle(prod.qualidade);
                             return (
                                 <View key={prod.id} style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                                        <View>
+                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                        <View style={{ flex: 1, marginRight: 8 }}>
                                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a", marginBottom: 6 }}>
-                                                {new Date(prod.data + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}
+                                                {formatarData(prod.data)}
                                             </Text>
                                             <View style={{ backgroundColor: q.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, alignSelf: "flex-start" }}>
                                                 <Text style={{ fontSize: 11, color: q.text, fontWeight: "500" }}>{q.label}</Text>
                                             </View>
                                         </View>
-                                        <TouchableOpacity onPress={() => handleDelete(prod.id)} style={{ padding: 8 }}>
-                                            <Feather name="trash-2" size={16} color="#9ca3af" />
-                                        </TouchableOpacity>
+{/*                                         <TouchableOpacity onPress={() => handleDelete(prod.id)} style={{ padding: 10, alignSelf: "flex-start" }}>
+                                            <Feather name="trash-2" size={18} color="#9ca3af" />
+                                        </TouchableOpacity> */}
                                     </View>
 
                                     <View style={{ flexDirection: "row", gap: 8, marginBottom: prod.observacoes ? 12 : 0 }}>
@@ -153,18 +158,18 @@ export default function ProducaoHistorico() {
                                                 <Feather name="sunrise" size={12} color="#ea580c" />
                                                 <Text style={{ fontSize: 11, color: "#ea580c" }}>Manhã</Text>
                                             </View>
-                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.manha}L</Text>
+                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_manha}L</Text>
                                         </View>
                                         <View style={{ flex: 1, backgroundColor: "#eef2ff", borderRadius: 10, padding: 12 }}>
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
                                                 <Feather name="sunset" size={12} color="#4f46e5" />
                                                 <Text style={{ fontSize: 11, color: "#4f46e5" }}>Tarde</Text>
                                             </View>
-                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.tarde}L</Text>
+                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_tarde}L</Text>
                                         </View>
                                         <View style={{ flex: 1, backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 10, padding: 12 }}>
                                             <Text style={{ fontSize: 11, color: "#4a90e2", marginBottom: 4 }}>Total</Text>
-                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.total}L</Text>
+                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_total}L</Text>
                                         </View>
                                     </View>
 
