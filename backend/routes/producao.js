@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/recentes", async (req, res) => {
     try {
-        const [rows] = await pool.query("SELECT * FROM producao ORDER BY data DESC LIMIT 3");
+        const [rows] = await pool.query("SELECT * FROM producao ORDER BY criado_em DESC LIMIT 3");
         res.json(rows);
     } catch (error) {
         console.error(error);
@@ -15,7 +15,7 @@ router.get("/recentes", async (req, res) => {
 
 router.get("/", async (req, res) => {
     try {
-        const [rows] = await pool.query("SELECT * FROM producao ORDER BY data DESC");
+        const [rows] = await pool.query("SELECT * FROM producao ORDER BY criado_em DESC");
         res.json(rows);
     } catch (error) {
         console.error(error);
@@ -45,6 +45,22 @@ router.delete("/:id", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Erro ao excluir" });
+    }
+});
+
+router.put("/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { date, morningProduction, afternoonProduction, quality, notes } = req.body;
+        const total = Number(morningProduction) + Number(afternoonProduction);
+        await pool.query(
+            "UPDATE producao SET data=?, producao_manha=?, producao_tarde=?, producao_total=?, qualidade=?, observacoes=? WHERE id=?",
+            [date, morningProduction, afternoonProduction, total, quality, notes, id]
+        );
+        res.json({ message: "Produção atualizada!" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Erro ao atualizar produção" });
     }
 });
 

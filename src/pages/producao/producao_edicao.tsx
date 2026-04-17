@@ -12,29 +12,31 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { criarProducao, atualizarProducao } from "../../services/api";
+import { atualizarProducao } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 
-export default function ProducaoRegistro() {
+export default function producao_edicao() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    const producaoEditando: Producao | undefined = route.params?.producao;
-    const isEditando = !!producaoEditando;
+    const producao: Producao = route.params.producao;
 
     const [formData, setFormData] = useState({
-        date: producaoEditando?.data?.split("T")[0] ?? new Date().toISOString().split("T")[0],
-        morningProduction: producaoEditando?.producao_manha?.toString() ?? "",
-        afternoonProduction: producaoEditando?.producao_tarde?.toString() ?? "",
-        quality: (producaoEditando?.qualidade as "excellent" | "good" | "regular") ?? "good",
-        notes: producaoEditando?.observacoes ?? "",
+        date: producao.data.split("T")[0],
+        morningProduction: producao.producao_manha.toString(),
+        afternoonProduction: producao.producao_tarde.toString(),
+        quality: producao.qualidade as "excellent" | "good" | "regular",
+        notes: producao.observacoes ?? "",
     });
 
     const total =
         (parseFloat(formData.morningProduction) || 0) +
         (parseFloat(formData.afternoonProduction) || 0);
+
+    const totalOriginal = Number(producao.producao_total);
+    const diferenca = total - totalOriginal;
 
     function getQualityStyle(q: string, selected: boolean) {
         if (q === "excellent") return selected
@@ -55,45 +57,34 @@ export default function ProducaoRegistro() {
         }
 
         try {
-            const dados = {
+            await atualizarProducao(producao.id, {
                 date: formData.date,
                 morningProduction: Number(formData.morningProduction),
                 afternoonProduction: Number(formData.afternoonProduction),
                 quality: formData.quality,
                 notes: formData.notes.trim() || null,
-            };
-
-            if (isEditando) {
-                await atualizarProducao(producaoEditando!.id, dados);
-            } else {
-                await criarProducao(dados);
-            }
+            });
 
             Toast.show({
                 type: "success",
-                text1: isEditando ? "Produção atualizada!" : "Produção registrada!",
-                text2: isEditando
-                    ? "As alterações foram salvas."
-                    : "Sua coleta foi salva com sucesso.",
+                text1: "Produção atualizada!",
+                text2: "As alterações foram salvas.",
                 position: "top",
-                visibilityTime: 3500,
+                visibilityTime: 3000,
             });
-
-            if (!isEditando) {
-                setFormData({
-                    date: new Date().toISOString().split("T")[0],
-                    morningProduction: "",
-                    afternoonProduction: "",
-                    quality: "good",
-                    notes: "",
-                });
-            }
 
             setTimeout(() => navigation.goBack(), 500);
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Não foi possível salvar a produção. Tente novamente.");
+            Alert.alert("Erro", "Não foi possível atualizar a produção. Tente novamente.");
         }
+    }
+
+    function handleCancel() {
+        Alert.alert("Cancelar edição", "Deseja descartar as alterações?", [
+            { text: "Continuar editando", style: "cancel" },
+            { text: "Descartar", style: "destructive", onPress: () => navigation.goBack() },
+        ]);
     }
 
     return (
@@ -101,7 +92,7 @@ export default function ProducaoRegistro() {
             <StatusBar barStyle="light-content" />
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 <LinearGradient
-                    colors={["#4a90e2", "#357abd"]}
+                    colors={["#f59e0b", "#d97706"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={{
@@ -113,24 +104,34 @@ export default function ProducaoRegistro() {
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={handleCancel} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
-                        <View>
-                            <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>
-                                {isEditando ? "Editar Coleta" : "Nova Coleta"}
-                            </Text>
-                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
-                                {isEditando ? "Atualize as informações" : "Registre a produção do dia"}
+                        <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Feather name="edit-2" size={18} color="#fff" />
+                                <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>
+                                    Editar Coleta
+                                </Text>
+                            </View>
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
+                                {new Date(producao.data + "T12:00:00").toLocaleDateString("pt-BR")}
                             </Text>
                         </View>
                     </View>
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
+                    <View style={{ backgroundColor: "#fffbeb", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#fde68a", flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <Feather name="info" size={18} color="#d97706" />
+                        <Text style={{ flex: 1, fontSize: 13, color: "#92400e" }}>
+                            Você está editando um registro existente. As alterações serão salvas no banco de dados.
+                        </Text>
+                    </View>
+
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="calendar" size={16} color="#4a90e2" />
+                            <Feather name="calendar" size={16} color="#f59e0b" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Data da Coleta</Text>
                         </View>
                         <View style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 }}>
@@ -153,6 +154,9 @@ export default function ProducaoRegistro() {
                             keyboardType="decimal-pad"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
+                        <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                            Valor anterior: {producao.producao_manha}L
+                        </Text>
                     </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
@@ -168,12 +172,32 @@ export default function ProducaoRegistro() {
                             keyboardType="decimal-pad"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
+                        <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                            Valor anterior: {producao.producao_tarde}L
+                        </Text>
                     </View>
 
                     {total > 0 && (
-                        <View style={{ backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "rgba(74,144,226,0.2)" }}>
-                            <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Produção Total</Text>
-                            <Text style={{ fontSize: 28, fontWeight: "700", color: "#4a90e2" }}>{total.toFixed(1)} L</Text>
+                        <View style={{ backgroundColor: "rgba(245,158,11,0.1)", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "rgba(245,158,11,0.2)" }}>
+                            <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Novo Total</Text>
+                            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
+                                <Text style={{ fontSize: 28, fontWeight: "700", color: "#d97706" }}>
+                                    {total.toFixed(1)} L
+                                </Text>
+                                {diferenca !== 0 && (
+                                    <Text style={{
+                                        fontSize: 13,
+                                        fontWeight: "600",
+                                        color: diferenca > 0 ? "#15803d" : "#dc2626",
+                                        marginBottom: 4,
+                                    }}>
+                                        {diferenca > 0 ? "+" : ""}{diferenca.toFixed(1)} L
+                                    </Text>
+                                )}
+                            </View>
+                            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                                Anterior: {totalOriginal.toFixed(1)} L
+                            </Text>
                         </View>
                     )}
 
@@ -211,7 +235,7 @@ export default function ProducaoRegistro() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="edit-3" size={16} color="#4a90e2" />
+                            <Feather name="edit-3" size={16} color="#f59e0b" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observações</Text>
                         </View>
                         <TextInput
@@ -226,18 +250,35 @@ export default function ProducaoRegistro() {
                         />
                     </View>
 
-                    <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ marginBottom: insets.bottom + 20 }}>
-                        <LinearGradient
-                            colors={["#4a90e2", "#357abd"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center" }}
+                    <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
+                        <TouchableOpacity
+                            onPress={handleCancel}
+                            activeOpacity={0.7}
+                            style={{
+                                flex: 1,
+                                backgroundColor: "#fff",
+                                borderWidth: 1,
+                                borderColor: "#e5e7eb",
+                                borderRadius: 14,
+                                paddingVertical: 16,
+                                alignItems: "center",
+                            }}
                         >
-                            <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>
-                                {isEditando ? "Atualizar Registro" : "Salvar Registro"}
-                            </Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
+                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                            <LinearGradient
+                                colors={["#f59e0b", "#d97706"]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                            >
+                                <Feather name="save" size={18} color="#fff" />
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar Alterações</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
         </View>

@@ -9,6 +9,10 @@ import ProducaoHistorico from "./src/pages/producao/producao_historico";
 import Dashboard from "./src/pages/dashboard/dashboard";
 import LoginScreen from "./src/pages/login/login";
 
+import Toast from "react-native-toast-message";
+import producao_edicao from "./src/pages/producao/producao_edicao";
+
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -20,9 +24,11 @@ export default function App() {
                     <Stack.Screen name="Dashboard" component={Dashboard} />
                     <Stack.Screen name="ProducaoRegistro" component={ProducaoRegistro} />
                     <Stack.Screen name="ProducaoHistorico" component={ProducaoHistorico} />
+                    <Stack.Screen name="ProducaoEdicao" component={producao_edicao} />
                 </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="light" />
+            <Toast />
         </SafeAreaProvider>
     );
 }

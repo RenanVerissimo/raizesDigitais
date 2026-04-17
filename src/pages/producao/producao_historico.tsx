@@ -13,8 +13,12 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Producao } from "../../interfaces/interfaces";
-import { listarProducoes } from "../../services/api";
+import { listarProducoes, excluirProducao } from "../../services/api";
 import { formatarData } from "../../utils/formatters";
+
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
+import Toast from "react-native-toast-message";
 
 export default function ProducaoHistorico() {
     const insets = useSafeAreaInsets();
@@ -24,14 +28,22 @@ export default function ProducaoHistorico() {
     const [filterQuality, setFilterQuality] = useState<"all" | "excellent" | "good" | "regular">("all");
     const [allProducoes, setAllProducoes] = useState<Producao[]>([]);
 
-    useEffect(() => {
-        listarProducoes()
-            .then((data) => {
-                setAllProducoes(data);
-                console.log("todas produções:", data);
-            })
-            .catch((err) => console.error("Erro:", err));
-    }, []);
+    const [paginaAtual, setPaginaAtual] = useState(1);
+    const ITENS_POR_PAGINA = 5;
+
+    async function carregarProducoes() {
+        try {
+            const data = await listarProducoes();
+            setAllProducoes(data);
+        } catch (err) {
+            console.error("Erro:", err);
+        }
+    }
+    useFocusEffect(
+        useCallback(() => {
+            carregarProducoes();
+        }, [])
+    );
 
     const filteredProductions = allProducoes.filter((prod) => {
         const matchesSearch = prod.data.includes(searchTerm) || prod.observacoes?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -40,6 +52,10 @@ export default function ProducaoHistorico() {
     });
 
     const totalLiters = filteredProductions.reduce((sum, p) => sum + Number(p.producao_total), 0);
+
+    const totalPaginas = Math.ceil(filteredProductions.length / ITENS_POR_PAGINA);
+    const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
+    const producoesPaginadas = filteredProductions.slice(inicio, inicio + ITENS_POR_PAGINA);
 
     function getQualidadeStyle(qualidade: string) {
         if (qualidade === "excellent") return { bg: "#dcfce7", text: "#15803d", label: "Excelente" };
@@ -50,8 +66,29 @@ export default function ProducaoHistorico() {
     function handleDelete(id: number) {
         Alert.alert("Confirmar", "Deseja excluir este registro?", [
             { text: "Cancelar", style: "cancel" },
-            { text: "Excluir", style: "destructive", onPress: () => Alert.alert("Excluído", "Registro removido.") },
+            {
+                text: "Excluir",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        await excluirProducao(id);
+                        setAllProducoes((prev) => prev.filter((p) => p.id !== id));
+                        Toast.show({
+                            type: "success",
+                            text1: "Excluído!",
+                            text2: "Registro removido com sucesso.",
+                            position: "top",
+                        });
+                    } catch (err) {
+                        Alert.alert("Erro", "Não foi possível excluir.");
+                    }
+                },
+            },
         ]);
+    }
+
+    function handleEdit(prod: Producao) {
+        navigation.navigate("ProducaoEdicao", { producao: prod });
     }
 
     const filterButtons: { key: "all" | "excellent" | "good" | "regular"; label: string; activeColor: string }[] = [
@@ -60,6 +97,10 @@ export default function ProducaoHistorico() {
         { key: "good", label: "Boa", activeColor: "#3b82f6" },
         { key: "regular", label: "Regular", activeColor: "#eab308" },
     ];
+
+    useEffect(() => {
+        setPaginaAtual(1);
+    }, [searchTerm, filterQuality]);
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -134,7 +175,7 @@ export default function ProducaoHistorico() {
                             <Text style={{ fontSize: 14, color: "#6b7280" }}>Nenhum registro encontrado</Text>
                         </View>
                     ) : (
-                        filteredProductions.map((prod) => {
+                        producoesPaginadas.map((prod) => {
                             const q = getQualidadeStyle(prod.qualidade);
                             return (
                                 <View key={prod.id} style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
@@ -147,9 +188,14 @@ export default function ProducaoHistorico() {
                                                 <Text style={{ fontSize: 11, color: q.text, fontWeight: "500" }}>{q.label}</Text>
                                             </View>
                                         </View>
-{/*                                         <TouchableOpacity onPress={() => handleDelete(prod.id)} style={{ padding: 10, alignSelf: "flex-start" }}>
-                                            <Feather name="trash-2" size={18} color="#9ca3af" />
-                                        </TouchableOpacity> */}
+                                        <View style={{ flexDirection: "row", gap: 4 }}>
+                                            <TouchableOpacity onPress={() => handleEdit(prod)} style={{ padding: 8 }}>
+                                                <Feather name="edit-2" size={18} color="#4a90e2" />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => handleDelete(prod.id)} style={{ padding: 8 }}>
+                                                <Feather name="trash-2" size={18} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
 
                                     <View style={{ flexDirection: "row", gap: 8, marginBottom: prod.observacoes ? 12 : 0 }}>
@@ -184,6 +230,37 @@ export default function ProducaoHistorico() {
                         })
                     )}
 
+                    {totalPaginas > 1 && (
+                        <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 12, paddingVertical: 8 }}>
+                            <TouchableOpacity
+                                onPress={() => setPaginaAtual((p) => Math.max(1, p - 1))}
+                                disabled={paginaAtual === 1}
+                                style={{
+                                    padding: 10,
+                                    borderRadius: 8,
+                                    backgroundColor: paginaAtual === 1 ? "#e5e7eb" : "#4a90e2",
+                                }}
+                            >
+                                <Feather name="chevron-left" size={18} color="#fff" />
+                            </TouchableOpacity>
+
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>
+                                Página {paginaAtual} de {totalPaginas}
+                            </Text>
+
+                            <TouchableOpacity
+                                onPress={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
+                                disabled={paginaAtual === totalPaginas}
+                                style={{
+                                    padding: 10,
+                                    borderRadius: 8,
+                                    backgroundColor: paginaAtual === totalPaginas ? "#e5e7eb" : "#4a90e2",
+                                }}
+                            >
+                                <Feather name="chevron-right" size={18} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
                     <View style={{ height: insets.bottom + 20 }} />
                 </View>
             </ScrollView>

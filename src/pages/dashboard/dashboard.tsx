@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
     View,
     Text,
     TouchableOpacity,
     ScrollView,
     StatusBar,
+    RefreshControl,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -46,21 +48,47 @@ export default function Dashboard() {
     }
 
     const [producoesRecentes, setProducoesRecentes] = useState<Producao[]>([]);
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        listarProducoesRecentes()
-            .then((data) => {
-                setProducoesRecentes(data);
-                console.log("produções recentes:", data);
-            })
-            .catch((err) => console.error("Erro:", err));
-    }, []);
+    async function carregarDados() {
+        try {
+            const data = await listarProducoesRecentes();
+            setProducoesRecentes(data);
+            console.log("produções recentes:", data);
+        } catch (err) {
+            console.error("Erro:", err);
+        }
+    }
+
+    useFocusEffect(
+        useCallback(() => {
+            carregarDados();
+        }, [])
+    );
+
+    async function onRefresh() {
+        console.log("🔄 Refresh disparado!");
+        setRefreshing(true);
+        await carregarDados();
+        setRefreshing(false);
+    }
 
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
             <StatusBar barStyle="light-content" />
-            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                bounces={true}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={["#4a90e2"]}
+                        tintColor="#4a90e2"
+                    />
+                }
+            >
                 <LinearGradient
                     colors={["#4a90e2", "#357abd"]}
                     start={{ x: 0, y: 0 }}
@@ -118,7 +146,23 @@ export default function Dashboard() {
                             <Text style={{ fontSize: 14, color: "#6b7280", marginBottom: 4 }}>litros</Text>
                         </View>
                     </View>
-
+                    <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate("ProducaoRegistro")}>
+                        <LinearGradient
+                            colors={["#4a90e2", "#357abd"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={{ borderRadius: 14, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+                        >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                <Feather name="plus" size={24} color="#fff" />
+                                <View>
+                                    <Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>Nova Coleta</Text>
+                                    <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.8)" }}>Registrar produção do dia</Text>
+                                </View>
+                            </View>
+                            <Feather name="trending-up" size={20} color="#fff" />
+                        </LinearGradient>
+                    </TouchableOpacity>
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#0a0a0a" }}>Últimos Registros</Text>
@@ -159,23 +203,7 @@ export default function Dashboard() {
                         })}
                     </View>
 
-                    <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate("ProducaoRegistro")}>
-                        <LinearGradient
-                            colors={["#4a90e2", "#357abd"]}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={{ borderRadius: 14, padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
-                        >
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                                <Feather name="plus" size={24} color="#fff" />
-                                <View>
-                                    <Text style={{ fontSize: 16, fontWeight: "600", color: "#fff" }}>Nova Coleta</Text>
-                                    <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.8)" }}>Registrar produção do dia</Text>
-                                </View>
-                            </View>
-                            <Feather name="trending-up" size={20} color="#fff" />
-                        </LinearGradient>
-                    </TouchableOpacity>
+
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
                         <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}>
