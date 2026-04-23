@@ -206,7 +206,8 @@ export default function Dashboard() {
 
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("Animais")}>
                             <MaterialCommunityIcons name="cow" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Animais</Text>
                         </TouchableOpacity>

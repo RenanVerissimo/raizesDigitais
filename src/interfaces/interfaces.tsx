@@ -34,3 +34,12 @@ export interface Producao {
     observacoes: string | null;
     criado_em: string;
 }
+
+export interface Animal {
+    id: string;
+    nome: string;
+    identificador: string;
+    producaoMediaDiaria: number;
+    raca?: string;
+    idade?: string;
+}

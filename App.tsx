@@ -11,6 +11,8 @@ import LoginScreen from "./src/pages/login/login";
 
 import Toast from "react-native-toast-message";
 import producao_edicao from "./src/pages/producao/producao_edicao";
+import Animais from "./src/pages/animais/animais";
+import CadastrarAnimais from "./src/pages/animais/cadastrar_animais";
 
 
 const Stack = createNativeStackNavigator();
@@ -25,6 +27,8 @@ export default function App() {
                     <Stack.Screen name="ProducaoRegistro" component={ProducaoRegistro} />
                     <Stack.Screen name="ProducaoHistorico" component={ProducaoHistorico} />
                     <Stack.Screen name="ProducaoEdicao" component={producao_edicao} />
+                    <Stack.Screen name="Animais" component={Animais} />
+                    <Stack.Screen name="CadastrarAnimais" component={CadastrarAnimais} />
                 </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="light" />
