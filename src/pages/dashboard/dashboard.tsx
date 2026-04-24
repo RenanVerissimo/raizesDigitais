@@ -223,17 +223,24 @@ export default function Dashboard() {
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}>
+                        <TouchableOpacity
+                            style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }}
+                            activeOpacity={0.7}
+                            onPress={() => navigation.navigate("compras_e_pedidos")}
+                        >
                             <Feather name="shopping-cart" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Compras</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("financeiro")}
+                        >
                             <Feather name="dollar-sign" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Financeiro</Text>
                         </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8, marginBottom: insets.bottom + 20 }} activeOpacity={0.7}>
+                    <TouchableOpacity style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8, marginBottom: insets.bottom + 20 }} activeOpacity={0.7}
+                        onPress={() => navigation.navigate("estoque")}>
                         <Feather name="package" size={24} color="#4a90e2" />
                         <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Controle de Estoque</Text>
                     </TouchableOpacity>

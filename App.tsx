@@ -13,6 +13,13 @@ import Toast from "react-native-toast-message";
 import producao_edicao from "./src/pages/producao/producao_edicao";
 import Animais from "./src/pages/animais/animais";
 import CadastrarAnimais from "./src/pages/animais/cadastrar_animais";
+import cadastrar_compras from "./src/pages/compras_e_pedidos/cadastrar_compras";
+import compras_e_pedidos from "./src/pages/compras_e_pedidos/compras_e_pedidos";
+import cadastar_tanque from "./src/pages/controle_de_estoque/cadastar_tanque";
+import estoque from "./src/pages/controle_de_estoque/estoque";
+import registrar_movimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
+import financeiro from "./src/pages/financeiro/financeiro";
+import cadastrar_receita from "./src/pages/financeiro/cadastrar_receita";
 
 
 const Stack = createNativeStackNavigator();
@@ -29,6 +36,13 @@ export default function App() {
                     <Stack.Screen name="ProducaoEdicao" component={producao_edicao} />
                     <Stack.Screen name="Animais" component={Animais} />
                     <Stack.Screen name="CadastrarAnimais" component={CadastrarAnimais} />
+                    <Stack.Screen name="compras_e_pedidos" component={compras_e_pedidos} />
+                    <Stack.Screen name="cadastrar_compras" component={cadastrar_compras} />
+                    <Stack.Screen name="cadastar_tanque" component={cadastar_tanque} />
+                    <Stack.Screen name="estoque" component={estoque} />
+                    <Stack.Screen name="registrar_movimentacao" component={registrar_movimentacao} />
+                    <Stack.Screen name="financeiro" component={financeiro} />
+                    <Stack.Screen name="cadastrar_receita" component={cadastrar_receita} />
                 </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="light" />
