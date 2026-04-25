@@ -172,30 +172,34 @@ export default function compras_e_pedidos() {
                         <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a", marginBottom: 10 }}>
                             Filtrar por Status
                         </Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            <View style={{ flexDirection: "row", gap: 8 }}>
-                                {filtros.map((f) => {
-                                    const ativo = filtroStatus === f.key;
-                                    return (
-                                        <TouchableOpacity
-                                            key={f.key}
-                                            onPress={() => setFiltroStatus(f.key)}
-                                            activeOpacity={0.7}
-                                            style={{
-                                                backgroundColor: ativo ? f.cor : "#f3f4f6",
-                                                paddingHorizontal: 14,
-                                                paddingVertical: 8,
-                                                borderRadius: 10,
-                                            }}
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                            {filtros.map((f) => {
+                                const ativo = filtroStatus === f.key;
+                                return (
+                                    <TouchableOpacity
+                                        key={f.key}
+                                        onPress={() => setFiltroStatus(f.key)}
+                                        activeOpacity={0.7}
+                                        style={{
+                                            flexGrow: 1,
+                                            flexBasis: "22%",
+                                            backgroundColor: ativo ? f.cor : "#f3f4f6",
+                                            paddingHorizontal: 8,
+                                            paddingVertical: 8,
+                                            borderRadius: 10,
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <Text
+                                            numberOfLines={1}
+                                            style={{ fontSize: 12, fontWeight: "500", color: ativo ? "#fff" : "#374151" }}
                                         >
-                                            <Text style={{ fontSize: 13, fontWeight: "500", color: ativo ? "#fff" : "#374151" }}>
-                                                {f.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </ScrollView>
+                                            {f.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
                     </View>
 
                     {comprasFiltradas.length === 0 ? (

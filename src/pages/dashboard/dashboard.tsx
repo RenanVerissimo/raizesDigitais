@@ -22,20 +22,13 @@ export default function Dashboard() {
     const userName = "Produtor";
     const farmName = "Fazenda Modelo";
 
-    const todayProduction = 45;
+    const todayProduction = 0;
     const average7Days = 42;
     const totalAnimals = 12;
     const monthlyProduction = 1260;
 
     const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
-    const recentProductions = [
-        { id: 1, data: "2026-04-12", manha: 25, tarde: 20, total: 45, qualidade: "excellent" },
-        { id: 2, data: "2026-04-11", manha: 22, tarde: 18, total: 40, qualidade: "good" },
-        { id: 3, data: "2026-04-10", manha: 20, tarde: 21, total: 41, qualidade: "good" },
-        { id: 4, data: "2026-04-10", manha: 20, tarde: 21, total: 41, qualidade: "good" },
-        { id: 5, data: "2026-04-10", manha: 20, tarde: 21, total: 41, qualidade: "good" },
-    ];
 
     function getQualidadeStyle(qualidade: string) {
         if (qualidade === "excellent") return { bg: "#dcfce7", text: "#15803d", label: "Excelente" };
@@ -54,7 +47,7 @@ export default function Dashboard() {
         try {
             const data = await listarProducoesRecentes();
             setProducoesRecentes(data);
-            console.log("produções recentes:", data);
+            //console.log("produções recentes:", data);
         } catch (err) {
             console.error("Erro:", err);
         }
@@ -216,7 +209,8 @@ export default function Dashboard() {
                             <Feather name="clock" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Histórico</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                        onPress={() => navigation.navigate("graficos")}>
                             <Feather name="bar-chart-2" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Gráficos</Text>
                         </TouchableOpacity>
