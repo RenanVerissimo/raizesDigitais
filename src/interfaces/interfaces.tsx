@@ -36,10 +36,10 @@ export interface Producao {
 }
 
 export interface Animal {
-    id: string;
+    id: number;
     nome: string;
     identificador: string;
-    producaoMediaDiaria: number;
+    producao_media_diaria: number;
     raca?: string;
     idade?: string;
 }

@@ -15,7 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
-
+import { criarAnimal } from "../../services/api";
 
 
 export default function CadastrarAnimais() {
@@ -43,7 +43,7 @@ export default function CadastrarAnimais() {
         }
     }
 
-    function handleSubmit() {
+    async function handleSubmit() {
         if (!formData.nome.trim() || !formData.identificador.trim() || !formData.producaoMediaDiaria) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
@@ -55,19 +55,18 @@ export default function CadastrarAnimais() {
             return;
         }
 
-        const novoAnimal: Animal = {
-            id: Date.now().toString(),
-            nome: formData.nome.trim(),
-            identificador: formData.identificador.trim(),
-            producaoMediaDiaria: producao,
-            raca: formData.raca.trim() || undefined,
-            idade: formData.idade.trim() || undefined,
-        };
-
-        if (route.params?.onCadastrar) {
-            route.params.onCadastrar(novoAnimal);
+        try {
+            await criarAnimal({
+                nome: formData.nome.trim(),
+                identificador: formData.identificador.trim(),
+                producao_media_diaria: producao,
+                raca: formData.raca.trim() || null,
+                idade: formData.idade.trim() || null,
+            });
+            navigation.goBack();
+        } catch (err) {
+            Alert.alert("Erro", "Não foi possível cadastrar o animal. Verifique a conexão.");
         }
-        navigation.goBack();
     }
 
     return (

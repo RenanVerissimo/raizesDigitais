@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
     View,
     Text,
@@ -10,8 +10,9 @@ import {
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
+import { criarAnimal, listarAnimais, excluirAnimal } from "../../services/api";
 
 
 
@@ -21,10 +22,12 @@ export default function Animais() {
 
 
     const [animais, setAnimais] = useState<Animal[]>([]);
+    const [carregando, setCarregando] = useState(true);
+
 
 
     const totalAnimais = animais.length;
-    const producaoDiariaEstimada = animais.reduce((s, a) => s + a.producaoMediaDiaria, 0);
+    const producaoDiariaEstimada = animais.reduce((s, a) => s + Number(a.producao_media_diaria), 0);
     const producaoMensalEstimada = producaoDiariaEstimada * 30;
     const mediaPorAnimal = totalAnimais > 0 ? producaoDiariaEstimada / totalAnimais : 0;
 
@@ -34,18 +37,39 @@ export default function Animais() {
         : 0;
 
     function handleExcluir(animal: Animal) {
-        Alert.alert(
-            "Excluir animal",
-            `Deseja excluir ${animal.nome}?`,
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Excluir",
-                    style: "destructive",
-                    onPress: () => setAnimais((prev) => prev.filter((a) => a.id !== animal.id)),
+        Alert.alert("Excluir animal", `Deseja excluir ${animal.nome}?`, [
+            { text: "Cancelar", style: "cancel" },
+            {
+                text: "Excluir",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        await excluirAnimal(animal.id);
+                        setAnimais((prev) => prev.filter((a) => a.id !== animal.id));
+                    } catch (err) {
+                        Alert.alert("Erro", "Não foi possível excluir");
+                    }
                 },
-            ]
-        );
+            },
+        ]);
+    }
+
+
+    useFocusEffect(
+        useCallback(() => {
+            carregarAnimais();
+        }, [])
+    );
+    async function carregarAnimais() {
+        try {
+            setCarregando(true);
+            const dados = await listarAnimais();
+            setAnimais(dados);
+        } catch (err) {
+            Alert.alert("Erro", "Não foi possível carregar os animais");
+        } finally {
+            setCarregando(false);
+        }
     }
 
     return (
@@ -80,11 +104,7 @@ export default function Animais() {
 
                     <TouchableOpacity
                         activeOpacity={0.85}
-                        onPress={() => navigation.navigate("CadastrarAnimais", {
-                            onCadastrar: (animal: Animal) => {
-                                setAnimais((prev) => [...prev, animal]);
-                            }
-                        })}
+                        onPress={() => navigation.navigate("CadastrarAnimais")}
                         style={{
                             backgroundColor: "rgba(255,255,255,0.2)",
                             borderWidth: 1,
@@ -220,7 +240,7 @@ export default function Animais() {
                                         <View style={{ backgroundColor: "#eff6ff", borderRadius: 8, padding: 10, marginTop: 10 }}>
                                             <Text style={{ fontSize: 11, color: "#6b7280" }}>Produção Média Diária</Text>
                                             <Text style={{ fontSize: 14, fontWeight: "600", color: "#4a90e2", marginTop: 2 }}>
-                                                {animal.producaoMediaDiaria} L/dia
+                                                <Text>{Number(animal.producao_media_diaria).toFixed(1)} L/dia</Text>
                                             </Text>
                                         </View>
                                     </View>

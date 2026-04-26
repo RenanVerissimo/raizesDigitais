@@ -1,3 +1,5 @@
+import { Animal } from "../interfaces/interfaces";
+
 const BASE_URL = "http://192.168.32.108:3001/api";
 
 export async function listarProducoes() {
@@ -50,5 +52,36 @@ export async function atualizarProducao(id: number, dados: {
         body: JSON.stringify(dados),
     });
     if (!response.ok) throw new Error("Erro ao atualizar");
+    return response.json();
+}
+
+// ============================================
+// ANIMAIS
+// ============================================
+
+
+export async function listarAnimais(): Promise<Animal[]> {
+    const response = await fetch(`${BASE_URL}/animais`);
+    if (!response.ok) throw new Error("Erro ao listar animais");
+    return response.json();
+}
+export async function criarAnimal(dados: {
+    nome: string;
+    identificador: string;
+    producao_media_diaria: number;
+    raca?: string | null;
+    idade?: string | null;
+}) {
+    const response = await fetch(`${BASE_URL}/animais`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!response.ok) throw new Error("Erro ao cadastrar animal");
+    return response.json();
+}
+export async function excluirAnimal(id: number) {
+    const response = await fetch(`${BASE_URL}/animais/${id}`, { method: "DELETE" });
+    if (!response.ok) throw new Error("Erro ao excluir animal");
     return response.json();
 }

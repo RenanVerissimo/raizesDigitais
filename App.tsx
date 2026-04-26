@@ -20,7 +20,6 @@ import estoque from "./src/pages/controle_de_estoque/estoque";
 import registrar_movimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
 import financeiro from "./src/pages/financeiro/financeiro";
 import cadastrar_receita from "./src/pages/financeiro/cadastrar_receita";
-import Graficos from "./src/pages/graficos/graficos";
 import graficos from "./src/pages/graficos/graficos";
 
 
