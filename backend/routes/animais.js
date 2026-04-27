@@ -16,16 +16,16 @@ router.get("/", async (req, res) => {
 // CRIAR
 router.post("/", async (req, res) => {
     try {
-        const { nome, identificador, producao_media_diaria, raca, idade } = req.body;
+        const { nome, identificador, producao_media_diaria, raca, idade, descricao } = req.body;
 
         if (!nome || !identificador || producao_media_diaria == null) {
             return res.status(400).json({ erro: "Nome, identificador e produção são obrigatórios" });
         }
 
         const [result] = await pool.query(
-            `INSERT INTO animais (nome, identificador, producao_media_diaria, raca, idade)
-             VALUES (?, ?, ?, ?, ?)`,
-            [nome, identificador, producao_media_diaria, raca || null, idade || null]
+            `INSERT INTO animais (nome, identificador, producao_media_diaria, raca, idade, descricao)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [nome, identificador, producao_media_diaria, raca || null, idade || null, descricao || null]
         );
 
         res.status(201).json({ id: result.insertId, mensagem: "Animal cadastrado" });
@@ -38,13 +38,13 @@ router.post("/", async (req, res) => {
 // ATUALIZAR
 router.put("/:id", async (req, res) => {
     try {
-        const { nome, identificador, producao_media_diaria, raca, idade } = req.body;
+        const { nome, identificador, producao_media_diaria, raca, idade, descricao } = req.body;
 
         const [result] = await pool.query(
             `UPDATE animais 
-             SET nome = ?, identificador = ?, producao_media_diaria = ?, raca = ?, idade = ?
+             SET nome = ?, identificador = ?, producao_media_diaria = ?, raca = ?, idade = ?, descricao = ?
              WHERE id = ?`,
-            [nome, identificador, producao_media_diaria, raca || null, idade || null, req.params.id]
+            [nome, identificador, producao_media_diaria, raca || null, idade || null, descricao || null, req.params.id]
         );
 
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Animal não encontrado" });

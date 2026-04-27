@@ -40,6 +40,8 @@ export interface Animal {
     nome: string;
     identificador: string;
     producao_media_diaria: number;
-    raca?: string;
-    idade?: string;
+    raca?: string | null;
+    idade?: string | null;
+    descricao?: string | null;
+    criado_em?: string;
 }

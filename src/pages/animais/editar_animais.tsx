@@ -1,49 +1,37 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    ScrollView,
-    StatusBar,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
+    View, Text, TextInput, TouchableOpacity, ScrollView,
+    StatusBar, Alert, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
-import { criarAnimal } from "../../services/api";
+import { atualizarAnimal } from "../../services/api";
 import Toast from "react-native-toast-message";
 
-
-export default function CadastrarAnimais() {
+export default function editar_animais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const animal: Animal = route.params?.animal;
+    
 
     const [formData, setFormData] = useState({
-        nome: "",
-        identificador: "",
-        producaoMediaDiaria: "",
-        raca: "",
-        idade: "",
-        descricao: "", // ← NOVO
+        nome: animal?.nome ?? "",
+        identificador: animal?.identificador ?? "",
+        producaoMediaDiaria: animal ? String(animal.producao_media_diaria) : "",
+        raca: animal?.raca ?? "",
+        idade: animal?.idade ?? "",
+        descricao: animal?.descricao ?? "",
     });
 
     function handleCancelar() {
-        const temDados = formData.nome || formData.identificador || formData.producaoMediaDiaria;
-        if (temDados) {
-            Alert.alert("Cancelar cadastro", "Deseja descartar as informações?", [
-                { text: "Continuar editando", style: "cancel" },
-                { text: "Descartar", style: "destructive", onPress: () => navigation.goBack() },
-            ]);
-        } else {
-            navigation.goBack();
-        }
+        navigation.goBack();
     }
+
 
     async function handleSubmit() {
         if (!formData.nome.trim() || !formData.identificador.trim() || !formData.producaoMediaDiaria) {
@@ -58,7 +46,7 @@ export default function CadastrarAnimais() {
         }
 
         try {
-            await criarAnimal({
+            await atualizarAnimal(animal.id, {
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
                 producao_media_diaria: producao,
@@ -69,8 +57,8 @@ export default function CadastrarAnimais() {
 
             Toast.show({
                 type: "success",
-                text1: "Animal cadastrado!",
-                text2: "O animal foi salvo com sucesso.",
+                text1: "Animal atualizado!",
+                text2: "As alterações foram salvas com sucesso.",
                 position: "top",
                 visibilityTime: 3000,
             });
@@ -87,6 +75,28 @@ export default function CadastrarAnimais() {
         }
     }
 
+    const inputStyle = {
+        backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb",
+        borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a",
+    };
+    const cardStyle = {
+        backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9",
+    };
+    const labelStyle = { fontSize: 14, fontWeight: "500" as const, color: "#0a0a0a" };
+
+    useEffect(() => {
+        if (animal) {
+            setFormData({
+                nome: animal.nome ?? "",
+                identificador: animal.identificador ?? "",
+                producaoMediaDiaria: String(animal.producao_media_diaria ?? ""),
+                raca: animal.raca ?? "",
+                idade: animal.idade ?? "",
+                descricao: animal.descricao ?? "",
+            });
+        }
+    }, [animal?.id]);
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -95,15 +105,11 @@ export default function CadastrarAnimais() {
             <StatusBar barStyle="light-content" />
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 <LinearGradient
-                    colors={["#4a90e2", "#357abd"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+                    colors={["#f59e0b", "#d97706"]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={{
-                        paddingTop: insets.top + 16,
-                        paddingHorizontal: 20,
-                        paddingBottom: 24,
-                        borderBottomLeftRadius: 24,
-                        borderBottomRightRadius: 24,
+                        paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24,
+                        borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -112,58 +118,51 @@ export default function CadastrarAnimais() {
                         </TouchableOpacity>
                         <View>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <MaterialCommunityIcons name="cow" size={20} color="#fff" />
+                                <Feather name="edit-2" size={18} color="#fff" />
                                 <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>
-                                    Cadastrar Animal
+                                    Editar Animal
                                 </Text>
                             </View>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                Preencha os dados do animal
+                                Atualize os dados do animal
                             </Text>
                         </View>
                     </View>
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
-
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="tag" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Nome do Animal *
-                            </Text>
+                            <Feather name="tag" size={16} color="#f59e0b" />
+                            <Text style={labelStyle}>Nome do Animal *</Text>
                         </View>
                         <TextInput
                             value={formData.nome}
                             onChangeText={(v) => setFormData({ ...formData, nome: v })}
                             placeholder="Ex: Mimosa, Estrela"
                             placeholderTextColor="#9ca3af"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            style={inputStyle}
                         />
                     </View>
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="hash" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Número/Identificação *
-                            </Text>
+                            <Feather name="hash" size={16} color="#f59e0b" />
+                            <Text style={labelStyle}>Número/Identificação *</Text>
                         </View>
                         <TextInput
                             value={formData.identificador}
                             onChangeText={(v) => setFormData({ ...formData, identificador: v })}
                             placeholder="Ex: 001, BR-1234"
                             placeholderTextColor="#9ca3af"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            style={inputStyle}
                         />
                     </View>
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="droplet" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Produção Média Diária (Litros) *
-                            </Text>
+                            <Feather name="droplet" size={16} color="#f59e0b" />
+                            <Text style={labelStyle}>Produção Média Diária (Litros) *</Text>
                         </View>
                         <TextInput
                             value={formData.producaoMediaDiaria}
@@ -171,68 +170,52 @@ export default function CadastrarAnimais() {
                             placeholder="Ex: 25.5"
                             placeholderTextColor="#9ca3af"
                             keyboardType="decimal-pad"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            style={inputStyle}
                         />
                     </View>
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <MaterialCommunityIcons name="cow" size={16} color="#6b7280" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Raça <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
-                            </Text>
+                            <Text style={labelStyle}>Raça <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
                         </View>
                         <TextInput
                             value={formData.raca}
                             onChangeText={(v) => setFormData({ ...formData, raca: v })}
                             placeholder="Ex: Holandesa, Jersey"
                             placeholderTextColor="#9ca3af"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            style={inputStyle}
                         />
                     </View>
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="clock" size={16} color="#6b7280" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Idade <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
-                            </Text>
+                            <Text style={labelStyle}>Idade <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
                         </View>
                         <TextInput
                             value={formData.idade}
                             onChangeText={(v) => setFormData({ ...formData, idade: v })}
                             placeholder="Ex: 3 anos, 5 anos"
                             placeholderTextColor="#9ca3af"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            style={inputStyle}
                         />
                     </View>
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="file-text" size={16} color="#6b7280" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Descrição do Animal <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
-                            </Text>
+                            <Text style={labelStyle}>Descrição do Animal <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
                         </View>
                         <TextInput
                             value={formData.descricao}
                             onChangeText={(v) => setFormData({ ...formData, descricao: v })}
-                            placeholder="Ex: Animal dócil, vacinada em janeiro, prenhe..."
+                            placeholder="Ex: Animal dócil, vacinada em janeiro..."
                             placeholderTextColor="#9ca3af"
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
-                            style={{
-                                backgroundColor: "#f9fafb",
-                                borderWidth: 1,
-                                borderColor: "#e5e7eb",
-                                borderRadius: 10,
-                                paddingHorizontal: 14,
-                                paddingVertical: 12,
-                                fontSize: 15,
-                                color: "#0a0a0a",
-                                minHeight: 90,
-                            }}
+                            style={{ ...inputStyle, minHeight: 90 }}
                         />
                     </View>
 
@@ -241,13 +224,8 @@ export default function CadastrarAnimais() {
                             onPress={handleCancelar}
                             activeOpacity={0.7}
                             style={{
-                                flex: 1,
-                                backgroundColor: "#fff",
-                                borderWidth: 1,
-                                borderColor: "#e5e7eb",
-                                borderRadius: 14,
-                                paddingVertical: 16,
-                                alignItems: "center",
+                                flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb",
+                                borderRadius: 14, paddingVertical: 16, alignItems: "center",
                             }}
                         >
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
@@ -255,13 +233,12 @@ export default function CadastrarAnimais() {
 
                         <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
                             <LinearGradient
-                                colors={["#4a90e2", "#357abd"]}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
+                                colors={["#f59e0b", "#d97706"]}
+                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                 style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                             >
                                 <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Cadastrar</Text>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar Alterações</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

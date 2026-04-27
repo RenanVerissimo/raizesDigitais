@@ -21,6 +21,8 @@ import registrar_movimentacao from "./src/pages/controle_de_estoque/registrar_mo
 import financeiro from "./src/pages/financeiro/financeiro";
 import cadastrar_receita from "./src/pages/financeiro/cadastrar_receita";
 import graficos from "./src/pages/graficos/graficos";
+import editar_animais from "./src/pages/animais/editar_animais";
+import ver_todos_animais from "./src/pages/animais/ver_todos_animais";
 
 
 const Stack = createNativeStackNavigator();
@@ -45,6 +47,8 @@ export default function App() {
                     <Stack.Screen name="financeiro" component={financeiro} />
                     <Stack.Screen name="cadastrar_receita" component={cadastrar_receita} />
                     <Stack.Screen name="graficos" component={graficos} />
+                    <Stack.Screen name="editar_animais" component={editar_animais} />
+                    <Stack.Screen name="ver_todos_animais" component={ver_todos_animais} />
 
                 </Stack.Navigator>
             </NavigationContainer>

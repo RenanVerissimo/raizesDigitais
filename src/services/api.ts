@@ -59,29 +59,68 @@ export async function atualizarProducao(id: number, dados: {
 // ANIMAIS
 // ============================================
 
-
 export async function listarAnimais(): Promise<Animal[]> {
-    const response = await fetch(`${BASE_URL}/animais`);
-    if (!response.ok) throw new Error("Erro ao listar animais");
-    return response.json();
+    try {
+        const response = await fetch(`${BASE_URL}/animais`);
+        if (!response.ok) throw new Error(`Erro ao listar animais (status ${response.status})`);
+        return await response.json();
+    } catch (err) {
+        console.error("Falha em listarAnimais:", err);
+        throw new Error("Não foi possível carregar os animais. Verifique a conexão.");
+    }
 }
+
 export async function criarAnimal(dados: {
     nome: string;
     identificador: string;
     producao_media_diaria: number;
     raca?: string | null;
     idade?: string | null;
+    descricao?: string | null;
 }) {
-    const response = await fetch(`${BASE_URL}/animais`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-    });
-    if (!response.ok) throw new Error("Erro ao cadastrar animal");
-    return response.json();
+    try {
+        const response = await fetch(`${BASE_URL}/animais`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dados),
+        });
+        if (!response.ok) throw new Error(`Erro ao cadastrar (status ${response.status})`);
+        return await response.json();
+    } catch (err) {
+        console.error("Falha em criarAnimal:", err);
+        throw new Error("Não foi possível cadastrar o animal. Verifique a conexão.");
+    }
 }
+
+export async function atualizarAnimal(id: number, dados: {
+    nome: string;
+    identificador: string;
+    producao_media_diaria: number;
+    raca?: string | null;
+    idade?: string | null;
+    descricao?: string | null;
+}) {
+    try {
+        const response = await fetch(`${BASE_URL}/animais/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dados),
+        });
+        if (!response.ok) throw new Error(`Erro ao atualizar (status ${response.status})`);
+        return await response.json();
+    } catch (err) {
+        console.error("Falha em atualizarAnimal:", err);
+        throw new Error("Não foi possível atualizar o animal. Verifique a conexão.");
+    }
+}
+
 export async function excluirAnimal(id: number) {
-    const response = await fetch(`${BASE_URL}/animais/${id}`, { method: "DELETE" });
-    if (!response.ok) throw new Error("Erro ao excluir animal");
-    return response.json();
+    try {
+        const response = await fetch(`${BASE_URL}/animais/${id}`, { method: "DELETE" });
+        if (!response.ok) throw new Error(`Erro ao excluir (status ${response.status})`);
+        return await response.json();
+    } catch (err) {
+        console.error("Falha em excluirAnimal:", err);
+        throw new Error("Não foi possível excluir o animal. Verifique a conexão.");
+    }
 }
