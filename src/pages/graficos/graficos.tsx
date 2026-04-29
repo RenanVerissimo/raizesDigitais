@@ -1,41 +1,46 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
-    View, Text, TouchableOpacity, ScrollView, StatusBar, Dimensions,
+    View, Text, TouchableOpacity, ScrollView, StatusBar, Dimensions, Alert, ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import {
-    VictoryChart,
-    VictoryArea,
-    VictoryScatter,
-    VictoryBar,
-    VictoryGroup,
-    VictoryPie,
-    VictoryAxis,
-    VictoryTheme,
+    VictoryChart, VictoryArea, VictoryScatter, VictoryBar,
+    VictoryGroup, VictoryPie, VictoryAxis, VictoryTheme,
 } from "victory-native";
+import { Producao } from "../../interfaces/interfaces";
+import { listarProducoes } from "../../services/api";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CHART_WIDTH = SCREEN_WIDTH - 40;
 
-export interface RegistroProducao {
-    id: string;
-    data: string;
-    producao_manha: number;
-    producao_tarde: number;
-    producao_total: number;
-    qualidade: "excellent" | "good" | "regular";
-    observacoes?: string;
-}
 
 export default function graficos() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
-    const route = useRoute<any>();
+    const [producoes, setProducoes] = useState<Producao[]>([]);
+    const [carregando, setCarregando] = useState(true);
 
-    const producoes: RegistroProducao[] = route.params?.producoes ?? [];
+    useFocusEffect(
+        useCallback(() => {
+            setCarregando(true);
+            listarProducoes()
+                .then((dados) => {
+                    // MySQL devolve DECIMAL como string — converter para número
+                    const normalizados = dados.map((p: { producao_manha: any; producao_tarde: any; producao_total: any; }) => ({
+                        ...p,
+                        producao_manha: Number(p.producao_manha),
+                        producao_tarde: Number(p.producao_tarde),
+                        producao_total: Number(p.producao_total),
+                    }));
+                    setProducoes(normalizados);
+                })
+                .catch(() => Alert.alert("Erro", "Não foi possível carregar as produções"))
+                .finally(() => setCarregando(false));
+        }, [])
+    );
 
     const ordenadas = [...producoes].sort(
         (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
@@ -50,10 +55,12 @@ export default function graficos() {
     const totalProducao = producoes.reduce((s, p) => s + p.producao_total, 0);
     const maxProducao = producoes.length ? Math.max(...producoes.map((p) => p.producao_total)) : 0;
     const minProducao = producoes.length ? Math.min(...producoes.map((p) => p.producao_total)) : 0;
-
     function formatarData(d: string) {
-        const data = new Date(d + "T12:00:00");
-        return `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}`;
+        if (!d) return "";
+        const dataStr = d.substring(0, 10); // pega só "AAAA-MM-DD" (ignora hora se vier)
+        const [ano, mes, dia] = dataStr.split("-");
+        if (!ano || !mes || !dia) return "";
+        return `${dia}/${mes}`;
     }
 
     // ── Dados linha (Evolução) ──────────────────────────────────────────────
@@ -148,7 +155,12 @@ export default function graficos() {
 
                 <View style={{ padding: 20, gap: 16 }}>
 
-                    {producoes.length === 0 ? (
+                    {carregando ? (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 40, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <ActivityIndicator size="large" color="#4a90e2" />
+                            <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 12 }}>Carregando produções...</Text>
+                        </View>
+                    ) : producoes.length === 0 ? (
                         <View style={{
                             backgroundColor: "#fff", borderRadius: 14, padding: 40,
                             alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9",

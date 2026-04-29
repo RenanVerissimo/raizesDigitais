@@ -102,29 +102,41 @@ export default function ProducaoRegistro() {
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 <LinearGradient
                     colors={["#4a90e2", "#357abd"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={{
-                        paddingTop: insets.top + 16,
-                        paddingHorizontal: 20,
-                        paddingBottom: 24,
-                        borderBottomLeftRadius: 24,
-                        borderBottomRightRadius: 24,
+                        paddingTop: insets.top + 16, paddingHorizontal: 20,
+                        paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
                     }}
                 >
+                    {/* View do título com seta de voltar (JÁ EXISTE) */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>
-                                {isEditando ? "Editar Coleta" : "Nova Coleta"}
+                                Análises e Gráficos
                             </Text>
-                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
-                                {isEditando ? "Atualize as informações" : "Registre a produção do dia"}
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
+                                Visualize o desempenho da produção
                             </Text>
                         </View>
                     </View>
+
+                    {/* 👇 COLA O BOTÃO AQUI 👇 */}
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate("ProducaoRegistro")}
+                        activeOpacity={0.85}
+                        style={{
+                            marginTop: 16, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1,
+                            borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12,
+                            flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                        }}
+                    >
+                        <Feather name="plus" size={20} color="#fff" />
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Registrar Nova Coleta</Text>
+                    </TouchableOpacity>
+
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
