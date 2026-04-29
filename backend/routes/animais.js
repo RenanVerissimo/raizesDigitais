@@ -16,16 +16,25 @@ router.get("/", async (req, res) => {
 // CRIAR
 router.post("/", async (req, res) => {
     try {
-        const { nome, identificador, producao_media_diaria, raca, idade, descricao } = req.body;
+        const {
+            nome, identificador, producao_media_diaria,
+            raca, idade, descricao, data_nascimento, data_ultimo_parto
+        } = req.body;
 
-        if (!nome || !identificador || producao_media_diaria == null) {
-            return res.status(400).json({ erro: "Nome, identificador e produção são obrigatórios" });
+        if (!nome || !identificador) {
+            return res.status(400).json({ erro: "Nome e identificador são obrigatórios" });
         }
 
         const [result] = await pool.query(
-            `INSERT INTO animais (nome, identificador, producao_media_diaria, raca, idade, descricao)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [nome, identificador, producao_media_diaria, raca || null, idade || null, descricao || null]
+            `INSERT INTO animais 
+             (nome, identificador, producao_media_diaria, raca, idade, descricao, data_nascimento, data_ultimo_parto)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                nome, identificador,
+                producao_media_diaria ?? null,
+                raca || null, idade || null, descricao || null,
+                data_nascimento || null, data_ultimo_parto || null
+            ]
         );
 
         res.status(201).json({ id: result.insertId, mensagem: "Animal cadastrado" });
@@ -38,13 +47,24 @@ router.post("/", async (req, res) => {
 // ATUALIZAR
 router.put("/:id", async (req, res) => {
     try {
-        const { nome, identificador, producao_media_diaria, raca, idade, descricao } = req.body;
+        const {
+            nome, identificador, producao_media_diaria,
+            raca, idade, descricao, data_nascimento, data_ultimo_parto
+        } = req.body;
 
         const [result] = await pool.query(
             `UPDATE animais 
-             SET nome = ?, identificador = ?, producao_media_diaria = ?, raca = ?, idade = ?, descricao = ?
+             SET nome = ?, identificador = ?, producao_media_diaria = ?,
+                 raca = ?, idade = ?, descricao = ?,
+                 data_nascimento = ?, data_ultimo_parto = ?
              WHERE id = ?`,
-            [nome, identificador, producao_media_diaria, raca || null, idade || null, descricao || null, req.params.id]
+            [
+                nome, identificador,
+                producao_media_diaria ?? null,
+                raca || null, idade || null, descricao || null,
+                data_nascimento || null, data_ultimo_parto || null,
+                req.params.id
+            ]
         );
 
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Animal não encontrado" });

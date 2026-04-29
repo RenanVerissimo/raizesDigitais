@@ -1,9 +1,24 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar } from "react-native";
+import {
+    View, Text, TouchableOpacity, ScrollView, StatusBar, Dimensions,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import {
+    VictoryChart,
+    VictoryArea,
+    VictoryScatter,
+    VictoryBar,
+    VictoryGroup,
+    VictoryPie,
+    VictoryAxis,
+    VictoryTheme,
+} from "victory-native";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const CHART_WIDTH = SCREEN_WIDTH - 40;
 
 export interface RegistroProducao {
     id: string;
@@ -20,10 +35,8 @@ export default function graficos() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    // Recebe os dados da tela anterior OU usa array vazio
     const producoes: RegistroProducao[] = route.params?.producoes ?? [];
 
-    // ===== Cálculos =====
     const ordenadas = [...producoes].sort(
         (a, b) => new Date(a.data).getTime() - new Date(b.data).getTime()
     );
@@ -34,26 +47,45 @@ export default function graficos() {
     const mediaProducao = producoes.length > 0
         ? Math.round(producoes.reduce((s, p) => s + p.producao_total, 0) / producoes.length)
         : 0;
-
     const totalProducao = producoes.reduce((s, p) => s + p.producao_total, 0);
     const maxProducao = producoes.length ? Math.max(...producoes.map((p) => p.producao_total)) : 0;
     const minProducao = producoes.length ? Math.min(...producoes.map((p) => p.producao_total)) : 0;
 
-    // Para o "gráfico de linha" — pega o máximo dos últimos 15 dias pra escalar as barras
-    const maxBarra = Math.max(...ultimos15.map((p) => p.producao_total), 1);
-    const maxManhaTarde = Math.max(
-        ...ultimos10.map((p) => Math.max(p.producao_manha, p.producao_tarde)),
-        1
-    );
+    function formatarData(d: string) {
+        const data = new Date(d + "T12:00:00");
+        return `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}`;
+    }
 
-    // Distribuição de qualidade
-    const qualidades = [
-        { label: "Excelente", chave: "excellent" as const, cor: "#10b981" },
-        { label: "Boa", chave: "good" as const, cor: "#3b82f6" },
-        { label: "Regular", chave: "regular" as const, cor: "#eab308" },
+    // ── Dados linha (Evolução) ──────────────────────────────────────────────
+    const dadosLinha = ultimos15.map((p, i) => ({
+        x: i,
+        y: p.producao_total,
+        _label: formatarData(p.data),
+    }));
+
+    // Quais índices mostrar no eixo X (máximo 5 labels)
+    const stepLinha = Math.max(1, Math.floor((ultimos15.length - 1) / 4));
+    const ticksLinha = dadosLinha
+        .filter((_, i) => i % stepLinha === 0 || i === ultimos15.length - 1)
+        .map((d) => d.x);
+
+    // ── Dados barras agrupadas (Manhã vs Tarde) ─────────────────────────────
+    const dadosManha = ultimos10.map((p, i) => ({ x: i, y: p.producao_manha }));
+    const dadosTarde = ultimos10.map((p, i) => ({ x: i, y: p.producao_tarde }));
+
+    const stepBarras = Math.max(1, Math.floor((ultimos10.length - 1) / 4));
+    const ticksBarras = dadosManha
+        .filter((_, i) => i % stepBarras === 0 || i === ultimos10.length - 1)
+        .map((d) => d.x);
+
+    // ── Dados pizza de qualidade ────────────────────────────────────────────
+    const qualidadeConfig = [
+        { chave: "excellent" as const, label: "Excelente", cor: "#10b981" },
+        { chave: "good" as const, label: "Boa", cor: "#3b82f6" },
+        { chave: "regular" as const, label: "Regular", cor: "#eab308" },
     ];
 
-    const dadosQualidade = qualidades
+    const dadosQualidade = qualidadeConfig
         .map((q) => ({
             ...q,
             qtd: producoes.filter((p) => p.qualidade === q.chave).length,
@@ -62,10 +94,28 @@ export default function graficos() {
 
     const totalQualidade = dadosQualidade.reduce((s, q) => s + q.qtd, 0);
 
-    function formatarData(d: string) {
-        const data = new Date(d + "T12:00:00");
-        return `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}`;
-    }
+    const dadosPizza = dadosQualidade.map((q) => ({
+        x: q.label,
+        y: q.qtd,
+        label: `${((q.qtd / totalQualidade) * 100).toFixed(0)}%`,
+    }));
+    const coresPizza = dadosQualidade.map((q) => q.cor);
+
+    const qualidadePredominante = dadosQualidade.length > 0
+        ? [...dadosQualidade].sort((a, b) => b.qtd - a.qtd)[0].label
+        : null;
+
+    // ── Estilos de eixo compartilhados ─────────────────────────────────────
+    const axisStyle = {
+        axis: { stroke: "#e5e7eb" },
+        tickLabels: { fontSize: 9, fill: "#9ca3af", padding: 4 },
+        grid: { stroke: "#f1f5f9", strokeDasharray: "4" },
+    };
+    const dependentAxisStyle = {
+        axis: { stroke: "transparent" },
+        tickLabels: { fontSize: 9, fill: "#9ca3af", padding: 4 },
+        grid: { stroke: "#f1f5f9", strokeDasharray: "4" },
+    };
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -76,7 +126,10 @@ export default function graficos() {
                 <LinearGradient
                     colors={["#4a90e2", "#357abd"]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}
+                    style={{
+                        paddingTop: insets.top + 16, paddingHorizontal: 20,
+                        paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
+                    }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
@@ -96,162 +149,195 @@ export default function graficos() {
                 <View style={{ padding: 20, gap: 16 }}>
 
                     {producoes.length === 0 ? (
-                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{
+                            backgroundColor: "#fff", borderRadius: 14, padding: 40,
+                            alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9",
+                        }}>
                             <Feather name="bar-chart-2" size={48} color="#d1d5db" />
-                            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>
+                            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 12, textAlign: "center", lineHeight: 20 }}>
                                 Nenhuma produção registrada ainda.{"\n"}Cadastre produções para ver as análises.
                             </Text>
                         </View>
                     ) : (
                         <>
-                            {/* MÉTRICAS PRINCIPAIS */}
+                            {/* ── MÉTRICAS ── */}
                             <View style={{ flexDirection: "row", gap: 10 }}>
-                                <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                                        <Feather name="trending-up" size={14} color="#16a34a" />
-                                        <Text style={{ fontSize: 11, color: "#6b7280" }}>Média Diária</Text>
-                                    </View>
-                                    <Text style={{ fontSize: 22, fontWeight: "700", color: "#0a0a0a" }}>
-                                        {mediaProducao}L
-                                    </Text>
-                                </View>
-                                <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                                        <Feather name="calendar" size={14} color="#4a90e2" />
-                                        <Text style={{ fontSize: 11, color: "#6b7280" }}>Total Geral</Text>
-                                    </View>
-                                    <Text style={{ fontSize: 22, fontWeight: "700", color: "#0a0a0a" }}>
-                                        {totalProducao.toLocaleString("pt-BR")}L
-                                    </Text>
-                                </View>
+                                <MetricCard
+                                    icon="trending-up" iconColor="#16a34a"
+                                    label="Média Diária" valor={`${mediaProducao}L`}
+                                />
+                                <MetricCard
+                                    icon="calendar" iconColor="#4a90e2"
+                                    label="Total Geral" valor={`${totalProducao.toLocaleString("pt-BR")}L`}
+                                />
+                            </View>
+                            <View style={{ flexDirection: "row", gap: 10 }}>
+                                <MetricCard label="Máximo" valor={`${maxProducao}L`} valorColor="#16a34a" />
+                                <MetricCard label="Mínimo" valor={`${minProducao}L`} valorColor="#ea580c" />
                             </View>
 
-                            <View style={{ flexDirection: "row", gap: 10 }}>
-                                <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                    <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>Máximo</Text>
-                                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#16a34a" }}>{maxProducao}L</Text>
-                                </View>
-                                <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                    <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>Mínimo</Text>
-                                    <Text style={{ fontSize: 18, fontWeight: "700", color: "#ea580c" }}>{minProducao}L</Text>
-                                </View>
-                            </View>
-
-                            {/* GRÁFICO 1 - Evolução da Produção (últimos 15 dias) */}
-                            <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                                    <Feather name="bar-chart-2" size={18} color="#4a90e2" />
+                            {/* ── GRÁFICO 1: Evolução da Produção ── */}
+                            <View style={{
+                                backgroundColor: "#fff", borderRadius: 14,
+                                paddingTop: 18, paddingHorizontal: 10, paddingBottom: 8,
+                                borderWidth: 1, borderColor: "#f1f5f9",
+                            }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2, paddingHorizontal: 8 }}>
+                                    <Feather name="trending-up" size={17} color="#4a90e2" />
                                     <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
                                         Evolução da Produção
                                     </Text>
                                 </View>
-                                <Text style={{ fontSize: 11, color: "#9ca3af", marginBottom: 10 }}>
-                                    Últimos {ultimos15.length} registros (litros/dia)
+                                <Text style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4, paddingHorizontal: 8 }}>
+                                    Últimos {ultimos15.length} registros — litros/dia
                                 </Text>
 
-                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 160, gap: 4 }}>
-                                    {ultimos15.map((p, i) => {
-                                        const altura = (p.producao_total / maxBarra) * 130;
-                                        return (
-                                            <View key={i} style={{ flex: 1, alignItems: "center" }}>
-                                                <Text style={{ fontSize: 8, color: "#6b7280", marginBottom: 2 }}>
-                                                    {p.producao_total}
-                                                </Text>
-                                                <View style={{
-                                                    width: "70%",
-                                                    height: Math.max(altura, 4),
-                                                    backgroundColor: "#4a90e2",
-                                                    borderTopLeftRadius: 4,
-                                                    borderTopRightRadius: 4,
-                                                }} />
-                                                <Text style={{ fontSize: 8, color: "#9ca3af", marginTop: 4 }}>
-                                                    {formatarData(p.data)}
-                                                </Text>
-                                            </View>
-                                        );
-                                    })}
+                                <VictoryChart
+                                    width={CHART_WIDTH}
+                                    height={220}
+                                    padding={{ top: 20, bottom: 40, left: 52, right: 16 }}
+                                    theme={VictoryTheme.material}
+                                >
+                                    <VictoryAxis
+                                        tickValues={ticksLinha}
+                                        tickFormat={(t: number) => dadosLinha[t]?._label ?? ""}
+                                        style={axisStyle}
+                                    />
+                                    <VictoryAxis
+                                        dependentAxis
+                                        style={dependentAxisStyle}
+                                    />
+                                    <VictoryArea
+                                        data={dadosLinha}
+                                        x="x" y="y"
+                                        interpolation="monotoneX"
+                                        style={{
+                                            data: {
+                                                fill: "rgba(74,144,226,0.15)",
+                                                stroke: "#4a90e2",
+                                                strokeWidth: 2.5,
+                                            },
+                                        }}
+                                    />
+                                    <VictoryScatter
+                                        data={dadosLinha}
+                                        x="x" y="y"
+                                        size={5}
+                                        style={{ data: { fill: "#4a90e2", stroke: "#fff", strokeWidth: 2 } }}
+                                    />
+                                </VictoryChart>
+
+                                <View style={{
+                                    flexDirection: "row", alignItems: "center",
+                                    justifyContent: "center", gap: 6, marginTop: 2, marginBottom: 8,
+                                }}>
+                                    <View style={{ width: 20, height: 2, backgroundColor: "#4a90e2", borderRadius: 1 }} />
+                                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#4a90e2" }} />
+                                    <Text style={{ fontSize: 11, color: "#6b7280" }}>Total diário</Text>
                                 </View>
                             </View>
 
-                            {/* GRÁFICO 2 - Manhã vs Tarde (últimos 10 dias) */}
-                            <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 12 }}>
+                            {/* ── GRÁFICO 2: Manhã vs Tarde ── */}
+                            <View style={{
+                                backgroundColor: "#fff", borderRadius: 14,
+                                paddingTop: 18, paddingHorizontal: 10, paddingBottom: 8,
+                                borderWidth: 1, borderColor: "#f1f5f9",
+                            }}>
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 12, paddingHorizontal: 8 }}>
                                     Produção Manhã vs Tarde
                                 </Text>
 
-                                <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                        <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "#f97316" }} />
-                                        <Text style={{ fontSize: 11, color: "#6b7280" }}>Manhã</Text>
-                                    </View>
-                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                        <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "#6366f1" }} />
-                                        <Text style={{ fontSize: 11, color: "#6b7280" }}>Tarde</Text>
-                                    </View>
+                                <View style={{ flexDirection: "row", gap: 16, marginBottom: 4, paddingHorizontal: 8 }}>
+                                    <LegendItem cor="#f97316" label="Manhã" />
+                                    <LegendItem cor="#6366f1" label="Tarde" />
                                 </View>
 
-                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 160, gap: 6 }}>
-                                    {ultimos10.map((p, i) => {
-                                        const alturaM = (p.producao_manha / maxManhaTarde) * 130;
-                                        const alturaT = (p.producao_tarde / maxManhaTarde) * 130;
-                                        return (
-                                            <View key={i} style={{ flex: 1, alignItems: "center" }}>
-                                                <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height: 130 }}>
-                                                    <View style={{
-                                                        width: 10,
-                                                        height: Math.max(alturaM, p.producao_manha > 0 ? 4 : 0),
-                                                        backgroundColor: "#f97316",
-                                                        borderTopLeftRadius: 3, borderTopRightRadius: 3,
-                                                    }} />
-                                                    <View style={{
-                                                        width: 10,
-                                                        height: Math.max(alturaT, p.producao_tarde > 0 ? 4 : 0),
-                                                        backgroundColor: "#6366f1",
-                                                        borderTopLeftRadius: 3, borderTopRightRadius: 3,
-                                                    }} />
-                                                </View>
-                                                <Text style={{ fontSize: 9, color: "#9ca3af", marginTop: 4 }}>
-                                                    {formatarData(p.data)}
-                                                </Text>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
+                                <VictoryChart
+                                    width={CHART_WIDTH}
+                                    height={220}
+                                    padding={{ top: 20, bottom: 40, left: 52, right: 16 }}
+                                    domainPadding={{ x: 20 }}
+                                    theme={VictoryTheme.material}
+                                >
+                                    <VictoryAxis
+                                        tickValues={ticksBarras}
+                                        tickFormat={(t: number) => formatarData(ultimos10[t]?.data ?? "")}
+                                        style={axisStyle}
+                                    />
+                                    <VictoryAxis
+                                        dependentAxis
+                                        style={dependentAxisStyle}
+                                    />
+                                    <VictoryGroup offset={14}>
+                                        <VictoryBar
+                                            data={dadosManha}
+                                            x="x" y="y"
+                                            barWidth={12}
+                                            cornerRadius={{ top: 4 }}
+                                            style={{ data: { fill: "#f97316" } }}
+                                        />
+                                        <VictoryBar
+                                            data={dadosTarde}
+                                            x="x" y="y"
+                                            barWidth={12}
+                                            cornerRadius={{ top: 4 }}
+                                            style={{ data: { fill: "#6366f1" } }}
+                                        />
+                                    </VictoryGroup>
+                                </VictoryChart>
                             </View>
 
-                            {/* GRÁFICO 3 - Distribuição de Qualidade */}
-                            {dadosQualidade.length > 0 && (
-                                <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 14 }}>
+                            {/* ── GRÁFICO 3: Distribuição de Qualidade ── */}
+                            {dadosPizza.length > 0 && (
+                                <View style={{
+                                    backgroundColor: "#fff", borderRadius: 14, padding: 18,
+                                    borderWidth: 1, borderColor: "#f1f5f9",
+                                }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 16 }}>
                                         Distribuição de Qualidade
                                     </Text>
 
-                                    {/* Barra horizontal "empilhada" */}
-                                    <View style={{ flexDirection: "row", height: 28, borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
-                                        {dadosQualidade.map((q, i) => (
-                                            <View key={i} style={{
-                                                flex: q.qtd,
-                                                backgroundColor: q.cor,
-                                                justifyContent: "center",
-                                                alignItems: "center",
-                                            }}>
-                                                <Text style={{ fontSize: 11, color: "#fff", fontWeight: "600" }}>
-                                                    {((q.qtd / totalQualidade) * 100).toFixed(0)}%
-                                                </Text>
-                                            </View>
-                                        ))}
+                                    <View style={{ alignItems: "center" }}>
+                                        <VictoryPie
+                                            data={dadosPizza}
+                                            x="x" y="y"
+                                            colorScale={coresPizza}
+                                            width={220}
+                                            height={220}
+                                            innerRadius={0}
+                                            padding={24}
+                                            labels={({ datum }: any) =>
+                                                `${((datum.y / totalQualidade) * 100).toFixed(0)}%`
+                                            }
+                                            style={{
+                                                labels: {
+                                                    fill: "#fff",
+                                                    fontSize: 13,
+                                                    fontWeight: "700",
+                                                },
+                                            }}
+                                        />
                                     </View>
 
-                                    {/* Legenda detalhada */}
-                                    <View style={{ gap: 8 }}>
+                                    <View style={{ gap: 8, marginTop: 8 }}>
                                         {dadosQualidade.map((q, i) => (
-                                            <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                                    <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: q.cor }} />
-                                                    <Text style={{ fontSize: 13, color: "#0a0a0a" }}>{q.label}</Text>
+                                            <View key={i} style={{
+                                                flexDirection: "row", justifyContent: "space-between",
+                                                alignItems: "center", paddingVertical: 8,
+                                                paddingHorizontal: 12, backgroundColor: "#f9fafb",
+                                                borderRadius: 10,
+                                            }}>
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                                    <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: q.cor }} />
+                                                    <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }}>
+                                                        {q.label}
+                                                    </Text>
                                                 </View>
-                                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0a0a0a" }}>
-                                                    {q.qtd} {q.qtd === 1 ? "registro" : "registros"} ({((q.qtd / totalQualidade) * 100).toFixed(0)}%)
+                                                <Text style={{ fontSize: 13, fontWeight: "700", color: q.cor }}>
+                                                    {((q.qtd / totalQualidade) * 100).toFixed(0)}%
+                                                    <Text style={{ fontWeight: "400", color: "#9ca3af", fontSize: 12 }}>
+                                                        {" "}({q.qtd} {q.qtd === 1 ? "reg." : "regs."})
+                                                    </Text>
                                                 </Text>
                                             </View>
                                         ))}
@@ -259,26 +345,22 @@ export default function graficos() {
                                 </View>
                             )}
 
-                            {/* INSIGHTS */}
+                            {/* ── INSIGHTS ── */}
                             <View style={{
                                 backgroundColor: "rgba(74,144,226,0.08)",
-                                borderWidth: 1,
-                                borderColor: "rgba(74,144,226,0.2)",
-                                borderRadius: 14,
-                                padding: 18,
+                                borderWidth: 1, borderColor: "rgba(74,144,226,0.2)",
+                                borderRadius: 14, padding: 18,
                                 marginBottom: insets.bottom + 20,
                             }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                     <Feather name="zap" size={16} color="#4a90e2" />
-                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Insights</Text>
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Insightss</Text>
                                 </View>
                                 <View style={{ gap: 8 }}>
                                     <Insight texto={`Média de produção diária: ${mediaProducao} litros`} />
                                     <Insight texto={`Variação: ${maxProducao - minProducao} litros entre máximo e mínimo`} />
-                                    {dadosQualidade.length > 0 && (
-                                        <Insight texto={`Qualidade predominante: ${
-                                            [...dadosQualidade].sort((a, b) => b.qtd - a.qtd)[0].label
-                                        }`} />
+                                    {qualidadePredominante && (
+                                        <Insight texto={`Qualidade predominante: ${qualidadePredominante}`} />
                                     )}
                                     <Insight texto={`Total de ${producoes.length} ${producoes.length === 1 ? "registro" : "registros"} analisado${producoes.length === 1 ? "" : "s"}`} />
                                 </View>
@@ -287,6 +369,46 @@ export default function graficos() {
                     )}
                 </View>
             </ScrollView>
+        </View>
+    );
+}
+
+// ── Componentes auxiliares ───────────────────────────────────────────────────
+
+function MetricCard({
+    icon, iconColor, label, valor, valorColor,
+}: {
+    icon?: React.ComponentProps<typeof Feather>["name"];
+    iconColor?: string;
+    label: string;
+    valor: string;
+    valorColor?: string;
+}) {
+    return (
+        <View style={{
+            flex: 1, backgroundColor: "#fff", borderRadius: 14,
+            padding: 14, borderWidth: 1, borderColor: "#f1f5f9",
+        }}>
+            {icon ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                    <Feather name={icon} size={14} color={iconColor ?? "#4a90e2"} />
+                    <Text style={{ fontSize: 11, color: "#6b7280" }}>{label}</Text>
+                </View>
+            ) : (
+                <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>{label}</Text>
+            )}
+            <Text style={{ fontSize: 22, fontWeight: "700", color: valorColor ?? "#0a0a0a" }}>
+                {valor}
+            </Text>
+        </View>
+    );
+}
+
+function LegendItem({ cor, label }: { cor: string; label: string }) {
+    return (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: cor }} />
+            <Text style={{ fontSize: 12, color: "#6b7280" }}>{label}</Text>
         </View>
     );
 }

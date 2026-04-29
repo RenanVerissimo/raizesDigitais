@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-
+import DateInput from "../../components/DateInput";
 import {
     View, Text, TextInput, TouchableOpacity, ScrollView,
     StatusBar, Alert, KeyboardAvoidingView, Platform,
@@ -11,21 +11,24 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
 import { atualizarAnimal } from "../../services/api";
 import Toast from "react-native-toast-message";
+import { toBr, toIso } from "../../utils/formatters";
 
 export default function editar_animais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const animal: Animal = route.params?.animal;
-    
+
 
     const [formData, setFormData] = useState({
         nome: animal?.nome ?? "",
         identificador: animal?.identificador ?? "",
-        producaoMediaDiaria: animal ? String(animal.producao_media_diaria) : "",
+        producaoMediaDiaria: animal?.producao_media_diaria != null ? String(animal.producao_media_diaria) : "",
         raca: animal?.raca ?? "",
         idade: animal?.idade ?? "",
         descricao: animal?.descricao ?? "",
+        dataNascimento: toBr(animal?.data_nascimento),       // ← converte
+        dataUltimoParto: toBr(animal?.data_ultimo_parto),    // ← converte
     });
 
     function handleCancelar() {
@@ -34,15 +37,18 @@ export default function editar_animais() {
 
 
     async function handleSubmit() {
-        if (!formData.nome.trim() || !formData.identificador.trim() || !formData.producaoMediaDiaria) {
+        if (!formData.nome.trim() || !formData.identificador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
         }
 
-        const producao = parseFloat(formData.producaoMediaDiaria);
-        if (isNaN(producao) || producao <= 0) {
-            Alert.alert("Atenção", "Informe uma produção média válida (maior que 0).");
-            return;
+        let producao: number | null = null;
+        if (formData.producaoMediaDiaria.trim()) {
+            producao = parseFloat(formData.producaoMediaDiaria);
+            if (isNaN(producao) || producao <= 0) {
+                Alert.alert("Atenção", "Se preenchida, a produção deve ser maior que 0.");
+                return;
+            }
         }
 
         try {
@@ -53,25 +59,18 @@ export default function editar_animais() {
                 raca: formData.raca.trim() || null,
                 idade: formData.idade.trim() || null,
                 descricao: formData.descricao.trim() || null,
+                data_nascimento: toIso(formData.dataNascimento),
+                data_ultimo_parto: toIso(formData.dataUltimoParto),
             });
 
             Toast.show({
-                type: "success",
-                text1: "Animal atualizado!",
-                text2: "As alterações foram salvas com sucesso.",
-                position: "top",
-                visibilityTime: 3000,
+                type: "success", text1: "Animal atualizado!",
+                text2: "As alterações foram salvas.", position: "top", visibilityTime: 3000,
             });
-
             setTimeout(() => navigation.goBack(), 500);
-
         } catch (err) {
             console.error(err);
-            Toast.show({
-                type: "error",
-                text1: "Erro",
-                text2: "Não foi possível salvar.",
-            });
+            Toast.show({ type: "error", text1: "Erro", text2: "Não foi possível salvar." });
         }
     }
 
@@ -84,15 +83,18 @@ export default function editar_animais() {
     };
     const labelStyle = { fontSize: 14, fontWeight: "500" as const, color: "#0a0a0a" };
 
+
     useEffect(() => {
         if (animal) {
             setFormData({
                 nome: animal.nome ?? "",
                 identificador: animal.identificador ?? "",
-                producaoMediaDiaria: String(animal.producao_media_diaria ?? ""),
+                producaoMediaDiaria: animal.producao_media_diaria != null ? String(animal.producao_media_diaria) : "",
                 raca: animal.raca ?? "",
                 idade: animal.idade ?? "",
                 descricao: animal.descricao ?? "",
+                dataNascimento: toBr(animal.data_nascimento),
+                dataUltimoParto: toBr(animal.data_ultimo_parto),
             });
         }
     }, [animal?.id]);
@@ -162,7 +164,10 @@ export default function editar_animais() {
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="droplet" size={16} color="#f59e0b" />
-                            <Text style={labelStyle}>Produção Média Diária (Litros) *</Text>
+                            <Text style={labelStyle}>Produção Média Diária (Litros)
+                                <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)
+                                </Text>
+                            </Text>
                         </View>
                         <TextInput
                             value={formData.producaoMediaDiaria}
@@ -199,6 +204,27 @@ export default function editar_animais() {
                             placeholder="Ex: 3 anos, 5 anos"
                             placeholderTextColor="#9ca3af"
                             style={inputStyle}
+                        />
+                    </View>
+                    <View style={cardStyle}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="calendar" size={16} color="#6b7280" />
+                            <Text style={labelStyle}>Data de Nascimento <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
+                        </View>
+                        <DateInput
+                            value={formData.dataNascimento}
+                            onChange={(v) => setFormData({ ...formData, dataNascimento: v })}
+                        />
+                    </View>
+
+                    <View style={cardStyle}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <MaterialCommunityIcons name="cow-off" size={16} color="#6b7280" />
+                            <Text style={labelStyle}>Data do Último Parto <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
+                        </View>
+                        <DateInput
+                            value={formData.dataUltimoParto}
+                            onChange={(v) => setFormData({ ...formData, dataUltimoParto: v })}
                         />
                     </View>
 

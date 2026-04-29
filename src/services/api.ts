@@ -73,10 +73,12 @@ export async function listarAnimais(): Promise<Animal[]> {
 export async function criarAnimal(dados: {
     nome: string;
     identificador: string;
-    producao_media_diaria: number;
+    producao_media_diaria: number | null;     // ← agora pode ser null
     raca?: string | null;
     idade?: string | null;
     descricao?: string | null;
+    data_nascimento?: string | null;          // ← NOVO
+    data_ultimo_parto?: string | null;        // ← NOVO
 }) {
     try {
         const response = await fetch(`${BASE_URL}/animais`, {
@@ -95,10 +97,12 @@ export async function criarAnimal(dados: {
 export async function atualizarAnimal(id: number, dados: {
     nome: string;
     identificador: string;
-    producao_media_diaria: number;
+    producao_media_diaria: number | null;     // ← agora pode ser null
     raca?: string | null;
     idade?: string | null;
     descricao?: string | null;
+    data_nascimento?: string | null;          // ← NOVO
+    data_ultimo_parto?: string | null;        // ← NOVO
 }) {
     try {
         const response = await fetch(`${BASE_URL}/animais/${id}`, {

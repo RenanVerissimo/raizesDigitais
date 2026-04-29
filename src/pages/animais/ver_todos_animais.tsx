@@ -7,6 +7,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
 import { listarAnimais, excluirAnimal } from "../../services/api";
 import ConfirmDeleteModal from "./ConfirmationModal";
+import { formatarData2 } from "../../utils/formatters";
 
 
 
@@ -101,6 +102,8 @@ export default function ver_todos_animais() {
 }
 
 function CardAnimal({ animal, onEditar, onExcluir }: { animal: Animal; onEditar: () => void; onExcluir: () => void }) {
+
+
     return (
         <View style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, padding: 14 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -122,7 +125,13 @@ function CardAnimal({ animal, onEditar, onExcluir }: { animal: Animal; onEditar:
                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>ID: {animal.identificador}</Text>
                         {animal.raca && <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Raça: {animal.raca}</Text>}
                         {animal.idade && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Idade: {animal.idade}</Text>}
-                        {animal.descricao && <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>{animal.descricao}</Text>}
+                        {animal.data_nascimento && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Nascimento: {formatarData2(animal.data_nascimento)}</Text>}
+                        {animal.data_ultimo_parto && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Último parto: {formatarData2(animal.data_ultimo_parto)}</Text>}
+                        {animal.descricao && (
+                            <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
+                                Descrição: {animal.descricao}
+                            </Text>
+                        )}
                     </View>
                 </View>
                 <View style={{ flexDirection: "row", gap: 6 }}>

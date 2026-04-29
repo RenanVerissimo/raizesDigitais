@@ -6,22 +6,36 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
 import { listarAnimais, excluirAnimal } from "../../services/api";
+import { formatarData2 } from "../../utils/formatters";
 
 const LIMITE_CARDS = 5;
 
 export default function Animais() {
+
+
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const [animais, setAnimais] = useState<Animal[]>([]);
     const [carregando, setCarregando] = useState(true);
 
     const totalAnimais = animais.length;
-    const producaoDiariaEstimada = animais.reduce((s, a) => s + Number(a.producao_media_diaria), 0);
+    /*     const producaoDiariaEstimada = animais.reduce((s, a) => s + Number(a.producao_media_diaria), 0);
+        const producaoMensalEstimada = producaoDiariaEstimada * 30;
+        const mediaPorAnimal = totalAnimais > 0 ? producaoDiariaEstimada / totalAnimais : 0; */
+
+    const animaisComProducao = animais.filter(a => a.producao_media_diaria != null);
+    const producaoDiariaEstimada = animaisComProducao.reduce(
+        (s, a) => s + Number(a.producao_media_diaria), 0
+    );
     const producaoMensalEstimada = producaoDiariaEstimada * 30;
-    const mediaPorAnimal = totalAnimais > 0 ? producaoDiariaEstimada / totalAnimais : 0;
+    const mediaPorAnimal = animaisComProducao.length > 0
+        ? producaoDiariaEstimada / animaisComProducao.length
+        : 0;
 
     const animaisVisiveis = animais.slice(0, LIMITE_CARDS);
     const temMais = animais.length > LIMITE_CARDS;
+
+
 
     function handleExcluir(animal: Animal) {
         Alert.alert(
@@ -58,6 +72,8 @@ export default function Animais() {
                 .finally(() => setCarregando(false));
         }, [])
     );
+
+
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -142,7 +158,7 @@ export default function Animais() {
                                     activeOpacity={0.7}
                                     style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
                                 >
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#4a90e2"  }}>Ver todos</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#4a90e2" }}>Ver todos</Text>
                                     <Feather name="chevron-right" size={16} color="#4a90e2" />
                                 </TouchableOpacity>
                             )}
@@ -177,15 +193,16 @@ export default function Animais() {
                                                     <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>ID: {animal.identificador}</Text>
                                                     {animal.raca && <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Raça: {animal.raca}</Text>}
                                                     {animal.idade && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Idade: {animal.idade}</Text>}
-                                                    <Text
-                                                        style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}
-                                                        numberOfLines={2}
-                                                    >
-                                                        Descrição: {animal.descricao ? animal.descricao : "-"}
-                                                    </Text>
+                                                    {animal.data_nascimento && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Nascimento: {formatarData2(animal.data_nascimento)}</Text>}
+                                                    {animal.data_ultimo_parto && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Último parto: {formatarData2(animal.data_ultimo_parto)}</Text>}
+                                                    {animal.descricao && (
+                                                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
+                                                            Descrição: {animal.descricao}
+                                                        </Text>
+                                                    )}
                                                 </View>
                                             </View>
-{/*                                             <View style={{ flexDirection: "row", gap: 6 }}>
+                                            {/*                                             <View style={{ flexDirection: "row", gap: 6 }}>
                                                 <TouchableOpacity
                                                     onPress={() => navigation.navigate("editar_animais", { animal })}
                                                     activeOpacity={0.7}
@@ -202,17 +219,26 @@ export default function Animais() {
                                                 </TouchableOpacity>
                                             </View> */}
                                         </View>
-                                        <View style={{ marginTop: 10, padding: 10, backgroundColor: "#eff6ff", borderRadius: 8 }}>
-                                            <Text style={{ fontSize: 11, color: "#6b7280" }}>Produção Média Diária</Text>
-                                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#4a90e2" }}>
-                                                {Number(animal.producao_media_diaria).toFixed(1)} L/dia
-                                            </Text>
-                                        </View>
+                                        {animal.producao_media_diaria != null ? (
+                                            <View style={{ marginTop: 10, padding: 10, backgroundColor: "#eff6ff", borderRadius: 8 }}>
+                                                <Text style={{ fontSize: 11, color: "#6b7280" }}>Produção Média Diária</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#4a90e2" }}>
+                                                    {Number(animal.producao_media_diaria).toFixed(1)} L/dia
+                                                </Text>
+                                            </View>
+                                        ) : (
+                                            <View style={{ marginTop: 10, padding: 10, backgroundColor: "#f9fafb", borderRadius: 8 }}>
+                                                <Text style={{ fontSize: 11, color: "#9ca3af", fontStyle: "italic" }}>Sem produção registrada</Text>
+                                            </View>
+                                        )}
                                     </View>
+
                                 ))}
                             </View>
                         )}
                     </View>
+
+
 
                     {/* 💡 Dicas */}
                     <View style={{ backgroundColor: "rgba(74,144,226,0.08)", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: "rgba(74,144,226,0.2)", marginBottom: insets.bottom + 20 }}>

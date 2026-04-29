@@ -17,6 +17,8 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
 import { criarAnimal } from "../../services/api";
 import Toast from "react-native-toast-message";
+import DateInput from "../../components/DateInput";
+import { toIso } from "../../utils/formatters";
 
 
 export default function CadastrarAnimais() {
@@ -30,7 +32,9 @@ export default function CadastrarAnimais() {
         producaoMediaDiaria: "",
         raca: "",
         idade: "",
-        descricao: "", // ← NOVO
+        descricao: "",
+        dataNascimento: "",      // ← NOVO
+        dataUltimoParto: "",     // ← NOVO
     });
 
     function handleCancelar() {
@@ -46,15 +50,18 @@ export default function CadastrarAnimais() {
     }
 
     async function handleSubmit() {
-        if (!formData.nome.trim() || !formData.identificador.trim() || !formData.producaoMediaDiaria) {
+        if (!formData.nome.trim() || !formData.identificador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
         }
 
-        const producao = parseFloat(formData.producaoMediaDiaria);
-        if (isNaN(producao) || producao <= 0) {
-            Alert.alert("Atenção", "Informe uma produção média válida (maior que 0).");
-            return;
+        let producao: number | null = null;
+        if (formData.producaoMediaDiaria.trim()) {
+            producao = parseFloat(formData.producaoMediaDiaria);
+            if (isNaN(producao) || producao <= 0) {
+                Alert.alert("Atenção", "Se preenchida, a produção deve ser maior que 0.");
+                return;
+            }
         }
 
         try {
@@ -65,6 +72,8 @@ export default function CadastrarAnimais() {
                 raca: formData.raca.trim() || null,
                 idade: formData.idade.trim() || null,
                 descricao: formData.descricao.trim() || null,
+                data_nascimento: toIso(formData.dataNascimento),       // ← converte
+                data_ultimo_parto: toIso(formData.dataUltimoParto),
             });
 
             Toast.show({
@@ -76,14 +85,9 @@ export default function CadastrarAnimais() {
             });
 
             setTimeout(() => navigation.goBack(), 500);
-
         } catch (err) {
             console.error(err);
-            Toast.show({
-                type: "error",
-                text1: "Erro",
-                text2: "Não foi possível salvar.",
-            });
+            Toast.show({ type: "error", text1: "Erro", text2: "Não foi possível salvar." });
         }
     }
 
@@ -160,9 +164,9 @@ export default function CadastrarAnimais() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="droplet" size={16} color="#4a90e2" />
+                            <Feather name="droplet" size={16} color="#6b7280" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Produção Média Diária (Litros) *
+                                Produção Média Diária (Litros) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
                         <TextInput
@@ -204,6 +208,33 @@ export default function CadastrarAnimais() {
                             placeholder="Ex: 3 anos, 5 anos"
                             placeholderTextColor="#9ca3af"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                        />
+                    </View>
+                    {/* Data de Nascimento */}
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="calendar" size={16} color="#6b7280" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Data de Nascimento <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <DateInput
+                            value={formData.dataNascimento}
+                            onChange={(v) => setFormData({ ...formData, dataNascimento: v })}
+                        />
+                    </View>
+
+                    {/* Data do Último Parto */}
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <MaterialCommunityIcons name="cow-off" size={16} color="#6b7280" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Data do Último Parto <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <DateInput
+                            value={formData.dataUltimoParto}
+                            onChange={(v) => setFormData({ ...formData, dataUltimoParto: v })}
                         />
                     </View>
 
