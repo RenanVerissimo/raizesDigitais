@@ -39,11 +39,11 @@ export interface Animal {
     id: number;
     nome: string;
     identificador: string;
-    producao_media_diaria: number | null; // ← agora pode ser null
+    producao_media_diaria: number | null;
     raca?: string | null;
-    idade?: string | null;
+    peso?: number | null;                
     descricao?: string | null;
-    data_nascimento?: string | null;       // ← NOVO (formato "AAAA-MM-DD")
-    data_ultimo_parto?: string | null;     // ← NOVO (formato "AAAA-MM-DD")
+    data_nascimento: string;             
+    data_ultimo_parto?: string | null;
     criado_em?: string;
 }

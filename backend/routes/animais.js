@@ -18,22 +18,29 @@ router.post("/", async (req, res) => {
     try {
         const {
             nome, identificador, producao_media_diaria,
-            raca, idade, descricao, data_nascimento, data_ultimo_parto
+            raca, peso, descricao, data_nascimento, data_ultimo_parto
         } = req.body;
 
         if (!nome || !identificador) {
             return res.status(400).json({ erro: "Nome e identificador são obrigatórios" });
         }
+        if (!data_nascimento) {
+            return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
+        }
 
         const [result] = await pool.query(
             `INSERT INTO animais 
-             (nome, identificador, producao_media_diaria, raca, idade, descricao, data_nascimento, data_ultimo_parto)
+             (nome, identificador, producao_media_diaria, raca, peso, descricao, data_nascimento, data_ultimo_parto)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                nome, identificador,
+                nome,
+                identificador,
                 producao_media_diaria ?? null,
-                raca || null, idade || null, descricao || null,
-                data_nascimento || null, data_ultimo_parto || null
+                raca || null,
+                peso ?? null,
+                descricao || null,
+                data_nascimento,
+                data_ultimo_parto || null,
             ]
         );
 
@@ -49,21 +56,29 @@ router.put("/:id", async (req, res) => {
     try {
         const {
             nome, identificador, producao_media_diaria,
-            raca, idade, descricao, data_nascimento, data_ultimo_parto
+            raca, peso, descricao, data_nascimento, data_ultimo_parto
         } = req.body;
+
+        if (!data_nascimento) {
+            return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
+        }
 
         const [result] = await pool.query(
             `UPDATE animais 
              SET nome = ?, identificador = ?, producao_media_diaria = ?,
-                 raca = ?, idade = ?, descricao = ?,
+                 raca = ?, peso = ?, descricao = ?,
                  data_nascimento = ?, data_ultimo_parto = ?
              WHERE id = ?`,
             [
-                nome, identificador,
+                nome,
+                identificador,
                 producao_media_diaria ?? null,
-                raca || null, idade || null, descricao || null,
-                data_nascimento || null, data_ultimo_parto || null,
-                req.params.id
+                raca || null,
+                peso ?? null,
+                descricao || null,
+                data_nascimento,
+                data_ultimo_parto || null,
+                req.params.id,
             ]
         );
 

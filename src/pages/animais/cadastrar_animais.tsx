@@ -31,10 +31,10 @@ export default function CadastrarAnimais() {
         identificador: "",
         producaoMediaDiaria: "",
         raca: "",
-        idade: "",
+        peso: "",                 
         descricao: "",
-        dataNascimento: "",      // ← NOVO
-        dataUltimoParto: "",     // ← NOVO
+        dataNascimento: "",
+        dataUltimoParto: "",
     });
 
     function handleCancelar() {
@@ -55,11 +55,27 @@ export default function CadastrarAnimais() {
             return;
         }
 
+        // ✅ NOVA VALIDAÇÃO: data de nascimento obrigatória
+        const dataNascIso = toIso(formData.dataNascimento);
+        if (!dataNascIso) {
+            Alert.alert("Atenção", "Informe uma data de nascimento válida (DD/MM/AAAA)");
+            return;
+        }
+
         let producao: number | null = null;
         if (formData.producaoMediaDiaria.trim()) {
             producao = parseFloat(formData.producaoMediaDiaria);
             if (isNaN(producao) || producao <= 0) {
                 Alert.alert("Atenção", "Se preenchida, a produção deve ser maior que 0.");
+                return;
+            }
+        }
+
+        let pesoNum: number | null = null;
+        if (formData.peso.trim()) {
+            pesoNum = parseFloat(formData.peso);
+            if (isNaN(pesoNum) || pesoNum <= 0) {
+                Alert.alert("Atenção", "Se preenchido, o peso deve ser maior que 0.");
                 return;
             }
         }
@@ -70,9 +86,9 @@ export default function CadastrarAnimais() {
                 identificador: formData.identificador.trim(),
                 producao_media_diaria: producao,
                 raca: formData.raca.trim() || null,
-                idade: formData.idade.trim() || null,
+                peso: pesoNum,
                 descricao: formData.descricao.trim() || null,
-                data_nascimento: toIso(formData.dataNascimento),       // ← converte
+                data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
             });
 
@@ -90,7 +106,6 @@ export default function CadastrarAnimais() {
             Toast.show({ type: "error", text1: "Erro", text2: "Não foi possível salvar." });
         }
     }
-
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -195,27 +210,29 @@ export default function CadastrarAnimais() {
                         />
                     </View>
 
+                    {/* Peso (kg) */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="clock" size={16} color="#6b7280" />
+                            <MaterialCommunityIcons name="weight-kilogram" size={16} color="#6b7280" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Idade <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                Peso (kg) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
                         <TextInput
-                            value={formData.idade}
-                            onChangeText={(v) => setFormData({ ...formData, idade: v })}
-                            placeholder="Ex: 3 anos, 5 anos"
+                            value={formData.peso}
+                            onChangeText={(v) => setFormData({ ...formData, peso: v })}
+                            placeholder="Ex: 450.5"
                             placeholderTextColor="#9ca3af"
+                            keyboardType="decimal-pad"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
                     </View>
                     {/* Data de Nascimento */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="calendar" size={16} color="#6b7280" />
+                            <Feather name="calendar" size={16} color="#4a90e2" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Data de Nascimento <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                Data de Nascimento <Text style={{ color: "#ef4444" }}>*</Text>
                             </Text>
                         </View>
                         <DateInput

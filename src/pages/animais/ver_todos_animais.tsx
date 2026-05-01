@@ -8,6 +8,7 @@ import { Animal } from "../../interfaces/interfaces";
 import { listarAnimais, excluirAnimal } from "../../services/api";
 import ConfirmDeleteModal from "./ConfirmationModal";
 import { formatarData2 } from "../../utils/formatters";
+import { calcularIdade } from "../../utils/idade";
 
 
 
@@ -123,11 +124,16 @@ function CardAnimal({ animal, onEditar, onExcluir }: { animal: Animal; onEditar:
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{animal.nome}</Text>
                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>ID: {animal.identificador}</Text>
-                        {animal.raca && <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Raça: {animal.raca}</Text>}
-                        {animal.idade && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Idade: {animal.idade}</Text>}
-                        {animal.data_nascimento && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Nascimento: {formatarData2(animal.data_nascimento)}</Text>}
-                        {animal.data_ultimo_parto && <Text style={{ fontSize: 11, color: "#9ca3af" }}>Último parto: {formatarData2(animal.data_ultimo_parto)}</Text>}
-                        {animal.descricao && (
+                        {!!animal.raca && <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Raça: {animal.raca}</Text>}
+                        <Text style={{ fontSize: 11, color: "#9ca3af" }}>Idade: {calcularIdade(animal.data_nascimento)}</Text>
+                        <Text style={{ fontSize: 11, color: "#9ca3af" }}>Nascimento: {formatarData2(animal.data_nascimento)}</Text>
+                        {!!animal.data_ultimo_parto && (
+                            <Text style={{ fontSize: 11, color: "#9ca3af" }}>Último parto: {formatarData2(animal.data_ultimo_parto)}</Text>
+                        )}
+                        {animal.peso != null && (
+                            <Text style={{ fontSize: 11, color: "#9ca3af" }}>Peso: {Number(animal.peso).toFixed(1)} kg</Text>
+                        )}
+                        {!!animal.descricao && (
                             <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
                                 Descrição: {animal.descricao}
                             </Text>
@@ -146,7 +152,9 @@ function CardAnimal({ animal, onEditar, onExcluir }: { animal: Animal; onEditar:
             <View style={{ marginTop: 10, padding: 10, backgroundColor: "#eff6ff", borderRadius: 8 }}>
                 <Text style={{ fontSize: 11, color: "#6b7280" }}>Produção Média Diária</Text>
                 <Text style={{ fontSize: 14, fontWeight: "600", color: "#4a90e2" }}>
-                    {Number(animal.producao_media_diaria).toFixed(1)} L/dia
+                    {animal.producao_media_diaria != null
+                        ? `${Number(animal.producao_media_diaria).toFixed(1)} L/dia`
+                        : "—"}
                 </Text>
             </View>
         </View>

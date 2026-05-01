@@ -13,32 +13,53 @@ import { atualizarAnimal } from "../../services/api";
 import Toast from "react-native-toast-message";
 import { toBr, toIso } from "../../utils/formatters";
 
-export default function editar_animais() {
+export default function EditarAnimais() {
+
+
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const animal: Animal = route.params?.animal;
-
 
     const [formData, setFormData] = useState({
         nome: animal?.nome ?? "",
         identificador: animal?.identificador ?? "",
         producaoMediaDiaria: animal?.producao_media_diaria != null ? String(animal.producao_media_diaria) : "",
         raca: animal?.raca ?? "",
-        idade: animal?.idade ?? "",
+        peso: animal?.peso != null ? String(animal.peso) : "",
         descricao: animal?.descricao ?? "",
-        dataNascimento: toBr(animal?.data_nascimento),       // ← converte
-        dataUltimoParto: toBr(animal?.data_ultimo_parto),    // ← converte
+        dataNascimento: toBr(animal?.data_nascimento),
+        dataUltimoParto: toBr(animal?.data_ultimo_parto),
     });
+
+    useEffect(() => {
+        if (animal) {
+            setFormData({
+                nome: animal.nome ?? "",
+                identificador: animal.identificador ?? "",
+                producaoMediaDiaria: animal.producao_media_diaria != null ? String(animal.producao_media_diaria) : "",
+                raca: animal.raca ?? "",
+                peso: animal.peso != null ? String(animal.peso) : "",
+                descricao: animal.descricao ?? "",
+                dataNascimento: toBr(animal.data_nascimento),
+                dataUltimoParto: toBr(animal.data_ultimo_parto),
+            });
+        }
+    }, [animal?.id]);
 
     function handleCancelar() {
         navigation.goBack();
     }
 
-
     async function handleSubmit() {
         if (!formData.nome.trim() || !formData.identificador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
+            return;
+        }
+
+        const dataNascIso = toIso(formData.dataNascimento);
+        if (!dataNascIso) {
+            Alert.alert("Atenção", "Informe uma data de nascimento válida (DD/MM/AAAA)");
             return;
         }
 
@@ -51,15 +72,24 @@ export default function editar_animais() {
             }
         }
 
+        let pesoNum: number | null = null;
+        if (formData.peso.trim()) {
+            pesoNum = parseFloat(formData.peso);
+            if (isNaN(pesoNum) || pesoNum <= 0) {
+                Alert.alert("Atenção", "Se preenchido, o peso deve ser maior que 0.");
+                return;
+            }
+        }
+
         try {
             await atualizarAnimal(animal.id, {
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
                 producao_media_diaria: producao,
                 raca: formData.raca.trim() || null,
-                idade: formData.idade.trim() || null,
+                peso: pesoNum,
                 descricao: formData.descricao.trim() || null,
-                data_nascimento: toIso(formData.dataNascimento),
+                data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
             });
 
@@ -82,22 +112,6 @@ export default function editar_animais() {
         backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9",
     };
     const labelStyle = { fontSize: 14, fontWeight: "500" as const, color: "#0a0a0a" };
-
-
-    useEffect(() => {
-        if (animal) {
-            setFormData({
-                nome: animal.nome ?? "",
-                identificador: animal.identificador ?? "",
-                producaoMediaDiaria: animal.producao_media_diaria != null ? String(animal.producao_media_diaria) : "",
-                raca: animal.raca ?? "",
-                idade: animal.idade ?? "",
-                descricao: animal.descricao ?? "",
-                dataNascimento: toBr(animal.data_nascimento),
-                dataUltimoParto: toBr(animal.data_ultimo_parto),
-            });
-        }
-    }, [animal?.id]);
 
     return (
         <KeyboardAvoidingView
@@ -133,10 +147,12 @@ export default function editar_animais() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
+
+                    {/* Nome */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="tag" size={16} color="#f59e0b" />
-                            <Text style={labelStyle}>Nome do Animal *</Text>
+                            <Text style={labelStyle}>Nome do Animal <Text style={{ color: "#ef4444" }}>*</Text></Text>
                         </View>
                         <TextInput
                             value={formData.nome}
@@ -147,10 +163,11 @@ export default function editar_animais() {
                         />
                     </View>
 
+                    {/* Identificador */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="hash" size={16} color="#f59e0b" />
-                            <Text style={labelStyle}>Número/Identificação *</Text>
+                            <Text style={labelStyle}>Número/Identificação <Text style={{ color: "#ef4444" }}>*</Text></Text>
                         </View>
                         <TextInput
                             value={formData.identificador}
@@ -161,12 +178,12 @@ export default function editar_animais() {
                         />
                     </View>
 
+                    {/* Produção Média */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="droplet" size={16} color="#f59e0b" />
-                            <Text style={labelStyle}>Produção Média Diária (Litros)
-                                <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)
-                                </Text>
+                            <Feather name="droplet" size={16} color="#6b7280" />
+                            <Text style={labelStyle}>
+                                Produção Média Diária (Litros) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
                         <TextInput
@@ -179,6 +196,7 @@ export default function editar_animais() {
                         />
                     </View>
 
+                    {/* Raça */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <MaterialCommunityIcons name="cow" size={16} color="#6b7280" />
@@ -193,23 +211,27 @@ export default function editar_animais() {
                         />
                     </View>
 
+                    {/* Peso */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="clock" size={16} color="#6b7280" />
-                            <Text style={labelStyle}>Idade <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
+                            <MaterialCommunityIcons name="weight-kilogram" size={16} color="#6b7280" />
+                            <Text style={labelStyle}>Peso (kg) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
                         </View>
                         <TextInput
-                            value={formData.idade}
-                            onChangeText={(v) => setFormData({ ...formData, idade: v })}
-                            placeholder="Ex: 3 anos, 5 anos"
+                            value={formData.peso}
+                            onChangeText={(v) => setFormData({ ...formData, peso: v })}
+                            placeholder="Ex: 450.5"
                             placeholderTextColor="#9ca3af"
+                            keyboardType="decimal-pad"
                             style={inputStyle}
                         />
                     </View>
+
+                    {/* Data de Nascimento — OBRIGATÓRIO */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="calendar" size={16} color="#6b7280" />
-                            <Text style={labelStyle}>Data de Nascimento <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text></Text>
+                            <Feather name="calendar" size={16} color="#f59e0b" />
+                            <Text style={labelStyle}>Data de Nascimento <Text style={{ color: "#ef4444" }}>*</Text></Text>
                         </View>
                         <DateInput
                             value={formData.dataNascimento}
@@ -217,6 +239,7 @@ export default function editar_animais() {
                         />
                     </View>
 
+                    {/* Data Último Parto */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <MaterialCommunityIcons name="cow-off" size={16} color="#6b7280" />
@@ -228,6 +251,7 @@ export default function editar_animais() {
                         />
                     </View>
 
+                    {/* Descrição */}
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="file-text" size={16} color="#6b7280" />
@@ -245,29 +269,32 @@ export default function editar_animais() {
                         />
                     </View>
 
-                    <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
+                    {/* Botões */}
+                    <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
                         <TouchableOpacity
                             onPress={handleCancelar}
-                            activeOpacity={0.7}
+                            activeOpacity={0.85}
                             style={{
                                 flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb",
-                                borderRadius: 14, paddingVertical: 16, alignItems: "center",
+                                borderRadius: 12, paddingVertical: 14, alignItems: "center",
                             }}
                         >
-                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
-                            <LinearGradient
-                                colors={["#f59e0b", "#d97706"]}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                                style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
-                            >
-                                <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar Alterações</Text>
-                            </LinearGradient>
+                        <TouchableOpacity
+                            onPress={handleSubmit}
+                            activeOpacity={0.85}
+                            style={{
+                                flex: 1, backgroundColor: "#f59e0b", borderRadius: 12,
+                                paddingVertical: 14, alignItems: "center",
+                                flexDirection: "row", justifyContent: "center", gap: 8,
+                            }}
+                        >
+                            <Feather name="check" size={18} color="#fff" />
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvar Alterações</Text>
                         </TouchableOpacity>
                     </View>
+
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>
