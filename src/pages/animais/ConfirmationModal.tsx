@@ -33,7 +33,7 @@ export default function ConfirmDeleteModal({ visible, title, nomeAnimal, onConfi
                     <TouchableWithoutFeedback>
                         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
 
-                           
+
 
                             <View style={styles.iconWrapper}>
                                 <View style={styles.iconCircle}>
@@ -62,7 +62,7 @@ export default function ConfirmDeleteModal({ visible, title, nomeAnimal, onConfi
                                     activeOpacity={0.7}
                                     style={styles.cancelButton}
                                 >
-                                    <Text style={styles.cancelText}>Manter animal</Text>
+                                    <Text style={styles.cancelText}>Cancelar</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity

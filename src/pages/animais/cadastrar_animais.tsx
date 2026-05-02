@@ -15,10 +15,11 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
-import { criarAnimal } from "../../services/api";
+import { criarAnimal, listarAnimais } from "../../services/api";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
 import { toIso } from "../../utils/formatters";
+import { normalizarId } from "../../utils/normalizarId";
 
 
 export default function CadastrarAnimais() {
@@ -31,7 +32,7 @@ export default function CadastrarAnimais() {
         identificador: "",
         producaoMediaDiaria: "",
         raca: "",
-        peso: "",                 
+        peso: "",
         descricao: "",
         dataNascimento: "",
         dataUltimoParto: "",
@@ -78,6 +79,24 @@ export default function CadastrarAnimais() {
                 Alert.alert("Atenção", "Se preenchido, o peso deve ser maior que 0.");
                 return;
             }
+        }
+
+
+        // 🛡️ Verifica se identificador já existe
+        const todosAnimais = await listarAnimais();
+        const novoId = normalizarId(formData.identificador);
+        const jaExiste = todosAnimais.some(
+            (a) => normalizarId(a.identificador) === novoId
+        );
+        if (jaExiste) {
+            Toast.show({
+                type: "error",
+                text1: "Identificador já cadastrado. Por favor insira outro.",
+                text2: `Já existe um animal com o ID "${formData.identificador}".`,
+                position: "top",
+                visibilityTime: 4000,
+            });
+            return;
         }
 
         try {

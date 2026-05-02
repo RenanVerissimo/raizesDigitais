@@ -9,6 +9,7 @@ import { listarAnimais, excluirAnimal } from "../../services/api";
 import ConfirmDeleteModal from "./ConfirmationModal";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
+import Toast from "react-native-toast-message";
 
 
 
@@ -30,14 +31,31 @@ export default function ver_todos_animais() {
         setAnimalSelecionado(animal);
         setModalVisible(true);
     }
+
     async function confirmarExclusao() {
         if (!animalSelecionado) return;
+
+        const nomeExcluido = animalSelecionado.nome;
 
         try {
             await excluirAnimal(animalSelecionado.id);
             setAnimais((prev) => prev.filter((a) => a.id !== animalSelecionado.id));
+
+            Toast.show({
+                type: "success",
+                text1: "Animal excluído",
+                text2: `${nomeExcluido} foi removido com sucesso.`,
+                position: "top",
+                visibilityTime: 3000,
+            });
         } catch {
-            Alert.alert("Erro", "Não foi possível excluir");
+            Toast.show({
+                type: "error",
+                text1: "Erro ao excluir",
+                text2: "Não foi possível excluir o animal.",
+                position: "top",
+                visibilityTime: 3000,
+            });
         } finally {
             setModalVisible(false);
             setAnimalSelecionado(null);
@@ -122,30 +140,70 @@ function CardAnimal({ animal, onEditar, onExcluir }: { animal: Animal; onEditar:
                         <MaterialCommunityIcons name="cow" size={22} color="#4a90e2" />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{animal.nome}</Text>
-                        <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>ID: {animal.identificador}</Text>
-                        {!!animal.raca && <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>Raça: {animal.raca}</Text>}
-                        <Text style={{ fontSize: 11, color: "#9ca3af" }}>Idade: {calcularIdade(animal.data_nascimento)}</Text>
-                        <Text style={{ fontSize: 11, color: "#9ca3af" }}>Nascimento: {formatarData2(animal.data_nascimento)}</Text>
-                        {!!animal.data_ultimo_parto && (
-                            <Text style={{ fontSize: 11, color: "#9ca3af" }}>Último parto: {formatarData2(animal.data_ultimo_parto)}</Text>
-                        )}
-                        {animal.peso != null && (
-                            <Text style={{ fontSize: 11, color: "#9ca3af" }}>Peso: {Number(animal.peso).toFixed(1)} kg</Text>
-                        )}
-                        {!!animal.descricao && (
-                            <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
-                                Descrição: {animal.descricao}
-                            </Text>
-                        )}
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }} numberOfLines={1}>
+                            {animal.nome}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
+                            ID: {animal.identificador}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={1}>
+                            Raça: {animal.raca || "—"}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                            Idade: {calcularIdade(animal.data_nascimento)}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                            Nascimento: {formatarData2(animal.data_nascimento)}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                            Último parto: {animal.data_ultimo_parto ? formatarData2(animal.data_ultimo_parto) : "—"}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                            Peso: {animal.peso != null ? `${Number(animal.peso).toFixed(1)} kg` : "—"}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
+                            Descrição: {animal.descricao || "—"}
+                        </Text>
                     </View>
                 </View>
                 <View style={{ flexDirection: "row", gap: 6 }}>
-                    <TouchableOpacity onPress={onEditar} style={{ padding: 6 }}>
-                        <Feather name="edit-2" size={18} color="#f59e0b" />
+                    <TouchableOpacity
+                        onPress={onEditar}
+                        activeOpacity={0.7}
+                        style={{
+                            width: 32,
+                            height: 32,
+                            backgroundColor: "#f59e0b",
+                            borderRadius: 8,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            shadowColor: "#f59e0b",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 3,
+                            elevation: 2,
+                        }}
+                    >
+                        <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={onExcluir} style={{ padding: 6 }}>
-                        <Feather name="trash-2" size={18} color="#ef4444" />
+                    <TouchableOpacity
+                        onPress={onExcluir}
+                        activeOpacity={0.7}
+                        style={{
+                            width: 32,
+                            height: 32,
+                            backgroundColor: "#ef4444",
+                            borderRadius: 8,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            shadowColor: "#ef4444",
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.3,
+                            shadowRadius: 3,
+                            elevation: 2,
+                        }}
+                    >
+                        <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
                     </TouchableOpacity>
                 </View>
             </View>
