@@ -1,4 +1,4 @@
-import { Animal } from "../interfaces/interfaces";
+import { Animal, StatusCompra } from "../interfaces/interfaces";
 
 const BASE_URL = "http://192.168.32.108:3001/api";
 
@@ -127,4 +127,67 @@ export async function excluirAnimal(id: number) {
         console.error("Falha em excluirAnimal:", err);
         throw new Error("Não foi possível excluir o animal. Verifique a conexão.");
     }
+}
+
+import { Compra } from "../interfaces/interfaces";
+
+// LISTAR COMPRAS
+export async function listarCompras(): Promise<Compra[]> {
+    const res = await fetch(`${BASE_URL}/compras`);
+    if (!res.ok) throw new Error("Erro ao listar compras");
+    const dados = await res.json();
+    // 🛡️ Converte os DECIMAL do MySQL (que vêm como string) para number
+    return dados.map((c: any) => ({
+        ...c,
+        quantidade: Number(c.quantidade),
+        precoUnitario: Number(c.precoUnitario),
+        precoTotal: Number(c.precoTotal),
+    }));
+}
+
+// CRIAR COMPRA
+export async function criarCompra(dados: Omit<Compra, "id" | "precoTotal">) {
+    const res = await fetch(`${BASE_URL}/compras`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        console.error("❌ Erro do servidor:", res.status, erroData);
+        throw new Error(erroData.erro || `Erro ao cadastrar compra (status ${res.status})`);
+    }
+    return res.json();
+}
+
+// ATUALIZAR STATUS
+export async function atualizarStatusCompra(id: number, status: StatusCompra) {
+    const res = await fetch(`${BASE_URL}/compras/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+    });
+    if (!res.ok) throw new Error("Erro ao atualizar status");
+    return res.json();
+}
+
+// EXCLUIR COMPRA
+export async function excluirCompra(id: number) {
+    const res = await fetch(`${BASE_URL}/compras/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erro ao excluir compra");
+    return res.json();
+}
+
+export async function atualizarCompra(id: number, dados: Omit<Compra, "id" | "precoTotal">) {
+    const res = await fetch(`${BASE_URL}/compras/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        console.error("❌ Erro do servidor:", res.status, erroData);
+        throw new Error(erroData.erro || `Erro ao atualizar compra (status ${res.status})`);
+    }
+    return res.json();
 }

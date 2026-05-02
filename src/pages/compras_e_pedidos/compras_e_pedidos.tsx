@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
     View,
     Text,
@@ -7,26 +7,19 @@ import {
     StatusBar,
     Alert,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { atualizarStatusCompra, excluirCompra, listarCompras } from "../../services/api";
+import { CategoriaCompra, Compra, StatusCompra } from "../../interfaces/interfaces";
+import { Toast } from "react-native-toast-message/lib/src/Toast";
+import ConfirmDeleteModal from "../animais/ConfirmationModal";
 
-export type CategoriaCompra = "racao" | "medicamento" | "equipamento" | "manutencao" | "outros";
-export type StatusCompra = "pendente" | "concluido" | "cancelado";
 
-export interface Compra {
-    id: string;
-    categoria: CategoriaCompra;
-    item: string;
-    quantidade: number;
-    precoUnitario: number;
-    precoTotal: number;
-    fornecedor: string;
-    data: string;
-    status: StatusCompra;
-    observacoes?: string;
-}
+
+
+
 
 export const CATEGORIAS: Record<CategoriaCompra, { label: string; bg: string; text: string }> = {
     racao: { label: "Ração", bg: "#ffedd5", text: "#c2410c" },
@@ -48,6 +41,9 @@ export default function compras_e_pedidos() {
 
     const [compras, setCompras] = useState<Compra[]>([]);
     const [filtroStatus, setFiltroStatus] = useState<"todos" | StatusCompra>("todos");
+    const [carregando, setCarregando] = useState(true);
+
+
 
     const comprasFiltradas = filtroStatus === "todos"
         ? compras
@@ -61,35 +57,64 @@ export default function compras_e_pedidos() {
         .filter((c) => c.status === "concluido")
         .reduce((sum, c) => sum + c.precoTotal, 0);
 
-    function handleAdicionarCompra(novaCompra: Compra) {
-        setCompras((prev) => [novaCompra, ...prev]);
-    }
 
-    function handleAtualizarStatus(id: string, novoStatus: StatusCompra) {
-        setCompras((prev) => prev.map((c) => (c.id === id ? { ...c, status: novoStatus } : c)));
-    }
+    const [modalVisible, setModalVisible] = useState(false);
+    const [compraSelecionada, setCompraSelecionada] = useState<Compra | null>(null);
 
     function handleExcluir(compra: Compra) {
-        Alert.alert(
-            "Excluir compra",
-            `Deseja excluir "${compra.item}"?`,
-            [
-                { text: "Cancelar", style: "cancel" },
-                {
-                    text: "Excluir",
-                    style: "destructive",
-                    onPress: () => setCompras((prev) => prev.filter((c) => c.id !== compra.id)),
-                },
-            ]
-        );
+        setCompraSelecionada(compra);
+        setModalVisible(true);
     }
 
+    async function confirmarExclusao() {
+        if (!compraSelecionada) return;
+        const itemExcluido = compraSelecionada.item;
+
+        try {
+            await excluirCompra(compraSelecionada.id);
+            setCompras((prev) => prev.filter((c) => c.id !== compraSelecionada.id));
+            Toast.show({
+                type: "success",
+                text1: "Compra excluída",
+                text2: `${itemExcluido} foi removido com sucesso.`,
+                position: "top",
+                visibilityTime: 3000,
+            });
+        } catch {
+            Toast.show({
+                type: "error",
+                text1: "Erro ao excluir",
+                text2: "Não foi possível excluir a compra.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+        } finally {
+            setModalVisible(false);
+            setCompraSelecionada(null);
+        }
+    }
+
+
+    function handleEditar(compra: Compra) {
+        navigation.navigate("editar_compras", { compra });
+    }
     const filtros: { key: "todos" | StatusCompra; label: string; cor: string }[] = [
         { key: "todos", label: "Todos", cor: "#4a90e2" },
         { key: "pendente", label: "Pendente", cor: "#eab308" },
         { key: "concluido", label: "Concluído", cor: "#22c55e" },
         { key: "cancelado", label: "Cancelado", cor: "#ef4444" },
     ];
+
+
+    useFocusEffect(
+        useCallback(() => {
+            setCarregando(true);
+            listarCompras()
+                .then(setCompras)
+                .catch(() => Alert.alert("Erro", "Não foi possível carregar as compras"))
+                .finally(() => setCarregando(false));
+        }, [])
+    );
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -123,9 +148,7 @@ export default function compras_e_pedidos() {
 
                     <TouchableOpacity
                         activeOpacity={0.85}
-                        onPress={() => navigation.navigate("cadastrar_compras", {
-                            onCadastrar: handleAdicionarCompra,
-                        })}
+                        onPress={() => navigation.navigate("cadastrar_compras")}
                         style={{
                             backgroundColor: "rgba(255,255,255,0.2)",
                             borderWidth: 1,
@@ -199,6 +222,7 @@ export default function compras_e_pedidos() {
                                     </TouchableOpacity>
                                 );
                             })}
+
                         </View>
                     </View>
 
@@ -213,90 +237,108 @@ export default function compras_e_pedidos() {
                         <View style={{ gap: 12, marginBottom: insets.bottom + 20 }}>
                             {comprasFiltradas.map((compra) => {
                                 const cat = CATEGORIAS[compra.categoria];
+                                const status = STATUS_CONFIG[compra.status];
+
                                 return (
                                     <View
                                         key={compra.id}
-                                        style={{ backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}
+                                        style={{
+                                            backgroundColor: "#fff",
+                                            borderRadius: 14,
+                                            padding: 16,
+                                            borderWidth: 1,
+                                            borderColor: "#f1f5f9",
+                                        }}
                                     >
-                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                                            <View style={{ flex: 1 }}>
-                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
-                                                        {compra.item}
-                                                    </Text>
-                                                    <View style={{ backgroundColor: cat.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
-                                                        <Text style={{ fontSize: 10, color: cat.text, fontWeight: "500" }}>
-                                                            {cat.label}
-                                                        </Text>
+                                        {/* 🔹 HEADER — título + categoria + ações */}
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                                            <View style={{ flex: 1, marginRight: 10 }}>
+                                                <Text style={{ fontSize: 16, fontWeight: "600", color: "#0a0a0a", marginBottom: 6 }}>
+                                                    {compra.item}
+                                                </Text>
+                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                                    <View style={{ backgroundColor: cat.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                                        <Text style={{ fontSize: 11, color: cat.text, fontWeight: "500" }}>{cat.label}</Text>
+                                                    </View>
+                                                    <View style={{ backgroundColor: status.bg, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                                        <Feather name={status.icon} size={11} color={status.iconColor} />
+                                                        <Text style={{ fontSize: 11, color: status.text, fontWeight: "500" }}>{status.label}</Text>
                                                     </View>
                                                 </View>
+                                            </View>
+
+                                            {/* Ações */}
+                                            <View style={{ flexDirection: "row", gap: 6 }}>
+                                                <TouchableOpacity
+                                                    onPress={() => handleEditar(compra)}
+                                                    activeOpacity={0.7}
+                                                    style={{
+                                                        width: 32,
+                                                        height: 32,
+                                                        backgroundColor: "#f59e0b",
+                                                        borderRadius: 8,
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        shadowColor: "#f59e0b",
+                                                        shadowOffset: { width: 0, height: 1 },
+                                                        shadowOpacity: 0.3,
+                                                        shadowRadius: 3,
+                                                        elevation: 2,
+                                                    }}
+                                                >
+                                                    <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => handleExcluir(compra)}
+                                                    activeOpacity={0.7}
+                                                    style={{
+                                                        width: 32,
+                                                        height: 32,
+                                                        backgroundColor: "#ef4444",
+                                                        borderRadius: 8,
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        shadowColor: "#ef4444",
+                                                        shadowOffset: { width: 0, height: 1 },
+                                                        shadowOpacity: 0.3,
+                                                        shadowRadius: 3,
+                                                        elevation: 2,
+                                                    }}
+                                                >
+                                                    <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
+                                                </TouchableOpacity>
+                                            </View>
+
+                                        </View>
+
+                                        {/* 🔹 INFO — fornecedor + data */}
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                                                <Feather name="truck" size={12} color="#6b7280" />
+                                                <Text style={{ fontSize: 12, color: "#6b7280" }}>{compra.fornecedor}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                                                <Feather name="calendar" size={12} color="#6b7280" />
                                                 <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                    Fornecedor: {compra.fornecedor}
-                                                </Text>
-                                                <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-                                                    {new Date(compra.data + "T12:00:00").toLocaleDateString("pt-BR")}
-                                                </Text>
-                                            </View>
-                                            <TouchableOpacity onPress={() => handleExcluir(compra)} style={{ padding: 6 }} activeOpacity={0.7}>
-                                                <Feather name="trash-2" size={16} color="#9ca3af" />
-                                            </TouchableOpacity>
-                                        </View>
-
-                                        <View style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}>
-                                            <View style={{ flex: 1, backgroundColor: "#f9fafb", borderRadius: 8, padding: 8 }}>
-                                                <Text style={{ fontSize: 10, color: "#6b7280" }}>Quantidade</Text>
-                                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0a0a0a", marginTop: 2 }}>
-                                                    {compra.quantidade}
-                                                </Text>
-                                            </View>
-                                            <View style={{ flex: 1, backgroundColor: "#f9fafb", borderRadius: 8, padding: 8 }}>
-                                                <Text style={{ fontSize: 10, color: "#6b7280" }}>Preço Unit.</Text>
-                                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0a0a0a", marginTop: 2 }}>
-                                                    R$ {compra.precoUnitario.toFixed(2)}
-                                                </Text>
-                                            </View>
-                                            <View style={{ flex: 1, backgroundColor: "#eff6ff", borderRadius: 8, padding: 8 }}>
-                                                <Text style={{ fontSize: 10, color: "#4a90e2" }}>Total</Text>
-                                                <Text style={{ fontSize: 13, fontWeight: "700", color: "#0a0a0a", marginTop: 2 }}>
-                                                    R$ {compra.precoTotal.toFixed(2)}
+                                                    {new Date(compra.data).toLocaleDateString("pt-BR")}
                                                 </Text>
                                             </View>
                                         </View>
 
-                                        {compra.observacoes && (
-                                            <View style={{ backgroundColor: "#f9fafb", borderRadius: 8, padding: 8, marginBottom: 10 }}>
-                                                <Text style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>Observações</Text>
-                                                <Text style={{ fontSize: 12, color: "#374151" }}>{compra.observacoes}</Text>
+                                        {/* 🔹 VALORES — grid de 3 */}
+                                        <View style={{ flexDirection: "row", gap: 8, backgroundColor: "#f9fafb", padding: 10, borderRadius: 10 }}>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>Quantidade</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{compra.quantidade}</Text>
                                             </View>
-                                        )}
-
-                                        <View style={{ flexDirection: "row", gap: 6 }}>
-                                            {(["pendente", "concluido", "cancelado"] as StatusCompra[]).map((s) => {
-                                                const cfg = STATUS_CONFIG[s];
-                                                const ativo = compra.status === s;
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={s}
-                                                        onPress={() => handleAtualizarStatus(compra.id, s)}
-                                                        activeOpacity={0.7}
-                                                        style={{
-                                                            flex: 1,
-                                                            backgroundColor: ativo ? cfg.bg : "#f3f4f6",
-                                                            borderRadius: 8,
-                                                            paddingVertical: 8,
-                                                            flexDirection: "row",
-                                                            alignItems: "center",
-                                                            justifyContent: "center",
-                                                            gap: 4,
-                                                        }}
-                                                    >
-                                                        <Feather name={cfg.icon} size={12} color={ativo ? cfg.text : "#6b7280"} />
-                                                        <Text style={{ fontSize: 11, fontWeight: "500", color: ativo ? cfg.text : "#6b7280" }}>
-                                                            {cfg.label}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>Preço Un.</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>R$ {compra.precoUnitario.toFixed(2)}</Text>
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>Total</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#4a90e2" }}>R$ {compra.precoTotal.toFixed(2)}</Text>
+                                            </View>
                                         </View>
                                     </View>
                                 );
@@ -304,6 +346,13 @@ export default function compras_e_pedidos() {
                         </View>
                     )}
                 </View>
+                <ConfirmDeleteModal
+                    visible={modalVisible}
+                    title="Excluir compra"
+                    nomeAnimal={compraSelecionada?.item || ""}
+                    onCancel={() => setModalVisible(false)}
+                    onConfirm={confirmarExclusao}
+                />
             </ScrollView>
         </View>
     );

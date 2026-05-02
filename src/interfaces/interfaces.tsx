@@ -41,9 +41,25 @@ export interface Animal {
     identificador: string;
     producao_media_diaria: number | null;
     raca?: string | null;
-    peso?: number | null;                
+    peso?: number | null;
     descricao?: string | null;
-    data_nascimento: string;             
+    data_nascimento: string;
     data_ultimo_parto?: string | null;
     criado_em?: string;
+}
+
+export type CategoriaCompra = "racao" | "medicamento" | "equipamento" | "manutencao" | "outros";
+export type StatusCompra = "pendente" | "concluido" | "cancelado";
+
+export interface Compra {
+    id: number;                  // 👈 era string, agora number (vem do MySQL)
+    categoria: CategoriaCompra;
+    item: string;
+    quantidade: number;
+    precoUnitario: number;
+    precoTotal: number;
+    fornecedor: string;
+    data: string;                // formato "YYYY-MM-DD"
+    status: StatusCompra;
+    observacoes?: string | null;
 }
