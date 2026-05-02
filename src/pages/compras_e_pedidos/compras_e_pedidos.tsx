@@ -10,7 +10,7 @@ import {
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { atualizarStatusCompra, excluirCompra, listarCompras } from "../../services/api";
 import { CategoriaCompra, Compra, StatusCompra } from "../../interfaces/interfaces";
 import { Toast } from "react-native-toast-message/lib/src/Toast";
@@ -38,6 +38,7 @@ const STATUS_CONFIG: Record<StatusCompra, { label: string; bg: string; text: str
 export default function compras_e_pedidos() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
+    const route = useRoute<any>();
 
     const [compras, setCompras] = useState<Compra[]>([]);
     const [filtroStatus, setFiltroStatus] = useState<"todos" | StatusCompra>("todos");
@@ -108,12 +109,16 @@ export default function compras_e_pedidos() {
 
     useFocusEffect(
         useCallback(() => {
+            if (route.params?.filtroStatusInicial) {
+                setFiltroStatus(route.params.filtroStatusInicial);
+            }
+
             setCarregando(true);
             listarCompras()
                 .then(setCompras)
                 .catch(() => Alert.alert("Erro", "Não foi possível carregar as compras"))
                 .finally(() => setCarregando(false));
-        }, [])
+        }, [route.params?.filtroStatusInicial])
     );
 
     return (

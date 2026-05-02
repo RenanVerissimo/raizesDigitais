@@ -20,6 +20,7 @@ import estoque from "./src/pages/controle_de_estoque/estoque";
 import registrar_movimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
 import financeiro from "./src/pages/financeiro/financeiro";
 import cadastrar_receita from "./src/pages/financeiro/cadastrar_receita";
+import ver_todas_receitas from "./src/pages/financeiro/ver_todas_receitas";
 import graficos from "./src/pages/graficos/graficos";
 import editar_animais from "./src/pages/animais/editar_animais";
 import ver_todos_animais from "./src/pages/animais/ver_todos_animais";
@@ -47,6 +48,7 @@ export default function App() {
                     <Stack.Screen name="registrar_movimentacao" component={registrar_movimentacao} />
                     <Stack.Screen name="financeiro" component={financeiro} />
                     <Stack.Screen name="cadastrar_receita" component={cadastrar_receita} />
+                    <Stack.Screen name="ver_todas_receitas" component={ver_todas_receitas} />
                     <Stack.Screen name="graficos" component={graficos} />
                     <Stack.Screen name="editar_animais" component={editar_animais} />
                     <Stack.Screen name="ver_todos_animais" component={ver_todos_animais} />

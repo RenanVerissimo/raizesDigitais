@@ -63,3 +63,13 @@ export interface Compra {
     status: StatusCompra;
     observacoes?: string | null;
 }
+
+export interface Receita {
+    id: number;
+    data: string;
+    litros: number;
+    precoPorLitro: number;
+    valorTotal: number;
+    comprador: string;
+    observacoes?: string | null;
+}

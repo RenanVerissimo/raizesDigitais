@@ -7,7 +7,8 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Receita } from "./financeiro";
+import type { Receita } from "./financeiro";
+import { criarReceita } from "../../services/api";
 
 export default function cadastrar_receita() {
     const insets = useSafeAreaInsets();
@@ -27,18 +28,11 @@ export default function cadastrar_receita() {
     const total = (parseFloat(formData.litros) || 0) * (parseFloat(formData.precoPorLitro) || 0);
 
     function handleCancelar() {
-        const temDados = formData.litros || formData.precoPorLitro || formData.comprador;
-        if (temDados) {
-            Alert.alert("Cancelar", "Descartar informações?", [
-                { text: "Continuar editando", style: "cancel" },
-                { text: "Descartar", style: "destructive", onPress: () => navigation.goBack() },
-            ]);
-        } else {
-            navigation.goBack();
-        }
-    }
 
-    function handleSubmit() {
+            navigation.goBack();
+        
+    }
+    async function handleSubmit() {
         if (!formData.litros || !formData.precoPorLitro || !formData.comprador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
@@ -47,22 +41,38 @@ export default function cadastrar_receita() {
         const litros = parseFloat(formData.litros);
         const preco = parseFloat(formData.precoPorLitro);
 
-        if (isNaN(litros) || litros <= 0) { Alert.alert("Atenção", "Litros inválidos."); return; }
-        if (isNaN(preco) || preco <= 0) { Alert.alert("Atenção", "Preço inválido."); return; }
+        if (isNaN(litros) || litros <= 0) {
+            Alert.alert("Atenção", "Litros inválidos.");
+            return;
+        }
 
-        const nova: Receita = {
-            id: Date.now().toString(),
-            data: formData.data,
-            litros,
-            precoPorLitro: preco,
-            valorTotal: litros * preco,
-            comprador: formData.comprador.trim(),
-            observacoes: formData.observacoes.trim() || undefined,
-        };
+        if (isNaN(preco) || preco <= 0) {
+            Alert.alert("Atenção", "Preço inválido.");
+            return;
+        }
 
-        if (route.params?.onCadastrar) route.params.onCadastrar(nova);
-        navigation.goBack();
+        try {
+            const dadosReceita = {
+                data: formData.data,
+                litros,
+                precoPorLitro: preco,
+                comprador: formData.comprador.trim(),
+                observacoes: formData.observacoes.trim() || null,
+            };
+
+            const nova = await criarReceita(dadosReceita);
+
+            if (route.params?.onCadastrar) {
+                route.params.onCadastrar(nova);
+            }
+
+            Alert.alert("Sucesso", "Receita cadastrada com sucesso!");
+            navigation.goBack();
+        } catch (error: any) {
+            Alert.alert("Erro", error.message || "Não foi possível cadastrar a receita.");
+        }
     }
+
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: "#f5f7fa" }}>

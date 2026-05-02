@@ -125,7 +125,7 @@ router.put("/:id", async (req, res) => {
                 categoria,
                 item,
                 quantidade,
-                precoUnitario, // ✅ AQUI
+                precoUnitario, 
                 precoTotal,
                 fornecedor,
                 data,

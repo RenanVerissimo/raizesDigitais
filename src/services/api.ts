@@ -1,4 +1,4 @@
-import { Animal, StatusCompra } from "../interfaces/interfaces";
+import { Animal, Receita, StatusCompra } from "../interfaces/interfaces";
 
 const BASE_URL = "http://192.168.32.108:3001/api";
 
@@ -189,5 +189,77 @@ export async function atualizarCompra(id: number, dados: Omit<Compra, "id" | "pr
         console.error("❌ Erro do servidor:", res.status, erroData);
         throw new Error(erroData.erro || `Erro ao atualizar compra (status ${res.status})`);
     }
+    return res.json();
+}
+
+
+export async function listarReceitas(): Promise<Receita[]> {
+    const res = await fetch(`${BASE_URL}/receitas`);
+
+    if (!res.ok) {
+        throw new Error("Erro ao listar receitas");
+    }
+
+    const dados = await res.json();
+
+    return dados.map((r: any) => ({
+        ...r,
+        litros: Number(r.litros),
+        precoPorLitro: Number(r.precoPorLitro),
+        valorTotal: Number(r.valorTotal),
+    }));
+}
+
+export async function criarReceita(dados: {
+    data: string;
+    litros: number;
+    precoPorLitro: number;
+    comprador: string;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/receitas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao cadastrar receita");
+    }
+
+    return res.json();
+}
+
+export async function atualizarReceita(id: number, dados: {
+    data: string;
+    litros: number;
+    precoPorLitro: number;
+    comprador: string;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/receitas/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao atualizar receita");
+    }
+
+    return res.json();
+}
+
+export async function excluirReceita(id: number) {
+    const res = await fetch(`${BASE_URL}/receitas/${id}`, {
+        method: "DELETE",
+    });
+
+    if (!res.ok) {
+        throw new Error("Erro ao excluir receita");
+    }
+
     return res.json();
 }

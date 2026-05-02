@@ -1,18 +1,20 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
+import React, { useCallback, useState } from "react";
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { excluirReceita, listarCompras, listarReceitas } from "../../services/api";
+import { Compra } from "../../interfaces/interfaces";
 
 export interface Receita {
-    id: string;
+    id: number;
     data: string;
     litros: number;
     precoPorLitro: number;
     valorTotal: number;
     comprador: string;
-    observacoes?: string;
+    observacoes?: string | null;
 }
 
 export interface DespesaResumo {
@@ -30,28 +32,81 @@ const CATEGORIA_LABEL: Record<DespesaResumo["categoria"], { label: string; cor: 
 };
 
 const NOMES_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const PERIODOS_GRAFICO = ["7D", "15D", "30D", "6M", "1A"] as const;
+type PeriodoGrafico = typeof PERIODOS_GRAFICO[number];
 
 export default function financeiro() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
 
     const [receitas, setReceitas] = useState<Receita[]>([]);
-    // 🔌 Quando plugar o backend, buscar despesas (compras concluídas) aqui
-    const [despesas] = useState<DespesaResumo[]>([]);
+    const [despesas, setDespesas] = useState<DespesaResumo[]>([]);
+    const [despesasPendentes, setDespesasPendentes] = useState<Compra[]>([]);
+    const [periodoReceitaDespesa, setPeriodoReceitaDespesa] = useState<PeriodoGrafico>("6M");
+    const [periodoFluxoCaixa, setPeriodoFluxoCaixa] = useState<PeriodoGrafico>("6M");
+    const [periodoCategorias, setPeriodoCategorias] = useState<PeriodoGrafico>("6M");
+    const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
+    const [receitaSelecionada, setReceitaSelecionada] = useState<Receita | null>(null);
+
+    async function carregarDadosFinanceiros() {
+        try {
+            // listarCompras() busca os dados da tabela/página compras para separar despesas concluídas e pendentes.
+            const [receitasDados, comprasDados] = await Promise.all([
+                listarReceitas(),
+                listarCompras(),
+            ]);
+
+            const comprasConcluidas = comprasDados.filter((compra) => compra.status === "concluido");
+            const comprasPendentes = comprasDados.filter((compra) => compra.status === "pendente");
+
+            setReceitas(receitasDados);
+            setDespesas(
+                comprasConcluidas.map((compra) => ({
+                    categoria: compra.categoria,
+                    valor: compra.precoTotal,
+                    data: compra.data,
+                }))
+            );
+            setDespesasPendentes(comprasPendentes);
+        } catch (error: any) {
+            Alert.alert("Erro", error.message || "Não foi possível carregar os dados financeiros.");
+        }
+    }
+
+    useFocusEffect(
+        useCallback(() => {
+            carregarDadosFinanceiros();
+        }, [])
+    );
 
     function handleAdicionarReceita(nova: Receita) {
-        setReceitas((prev) => [nova, ...prev]);
+        setReceitas((prev) => [nova, ...prev.filter((r) => r.id !== nova.id)]);
     }
 
     function handleExcluir(receita: Receita) {
-        Alert.alert("Excluir receita", `Excluir venda para "${receita.comprador}"?`, [
-            { text: "Cancelar", style: "cancel" },
-            {
-                text: "Excluir",
-                style: "destructive",
-                onPress: () => setReceitas((prev) => prev.filter((r) => r.id !== receita.id)),
-            },
-        ]);
+        setReceitaSelecionada(receita);
+        setModalExcluirVisible(true);
+    }
+
+    async function confirmarExclusaoReceita() {
+        if (!receitaSelecionada) return;
+
+        try {
+            await excluirReceita(receitaSelecionada.id);
+            setReceitas((prev) => prev.filter((r) => r.id !== receitaSelecionada.id));
+        } catch (error: any) {
+            Alert.alert("Erro", error.message || "Não foi possível excluir a receita.");
+        } finally {
+            setModalExcluirVisible(false);
+            setReceitaSelecionada(null);
+        }
+    }
+
+    function formatarChaveData(data: Date) {
+        const ano = data.getFullYear();
+        const mes = String(data.getMonth() + 1).padStart(2, "0");
+        const dia = String(data.getDate()).padStart(2, "0");
+        return `${ano}-${mes}-${dia}`;
     }
 
     // ===== Cálculos =====
@@ -77,47 +132,140 @@ export default function financeiro() {
         })
         .reduce((s, d) => s + d.valor, 0);
 
+    const despesaPendenteMes = despesasPendentes
+        .filter((d) => {
+            const dt = new Date(d.data + "T12:00:00");
+            return dt.getMonth() === mesAtual && dt.getFullYear() === anoAtual;
+        })
+        .reduce((s, d) => s + d.precoTotal, 0);
+
     const saldoMes = receitaMes - despesaMes;
 
     // Últimos 6 meses
-    const ultimosMeses = Array.from({ length: 6 }, (_, i) => {
-        const data = new Date(anoAtual, mesAtual - (5 - i), 1);
-        const mes = data.getMonth();
-        const ano = data.getFullYear();
+    function gerarDadosGrafico(periodo: PeriodoGrafico) {
+        if (periodo === "6M" || periodo === "1A") {
+            const quantidadeMeses = periodo === "6M" ? 6 : 12;
 
-        const rec = receitas
-            .filter((r) => {
-                const d = new Date(r.data + "T12:00:00");
-                return d.getMonth() === mes && d.getFullYear() === ano;
-            })
-            .reduce((s, r) => s + r.valorTotal, 0);
+            return Array.from({ length: quantidadeMeses }, (_, i) => {
+                const data = new Date(anoAtual, mesAtual - (quantidadeMeses - 1 - i), 1);
+                const mes = data.getMonth();
+                const ano = data.getFullYear();
 
-        const desp = despesas
-            .filter((d) => {
-                const dt = new Date(d.data + "T12:00:00");
-                return dt.getMonth() === mes && dt.getFullYear() === ano;
-            })
-            .reduce((s, d) => s + d.valor, 0);
+                const receita = receitas
+                    .filter((r) => {
+                        const d = new Date(r.data + "T12:00:00");
+                        return d.getMonth() === mes && d.getFullYear() === ano;
+                    })
+                    .reduce((s, r) => s + r.valorTotal, 0);
 
-        return { mes: NOMES_MES[mes], receita: rec, despesa: desp, saldo: rec - desp };
-    });
+                const despesa = despesas
+                    .filter((d) => {
+                        const dt = new Date(d.data + "T12:00:00");
+                        return dt.getMonth() === mes && dt.getFullYear() === ano;
+                    })
+                    .reduce((s, d) => s + d.valor, 0);
 
-    const valorMaximoBarra = Math.max(
-        ...ultimosMeses.map((m) => Math.max(m.receita, m.despesa)),
+                return { label: NOMES_MES[mes], receita, despesa, saldo: receita - despesa };
+            });
+        }
+
+        const quantidadeDias = Number(periodo.replace("D", ""));
+
+        return Array.from({ length: quantidadeDias }, (_, i) => {
+            const data = new Date(hoje);
+            data.setDate(hoje.getDate() - (quantidadeDias - 1 - i));
+
+            const chave = formatarChaveData(data);
+            const label = `${String(data.getDate()).padStart(2, "0")}/${String(data.getMonth() + 1).padStart(2, "0")}`;
+
+            const receita = receitas
+                .filter((r) => r.data === chave)
+                .reduce((s, r) => s + r.valorTotal, 0);
+
+            const despesa = despesas
+                .filter((d) => d.data === chave)
+                .reduce((s, d) => s + d.valor, 0);
+
+            return { label, receita, despesa, saldo: receita - despesa };
+        });
+    }
+
+    function renderSeletorPeriodo(periodoAtual: PeriodoGrafico, onChange: (periodo: PeriodoGrafico) => void) {
+        return (
+            <View style={{ flexDirection: "row", gap: 4 }}>
+                {PERIODOS_GRAFICO.map((periodo) => {
+                    const ativo = periodoAtual === periodo;
+                    return (
+                        <TouchableOpacity
+                            key={periodo}
+                            activeOpacity={0.75}
+                            onPress={() => onChange(periodo)}
+                            style={{
+                                backgroundColor: ativo ? "#4a90e2" : "#f3f4f6",
+                                borderRadius: 8,
+                                paddingHorizontal: 8,
+                                paddingVertical: 6,
+                                alignItems: "center",
+                            }}
+                        >
+                            <Text style={{ fontSize: 10, fontWeight: "700", color: ativo ? "#fff" : "#374151" }}>
+                                {periodo}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        );
+    }
+
+    const dadosReceitaDespesa = gerarDadosGrafico(periodoReceitaDespesa);
+    const dadosFluxoCaixa = gerarDadosGrafico(periodoFluxoCaixa);
+    const larguraGraficoReceitaDespesa = periodoReceitaDespesa === "6M" ? "100%" : Math.max(dadosReceitaDespesa.length * 34, 320);
+    const valorMaximoReceitaDespesa = Math.max(
+        ...dadosReceitaDespesa.map((m) => Math.max(m.receita, m.despesa)),
+        1
+    );
+    const valorMaximoFluxo = Math.max(
+        ...dadosFluxoCaixa.map((m) => Math.abs(m.saldo)),
         1
     );
 
+    function dataDentroDoPeriodo(dataTexto: string, periodo: PeriodoGrafico) {
+        const data = new Date(dataTexto + "T12:00:00");
+
+        if (periodo === "6M" || periodo === "1A") {
+            const meses = periodo === "6M" ? 6 : 12;
+            const inicio = new Date(anoAtual, mesAtual - (meses - 1), 1);
+            const fim = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59);
+            return data >= inicio && data <= fim;
+        }
+
+        const dias = Number(periodo.replace("D", ""));
+        const inicio = new Date(hoje);
+        inicio.setDate(hoje.getDate() - (dias - 1));
+        inicio.setHours(0, 0, 0, 0);
+
+        const fim = new Date(hoje);
+        fim.setHours(23, 59, 59, 999);
+
+        return data >= inicio && data <= fim;
+    }
+
     // Despesas por categoria
-    const despesasPorCategoria = despesas.reduce((acc, d) => {
+    const despesasPorCategoria = despesas
+        .filter((d) => dataDentroDoPeriodo(d.data, periodoCategorias))
+        .reduce((acc, d) => {
         acc[d.categoria] = (acc[d.categoria] || 0) + d.valor;
         return acc;
     }, {} as Record<string, number>);
+
+    const totalDespesasCategorias = Object.values(despesasPorCategoria).reduce((s, valor) => s + valor, 0);
 
     const dadosCategorias = Object.entries(despesasPorCategoria)
         .map(([cat, valor]) => ({
             categoria: cat as DespesaResumo["categoria"],
             valor,
-            percentual: (valor / totalDespesas) * 100,
+            percentual: totalDespesasCategorias > 0 ? (valor / totalDespesasCategorias) * 100 : 0,
         }))
         .sort((a, b) => b.valor - a.valor);
 
@@ -221,16 +369,47 @@ export default function financeiro() {
                                     R$ {saldoMes.toFixed(2)}
                                 </Text>
                             </View>
+                            <TouchableOpacity
+                                activeOpacity={0.75}
+                                onPress={() => navigation.navigate("compras_e_pedidos", { filtroStatusInicial: "pendente" })}
+                                style={{
+                                padding: 12,
+                                backgroundColor: "#f9fafb",
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: "#e5e7eb",
+                            }}>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                                        <Feather name="clock" size={15} color="#6b7280" />
+                                        <Text style={{ fontSize: 13, color: "#6b7280" }}>
+                                            Compras pendentes
+                                        </Text>
+                                    </View>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151" }}>
+                                            R$ {despesaPendenteMes.toFixed(2)}
+                                        </Text>
+                                        <Feather name="chevron-right" size={16} color="#9ca3af" />
+                                    </View>
+                                </View>
+                                <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
+                                    {despesasPendentes.length} compra{despesasPendentes.length === 1 ? "" : "s"} aguardando conclusão. Este valor ainda não entra no saldo.
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
                     {/* Gráfico de Barras - Últimos 6 Meses */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 14 }}>
-                            Últimos 6 Meses
-                        </Text>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
+                                ReceitaxDespesa
+                            </Text>
+                            {renderSeletorPeriodo(periodoReceitaDespesa, setPeriodoReceitaDespesa)}
+                        </View>
 
-                        <View style={{ flexDirection: "row", gap: 16, marginBottom: 12 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 8 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                 <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "#10b981" }} />
                                 <Text style={{ fontSize: 11, color: "#6b7280" }}>Receita</Text>
@@ -240,13 +419,20 @@ export default function financeiro() {
                                 <Text style={{ fontSize: 11, color: "#6b7280" }}>Despesa</Text>
                             </View>
                         </View>
+                        {periodoReceitaDespesa !== "6M" && (
+                            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 4, marginBottom: 8 }}>
+                                <Feather name="chevrons-right" size={14} color="#9ca3af" />
+                                <Text style={{ fontSize: 10, color: "#9ca3af" }}>deslize para ver mais</Text>
+                            </View>
+                        )}
 
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 160, gap: 6 }}>
-                            {ultimosMeses.map((m, i) => {
-                                const alturaR = (m.receita / valorMaximoBarra) * 130;
-                                const alturaD = (m.despesa / valorMaximoBarra) * 130;
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View style={{ width: larguraGraficoReceitaDespesa, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 160, gap: 6 }}>
+                            {dadosReceitaDespesa.map((m, i) => {
+                                const alturaR = (m.receita / valorMaximoReceitaDespesa) * 130;
+                                const alturaD = (m.despesa / valorMaximoReceitaDespesa) * 130;
                                 return (
-                                    <View key={i} style={{ flex: 1, alignItems: "center" }}>
+                                    <View key={`${m.label}-${i}`} style={{ flex: 1, minWidth: periodoReceitaDespesa === "6M" ? 0 : 28, alignItems: "center" }}>
                                         <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height: 130 }}>
                                             <View style={{
                                                 width: 12,
@@ -263,27 +449,32 @@ export default function financeiro() {
                                                 borderTopRightRadius: 4,
                                             }} />
                                         </View>
-                                        <Text style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>{m.mes}</Text>
+                                        <Text style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>{m.label}</Text>
                                     </View>
                                 );
                             })}
                         </View>
+                        </ScrollView>
                     </View>
 
                     {/* Fluxo de Caixa - Saldo dos últimos 6 meses */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 14 }}>
-                            Fluxo de Caixa (Saldo)
-                        </Text>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
+                                Fluxo de Caixa (Saldo)
+                            </Text>
+                            {renderSeletorPeriodo(periodoFluxoCaixa, setPeriodoFluxoCaixa)}
+                        </View>
+
                         <View style={{ gap: 8 }}>
-                            {ultimosMeses.map((m, i) => {
+                            {dadosFluxoCaixa.map((m, i) => {
                                 const positivo = m.saldo >= 0;
                                 return (
-                                    <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                                        <Text style={{ width: 32, fontSize: 11, color: "#6b7280" }}>{m.mes}</Text>
+                                    <View key={`${m.label}-${i}`} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                        <Text style={{ width: periodoFluxoCaixa === "6M" ? 32 : 46, fontSize: 11, color: "#6b7280" }}>{m.label}</Text>
                                         <View style={{ flex: 1, height: 22, backgroundColor: "#f3f4f6", borderRadius: 4, overflow: "hidden", flexDirection: "row", alignItems: "center" }}>
                                             <View style={{
-                                                width: `${Math.min(Math.abs(m.saldo) / valorMaximoBarra * 100, 100)}%`,
+                                                width: `${Math.min(Math.abs(m.saldo) / valorMaximoFluxo * 100, 100)}%`,
                                                 height: "100%",
                                                 backgroundColor: positivo ? "#4a90e2" : "#f97316",
                                             }} />
@@ -300,9 +491,12 @@ export default function financeiro() {
                     {/* Despesas por Categoria */}
                     {dadosCategorias.length > 0 && (
                         <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 14 }}>
-                                Despesas por Categoria
-                            </Text>
+                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
+                                    Despesas por Categoria
+                                </Text>
+                                {renderSeletorPeriodo(periodoCategorias, setPeriodoCategorias)}
+                            </View>
                             <View style={{ gap: 10 }}>
                                 {dadosCategorias.map((d, i) => {
                                     const cfg = CATEGORIA_LABEL[d.categoria];
@@ -329,9 +523,21 @@ export default function financeiro() {
 
                     {/* Receitas Recentes */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9", marginBottom: insets.bottom + 20 }}>
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 12 }}>
-                            Receitas Recentes
-                        </Text>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
+                                Receitas Recentes
+                            </Text>
+                            {receitas.length > 5 && (
+                                <TouchableOpacity
+                                    onPress={() => navigation.navigate("ver_todas_receitas")}
+                                    activeOpacity={0.7}
+                                    style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                                >
+                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#4a90e2" }}>Ver todos</Text>
+                                    <Feather name="chevron-right" size={16} color="#4a90e2" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                         {receitas.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 20 }}>
                                 Nenhuma receita registrada
@@ -347,9 +553,22 @@ export default function financeiro() {
                                                     {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
                                                 </Text>
                                             </View>
-                                            <TouchableOpacity onPress={() => handleExcluir(r)} style={{ padding: 4 }} activeOpacity={0.7}>
-                                                <Feather name="trash-2" size={16} color="#9ca3af" />
-                                            </TouchableOpacity>
+                                            <View style={{ flexDirection: "row", gap: 6 }}>
+                                                <TouchableOpacity
+                                                    onPress={() => navigation.navigate("cadastrar_receita", { receita: r })}
+                                                    activeOpacity={0.7}
+                                                    style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
+                                                >
+                                                    <Feather name="edit-2" size={16} color="#fff" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => handleExcluir(r)}
+                                                    activeOpacity={0.7}
+                                                    style={{ width: 32, height: 32, backgroundColor: "#ef4444", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
+                                                >
+                                                    <Feather name="trash-2" size={16} color="#fff" />
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                                             <Text style={{ fontSize: 12, color: "#6b7280" }}>
@@ -371,6 +590,46 @@ export default function financeiro() {
                     </View>
                 </View>
             </ScrollView>
+            <Modal
+                visible={modalExcluirVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setModalExcluirVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center" }}>
+                    <View style={{ width: "85%", backgroundColor: "#fff", borderRadius: 20, padding: 20 }}>
+                        <View style={{ alignItems: "center", marginBottom: 16 }}>
+                            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#fecaca" }}>
+                                <Feather name="trash-2" size={28} color="#ef4444" />
+                            </View>
+                        </View>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: "#0a0a0a", textAlign: "center", marginBottom: 8 }}>
+                            Excluir receita
+                        </Text>
+                        <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
+                            Tem certeza que deseja excluir a venda para{" "}
+                            <Text style={{ fontWeight: "700", color: "#0a0a0a" }}>{receitaSelecionada?.comprador || ""}</Text>?
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => setModalExcluirVisible(false)}
+                                activeOpacity={0.7}
+                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                            >
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmarExclusaoReceita}
+                                activeOpacity={0.8}
+                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 14, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
+                            >
+                                <Feather name="trash-2" size={16} color="#fff" />
+                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Excluir</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
