@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { excluirReceita, listarCompras, listarReceitas } from "../../services/api";
 import { Compra } from "../../interfaces/interfaces";
+import Toast from "react-native-toast-message";
+
 
 export interface Receita {
     id: number;
@@ -91,11 +93,27 @@ export default function financeiro() {
     async function confirmarExclusaoReceita() {
         if (!receitaSelecionada) return;
 
+        const nomeComprador = receitaSelecionada.comprador;
+
         try {
             await excluirReceita(receitaSelecionada.id);
             setReceitas((prev) => prev.filter((r) => r.id !== receitaSelecionada.id));
+
+            Toast.show({
+                type: "success",
+                text1: "Receita excluída",
+                text2: `Venda de ${nomeComprador} foi removida com sucesso.`,
+                position: "top",
+                visibilityTime: 3000,
+            });
         } catch (error: any) {
-            Alert.alert("Erro", error.message || "Não foi possível excluir a receita.");
+            Toast.show({
+                type: "error",
+                text1: "Erro ao excluir",
+                text2: error.message || "Não foi possível excluir a receita.",
+                position: "top",
+                visibilityTime: 3000,
+            });
         } finally {
             setModalExcluirVisible(false);
             setReceitaSelecionada(null);
@@ -192,7 +210,13 @@ export default function financeiro() {
 
     function renderSeletorPeriodo(periodoAtual: PeriodoGrafico, onChange: (periodo: PeriodoGrafico) => void) {
         return (
-            <View style={{ flexDirection: "row", gap: 4 }}>
+            <View style={{
+                flexDirection: "row",
+                backgroundColor: "#f3f4f6",
+                borderRadius: 10,
+                padding: 3,
+                alignSelf: "stretch",  // ocupa toda a largura disponível
+            }}>
                 {PERIODOS_GRAFICO.map((periodo) => {
                     const ativo = periodoAtual === periodo;
                     return (
@@ -201,14 +225,23 @@ export default function financeiro() {
                             activeOpacity={0.75}
                             onPress={() => onChange(periodo)}
                             style={{
-                                backgroundColor: ativo ? "#4a90e2" : "#f3f4f6",
+                                flex: 1,
+                                backgroundColor: ativo ? "#fff" : "transparent",
                                 borderRadius: 8,
-                                paddingHorizontal: 8,
-                                paddingVertical: 6,
+                                paddingVertical: 7,
                                 alignItems: "center",
+                                shadowColor: ativo ? "#000" : "transparent",
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: ativo ? 0.08 : 0,
+                                shadowRadius: 2,
+                                elevation: ativo ? 2 : 0,
                             }}
                         >
-                            <Text style={{ fontSize: 10, fontWeight: "700", color: ativo ? "#fff" : "#374151" }}>
+                            <Text style={{
+                                fontSize: 11,
+                                fontWeight: ativo ? "700" : "500",
+                                color: ativo ? "#4a90e2" : "#9ca3af",
+                            }}>
                                 {periodo}
                             </Text>
                         </TouchableOpacity>
@@ -255,9 +288,9 @@ export default function financeiro() {
     const despesasPorCategoria = despesas
         .filter((d) => dataDentroDoPeriodo(d.data, periodoCategorias))
         .reduce((acc, d) => {
-        acc[d.categoria] = (acc[d.categoria] || 0) + d.valor;
-        return acc;
-    }, {} as Record<string, number>);
+            acc[d.categoria] = (acc[d.categoria] || 0) + d.valor;
+            return acc;
+        }, {} as Record<string, number>);
 
     const totalDespesasCategorias = Object.values(despesasPorCategoria).reduce((s, valor) => s + valor, 0);
 
@@ -294,7 +327,7 @@ export default function financeiro() {
                         activeOpacity={0.85}
                         onPress={() => navigation.navigate("cadastrar_receita", { onCadastrar: handleAdicionarReceita })}
                         style={{ backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
-                   >
+                    >
                         <Feather name="plus" size={20} color="#fff" />
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>
                             Registrar Receita (Venda)
@@ -373,12 +406,12 @@ export default function financeiro() {
                                 activeOpacity={0.75}
                                 onPress={() => navigation.navigate("compras_e_pedidos", { filtroStatusInicial: "pendente" })}
                                 style={{
-                                padding: 12,
-                                backgroundColor: "#f9fafb",
-                                borderRadius: 10,
-                                borderWidth: 1,
-                                borderColor: "#e5e7eb",
-                            }}>
+                                    padding: 12,
+                                    backgroundColor: "#f9fafb",
+                                    borderRadius: 10,
+                                    borderWidth: 1,
+                                    borderColor: "#e5e7eb",
+                                }}>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                                         <Feather name="clock" size={15} color="#6b7280" />
@@ -404,12 +437,16 @@ export default function financeiro() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 }}>
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
-                                ReceitaxDespesa
+                                Receita x Despesa
                             </Text>
+
+                        </View>
+
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, alignItems: "center" }}>
                             {renderSeletorPeriodo(periodoReceitaDespesa, setPeriodoReceitaDespesa)}
                         </View>
 
-                        <View style={{ flexDirection: "row", justifyContent: "center", gap: 16, marginBottom: 8 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "center", gap: 24, marginBottom: 8, marginTop: 8 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                 <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: "#10b981" }} />
                                 <Text style={{ fontSize: 11, color: "#6b7280" }}>Receita</Text>
@@ -421,39 +458,38 @@ export default function financeiro() {
                         </View>
                         {periodoReceitaDespesa !== "6M" && (
                             <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 4, marginBottom: 8 }}>
-                                <Feather name="chevrons-right" size={14} color="#9ca3af" />
-                                <Text style={{ fontSize: 10, color: "#9ca3af" }}>deslize para ver mais</Text>
+
                             </View>
                         )}
 
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={{ width: larguraGraficoReceitaDespesa, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 160, gap: 6 }}>
-                            {dadosReceitaDespesa.map((m, i) => {
-                                const alturaR = (m.receita / valorMaximoReceitaDespesa) * 130;
-                                const alturaD = (m.despesa / valorMaximoReceitaDespesa) * 130;
-                                return (
-                                    <View key={`${m.label}-${i}`} style={{ flex: 1, minWidth: periodoReceitaDespesa === "6M" ? 0 : 28, alignItems: "center" }}>
-                                        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height: 130 }}>
-                                            <View style={{
-                                                width: 12,
-                                                height: Math.max(alturaR, m.receita > 0 ? 4 : 0),
-                                                backgroundColor: "#10b981",
-                                                borderTopLeftRadius: 4,
-                                                borderTopRightRadius: 4,
-                                            }} />
-                                            <View style={{
-                                                width: 12,
-                                                height: Math.max(alturaD, m.despesa > 0 ? 4 : 0),
-                                                backgroundColor: "#ef4444",
-                                                borderTopLeftRadius: 4,
-                                                borderTopRightRadius: 4,
-                                            }} />
+                            <View style={{ width: larguraGraficoReceitaDespesa, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 160, gap: 6 }}>
+                                {dadosReceitaDespesa.map((m, i) => {
+                                    const alturaR = (m.receita / valorMaximoReceitaDespesa) * 130;
+                                    const alturaD = (m.despesa / valorMaximoReceitaDespesa) * 130;
+                                    return (
+                                        <View key={`${m.label}-${i}`} style={{ flex: 1, minWidth: periodoReceitaDespesa === "6M" ? 0 : 28, alignItems: "center" }}>
+                                            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height: 130 }}>
+                                                <View style={{
+                                                    width: 12,
+                                                    height: Math.max(alturaR, m.receita > 0 ? 4 : 0),
+                                                    backgroundColor: "#10b981",
+                                                    borderTopLeftRadius: 4,
+                                                    borderTopRightRadius: 4,
+                                                }} />
+                                                <View style={{
+                                                    width: 12,
+                                                    height: Math.max(alturaD, m.despesa > 0 ? 4 : 0),
+                                                    backgroundColor: "#ef4444",
+                                                    borderTopLeftRadius: 4,
+                                                    borderTopRightRadius: 4,
+                                                }} />
+                                            </View>
+                                            <Text style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>{m.label}</Text>
                                         </View>
-                                        <Text style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>{m.label}</Text>
-                                    </View>
-                                );
-                            })}
-                        </View>
+                                    );
+                                })}
+                            </View>
                         </ScrollView>
                     </View>
 
@@ -463,6 +499,9 @@ export default function financeiro() {
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
                                 Fluxo de Caixa (Saldo)
                             </Text>
+                        </View>
+
+                        <View style={{ marginBottom: 12, gap: 10 }}>
                             {renderSeletorPeriodo(periodoFluxoCaixa, setPeriodoFluxoCaixa)}
                         </View>
 
@@ -495,7 +534,6 @@ export default function financeiro() {
                                 <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
                                     Despesas por Categoria
                                 </Text>
-                                {renderSeletorPeriodo(periodoCategorias, setPeriodoCategorias)}
                             </View>
                             <View style={{ gap: 10 }}>
                                 {dadosCategorias.map((d, i) => {
@@ -555,9 +593,16 @@ export default function financeiro() {
                                             </View>
                                             <View style={{ flexDirection: "row", gap: 6 }}>
                                                 <TouchableOpacity
-                                                    onPress={() => navigation.navigate("cadastrar_receita", { receita: r })}
+                                                    onPress={() => navigation.navigate("editar_receita", { receita: r })}
                                                     activeOpacity={0.7}
-                                                    style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
+                                                    style={{
+                                                        width: 32,
+                                                        height: 32,
+                                                        backgroundColor: "#f59e0b",
+                                                        borderRadius: 8,
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                    }}
                                                 >
                                                     <Feather name="edit-2" size={16} color="#fff" />
                                                 </TouchableOpacity>

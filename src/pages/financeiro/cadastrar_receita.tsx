@@ -7,18 +7,23 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import type { Receita } from "./financeiro";
+import DateInput from "../../components/DateInput";
+import { toBr, toIso } from "../../utils/formatters";
 import { criarReceita } from "../../services/api";
+import Toast from "react-native-toast-message";
 
 export default function cadastrar_receita() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = new Date();
+    const dd = String(hoje.getDate()).padStart(2, "0");
+    const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+    const yyyy = hoje.getFullYear();
 
     const [formData, setFormData] = useState({
-        data: hoje,
+        data: `${dd}/${mm}/${yyyy}`,  // já inicia em DD/MM/AAAA
         litros: "",
         precoPorLitro: "",
         comprador: "",
@@ -28,10 +33,10 @@ export default function cadastrar_receita() {
     const total = (parseFloat(formData.litros) || 0) * (parseFloat(formData.precoPorLitro) || 0);
 
     function handleCancelar() {
+        navigation.goBack();
 
-            navigation.goBack();
-        
     }
+
     async function handleSubmit() {
         if (!formData.litros || !formData.precoPorLitro || !formData.comprador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
@@ -51,9 +56,15 @@ export default function cadastrar_receita() {
             return;
         }
 
+        const dataIso = toIso(formData.data);
+        if (!dataIso) {
+            Alert.alert("Atenção", "Informe uma data válida (DD/MM/AAAA).");
+            return;
+        }
+
         try {
             const dadosReceita = {
-                data: formData.data,
+                data: dataIso,
                 litros,
                 precoPorLitro: preco,
                 comprador: formData.comprador.trim(),
@@ -66,13 +77,25 @@ export default function cadastrar_receita() {
                 route.params.onCadastrar(nova);
             }
 
-            Alert.alert("Sucesso", "Receita cadastrada com sucesso!");
-            navigation.goBack();
+            Toast.show({
+                type: "success",
+                text1: "Receita cadastrada!",
+                text2: "A venda foi registrada com sucesso.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+
+            setTimeout(() => navigation.goBack(), 500);
         } catch (error: any) {
-            Alert.alert("Erro", error.message || "Não foi possível cadastrar a receita.");
+            Toast.show({
+                type: "error",
+                text1: "Erro ao cadastrar",
+                text2: error.message || "Não foi possível cadastrar a receita.",
+                position: "top",
+                visibilityTime: 3000,
+            });
         }
     }
-
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -101,9 +124,18 @@ export default function cadastrar_receita() {
 
                 <View style={{ padding: 20, gap: 16 }}>
 
-                    <Campo icone="calendar" label="Data *" valor={formData.data}
-                        onChange={(v: string) => setFormData({ ...formData, data: v })}
-                        placeholder="AAAA-MM-DD" hint="Formato: ano-mês-dia (ex: 2026-04-23)" />
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="calendar" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Data da Venda <Text style={{ color: "#ef4444" }}>*</Text>
+                            </Text>
+                        </View>
+                        <DateInput
+                            value={formData.data}
+                            onChange={(v) => setFormData({ ...formData, data: v })}
+                        />
+                    </View>
 
                     <Campo icone="droplet" label="Litros Vendidos *" valor={formData.litros}
                         onChange={(v: string) => setFormData({ ...formData, litros: v })}

@@ -235,6 +235,7 @@ export async function atualizarReceita(id: number, dados: {
     data: string;
     litros: number;
     precoPorLitro: number;
+    valorTotal: number;
     comprador: string;
     observacoes?: string | null;
 }) {

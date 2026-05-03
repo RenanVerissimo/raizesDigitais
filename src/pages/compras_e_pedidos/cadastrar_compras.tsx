@@ -18,6 +18,8 @@ import { CategoriaCompra, StatusCompra } from "../../interfaces/interfaces";
 import { CATEGORIAS } from "./compras_e_pedidos";
 import Toast from "react-native-toast-message";
 import { criarCompra } from "../../services/api";
+import DateInput from "../../components/DateInput";
+import { toBr, toIso } from "../../utils/formatters";
 
 
 export default function CadastrarCompra() {
@@ -25,7 +27,10 @@ export default function CadastrarCompra() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = new Date();
+    const dd = String(hoje.getDate()).padStart(2, "0");
+    const mm = String(hoje.getMonth() + 1).padStart(2, "0");
+    const yyyy = hoje.getFullYear();
 
     const [formData, setFormData] = useState({
         categoria: "racao" as CategoriaCompra,
@@ -33,7 +38,7 @@ export default function CadastrarCompra() {
         quantidade: "",
         precoUnitario: "",
         fornecedor: "",
-        data: hoje,
+        data: `${dd}/${mm}/${yyyy}`,
         status: "pendente" as StatusCompra,
         observacoes: "",
     });
@@ -65,7 +70,11 @@ export default function CadastrarCompra() {
             Alert.alert("Atenção", "Quantidade e preço devem ser maiores que 0.");
             return;
         }
-
+        const dataIso = toIso(formData.data);
+        if (!dataIso) {
+            Alert.alert("Atenção", "Informe uma data válida (DD/MM/AAAA).");
+            return;
+        }
         try {
             await criarCompra({
                 categoria: formData.categoria,
@@ -73,7 +82,7 @@ export default function CadastrarCompra() {
                 quantidade: qtd,
                 precoUnitario: preco,
                 fornecedor: formData.fornecedor.trim(),
-                data: formData.data,
+                data: dataIso,
                 status: formData.status,
                 observacoes: formData.observacoes.trim() || null,
             });
@@ -243,18 +252,12 @@ export default function CadastrarCompra() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="calendar" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Data *</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Data <Text style={{ color: "#ef4444" }}>*</Text></Text>
                         </View>
-                        <TextInput
+                        <DateInput
                             value={formData.data}
-                            onChangeText={(v) => setFormData({ ...formData, data: v })}
-                            placeholder="AAAA-MM-DD"
-                            placeholderTextColor="#9ca3af"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            onChange={(v) => setFormData({ ...formData, data: v })}
                         />
-                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 6 }}>
-                            Formato: ano-mês-dia (ex: 2026-04-23)
-                        </Text>
                     </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>

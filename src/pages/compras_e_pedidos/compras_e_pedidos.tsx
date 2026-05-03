@@ -196,40 +196,50 @@ export default function compras_e_pedidos() {
                         </View>
                     </View>
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a", marginBottom: 10 }}>
-                            Filtrar por Status
-                        </Text>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-                            {filtros.map((f) => {
-                                const ativo = filtroStatus === f.key;
-                                return (
-                                    <TouchableOpacity
-                                        key={f.key}
-                                        onPress={() => setFiltroStatus(f.key)}
-                                        activeOpacity={0.7}
-                                        style={{
-                                            flexGrow: 1,
-                                            flexBasis: "22%",
-                                            backgroundColor: ativo ? f.cor : "#f3f4f6",
-                                            paddingHorizontal: 8,
-                                            paddingVertical: 8,
-                                            borderRadius: 10,
-                                            alignItems: "center",
-                                        }}
-                                    >
-                                        <Text
-                                            numberOfLines={1}
-                                            style={{ fontSize: 12, fontWeight: "500", color: ativo ? "#fff" : "#374151" }}
-                                        >
-                                            {f.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
 
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a", marginBottom: 10 }}>
+                                Filtrar por Status
+                            </Text>
+                            <View style={{
+                                flexDirection: "row",
+                                backgroundColor: "#f3f4f6",
+                                borderRadius: 10,
+                                padding: 3,
+                            }}>
+                                {filtros.map((f) => {
+                                    const ativo = filtroStatus === f.key;
+                                    return (
+                                        <TouchableOpacity
+                                            key={f.key}
+                                            onPress={() => setFiltroStatus(f.key)}
+                                            activeOpacity={0.7}
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: ativo ? f.cor : "transparent",
+                                                paddingVertical: 8,
+                                                borderRadius: 8,
+                                                alignItems: "center",
+                                                shadowColor: ativo ? "#000" : "transparent",
+                                                shadowOffset: { width: 0, height: 1 },
+                                                shadowOpacity: ativo ? 0.1 : 0,
+                                                shadowRadius: 2,
+                                                elevation: ativo ? 2 : 0,
+                                            }}
+                                        >
+                                            <Text style={{
+                                                fontSize: 11,
+                                                fontWeight: ativo ? "700" : "500",
+                                                color: ativo ? "#fff" : "#9ca3af",
+                                            }}>
+                                                {f.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
                         </View>
-                    </View>
+                    
 
                     {comprasFiltradas.length === 0 ? (
                         <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>

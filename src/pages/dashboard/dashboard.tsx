@@ -12,7 +12,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { listarProducoesRecentes } from "../../services/api";
+import { listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 
 export default function Dashboard() {
@@ -22,10 +22,10 @@ export default function Dashboard() {
     const userName = "Produtor";
     const farmName = "Fazenda Modelo";
 
-    const todayProduction = 0;
-    const average7Days = 42;
-    const totalAnimals = 12;
-    const monthlyProduction = 1260;
+    const [todayProduction, setTodayProduction] = useState(0);
+    const [average7Days, setAverage7Days] = useState(0);
+    const [totalAnimals, setTotalAnimals] = useState(0);
+    const [monthlyProduction, setMonthlyProduction] = useState(0);
 
     const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
@@ -45,9 +45,50 @@ export default function Dashboard() {
 
     async function carregarDados() {
         try {
-            const data = await listarProducoesRecentes();
-            setProducoesRecentes(data);
-            //console.log("produções recentes:", data);
+            const [producoes, animais, recentes] = await Promise.all([
+                listarProducoes(),
+                listarAnimais(),
+                listarProducoesRecentes(),
+            ]);
+
+            const hoje = new Date();
+            const mesAtual = hoje.getMonth();
+            const anoAtual = hoje.getFullYear();
+
+            const hojeStr = `${anoAtual}-${String(mesAtual + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+
+            // Produção de hoje
+            const producaoHoje = producoes
+                .filter((p: any) => {
+                    const dataP = p.data ? p.data.slice(0, 10) : "";
+                    return dataP === hojeStr;
+                })
+                .reduce((sum: number, p: any) => sum + Number(p.producao_total), 0);
+
+            // Média dos últimos 7 dias (excluindo hoje)
+            const ultimos7 = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(hoje);
+                d.setDate(hoje.getDate() - (i + 1));
+                return d.toISOString().split("T")[0];
+            });
+            const producoes7dias = producoes.filter((p: any) => ultimos7.includes(p.data?.slice(0, 10)));
+            const media7 = producoes7dias.length > 0
+                ? producoes7dias.reduce((sum: number, p: any) => sum + Number(p.producao_total), 0) / 7
+                : 0;
+
+            // Produção total do mês atual
+            const totalMes = producoes
+                .filter((p: any) => {
+                    const d = new Date(p.data);
+                    return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+                })
+                .reduce((sum: number, p: any) => sum + Number(p.producao_total), 0);
+
+            setTodayProduction(producaoHoje);
+            setAverage7Days(Math.round(media7 * 10) / 10);
+            setTotalAnimals(animais.length);
+            setMonthlyProduction(totalMes);
+            setProducoesRecentes(recentes);
         } catch (err) {
             console.error("Erro:", err);
         }
@@ -114,7 +155,14 @@ export default function Dashboard() {
                         </View>
                         <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, padding: 14 }}>
                             <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Média 7 dias</Text>
-                            <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>{average7Days}L</Text>
+                            {/* <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>{average7Days}L</Text> */}
+                            <Text
+                                numberOfLines={1}
+                                adjustsFontSizeToFit
+                                style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}
+                            >
+                                {average7Days}L
+                            </Text>
                         </View>
                         <View style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 14, padding: 14 }}>
                             <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginBottom: 4 }}>Animais</Text>
@@ -210,7 +258,7 @@ export default function Dashboard() {
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Histórico</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
-                        onPress={() => navigation.navigate("graficos")}>
+                            onPress={() => navigation.navigate("graficos")}>
                             <Feather name="bar-chart-2" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Gráficos</Text>
                         </TouchableOpacity>
