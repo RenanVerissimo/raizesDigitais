@@ -264,3 +264,107 @@ export async function excluirReceita(id: number) {
 
     return res.json();
 }
+
+
+// ============================================
+// ESTOQUE — TANQUES
+// ============================================
+
+export async function listarTanques() {
+    const res = await fetch(`${BASE_URL}/estoque/tanques`);
+    if (!res.ok) throw new Error("Erro ao listar tanques");
+    const dados = await res.json();
+    return dados.map((t: any) => ({
+        ...t,
+        capacidade: Number(t.capacidade),
+        volumeAtual: Number(t.volumeAtual),
+        temperatura: Number(t.temperatura),
+    }));
+}
+
+export async function criarTanque(dados: {
+    nome: string;
+    capacidade: number;
+    volumeAtual: number;
+    temperatura: number;
+    qualidade: string;
+    localizacao?: string | null;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/estoque/tanques`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao cadastrar tanque");
+    }
+    return res.json();
+}
+
+export async function atualizarTanque(id: number, dados: {
+    nome: string;
+    capacidade: number;
+    volumeAtual: number;
+    temperatura: number;
+    qualidade: string;
+    localizacao?: string | null;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/estoque/tanques/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) throw new Error("Erro ao atualizar tanque");
+    return res.json();
+}
+
+export async function excluirTanque(id: number) {
+    const res = await fetch(`${BASE_URL}/estoque/tanques/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erro ao excluir tanque");
+    return res.json();
+}
+
+// ============================================
+// ESTOQUE — MOVIMENTAÇÕES
+// ============================================
+
+export async function listarMovimentacoes() {
+    const res = await fetch(`${BASE_URL}/estoque/movimentacoes`);
+    if (!res.ok) throw new Error("Erro ao listar movimentações");
+    const dados = await res.json();
+    return dados.map((m: any) => ({
+        ...m,
+        volume: Number(m.volume),
+    }));
+}
+
+export async function criarMovimentacao(dados: {
+    tanqueId: number;
+    tipo: "entrada" | "saida";
+    volume: number;
+    data: string;
+    hora: string;
+    motivo: string;
+    comprador?: string | null;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/estoque/movimentacoes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao registrar movimentação");
+    }
+    return res.json();
+}
+
+export async function excluirMovimentacao(id: number) {
+    const res = await fetch(`${BASE_URL}/estoque/movimentacoes/${id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Erro ao excluir movimentação");
+    return res.json();
+}

@@ -1,27 +1,31 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
+import { excluirTanque, listarMovimentacoes, listarTanques } from "../../services/api";
+import Toast from "react-native-toast-message";
 
 export type Qualidade = "excelente" | "boa" | "regular";
 export type TipoMovimento = "entrada" | "saida";
 
 export interface Tanque {
-    id: string;
+    id: number;
     nome: string;
     capacidade: number;
     volumeAtual: number;
     temperatura: number;
     qualidade: Qualidade;
     localizacao?: string;
+    observacoes?: string;
     atualizadoEm: string;
 }
 
 export interface Movimentacao {
-    id: string;
-    tanqueId: string;
+    id: number;
+    tanqueId: number;
     tanqueNome: string;
     tipo: TipoMovimento;
     volume: number;
@@ -52,28 +56,36 @@ export default function Estoque() {
     const [tanques, setTanques] = useState<Tanque[]>([]);
     const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
 
+    async function carregarDados() {
+        try {
+            const [tanquesDados, movsDados] = await Promise.all([
+                listarTanques(),
+                listarMovimentacoes(),
+            ]);
+            setTanques(tanquesDados);
+            setMovimentacoes(movsDados);
+        } catch (err: any) {
+            Toast.show({
+                type: "error",
+                text1: "Erro ao carregar",
+                text2: err.message || "Não foi possível carregar os dados.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+        }
+    }
+
+    useFocusEffect(
+        useCallback(() => {
+            carregarDados();
+        }, [])
+    );
+
     const capacidadeTotal = tanques.reduce((s, t) => s + t.capacidade, 0);
     const volumeTotal = tanques.reduce((s, t) => s + t.volumeAtual, 0);
     const ocupacao = capacidadeTotal > 0 ? (volumeTotal / capacidadeTotal) * 100 : 0;
     const tanquesCriticos = tanques.filter((t) => t.volumeAtual / t.capacidade > 0.9);
     const problemasTemperatura = tanques.filter((t) => t.temperatura > 4);
-
-    function handleAdicionarTanque(novo: Tanque) {
-        setTanques((prev) => [...prev, novo]);
-    }
-
-    function handleRegistrarMovimento(mov: Movimentacao) {
-        setTanques((prev) =>
-            prev.map((t) => {
-                if (t.id !== mov.tanqueId) return t;
-                const novoVolume = mov.tipo === "entrada"
-                    ? t.volumeAtual + mov.volume
-                    : t.volumeAtual - mov.volume;
-                return { ...t, volumeAtual: novoVolume, atualizadoEm: new Date().toISOString() };
-            })
-        );
-        setMovimentacoes((prev) => [mov, ...prev]);
-    }
 
     function handleExcluir(t: Tanque) {
         Alert.alert("Excluir tanque", `Excluir "${t.nome}"?`, [
@@ -81,7 +93,27 @@ export default function Estoque() {
             {
                 text: "Excluir",
                 style: "destructive",
-                onPress: () => setTanques((prev) => prev.filter((x) => x.id !== t.id)),
+                onPress: async () => {
+                    try {
+                        await excluirTanque(t.id);
+                        setTanques((prev) => prev.filter((x) => x.id !== t.id));
+                        Toast.show({
+                            type: "success",
+                            text1: "Tanque excluído",
+                            text2: `${t.nome} foi removido com sucesso.`,
+                            position: "top",
+                            visibilityTime: 3000,
+                        });
+                    } catch (err: any) {
+                        Toast.show({
+                            type: "error",
+                            text1: "Erro ao excluir",
+                            text2: err.message || "Não foi possível excluir o tanque.",
+                            position: "top",
+                            visibilityTime: 3000,
+                        });
+                    }
+                },
             },
         ]);
     }
@@ -110,7 +142,7 @@ export default function Estoque() {
                     <View style={{ flexDirection: "row", gap: 10 }}>
                         <TouchableOpacity
                             activeOpacity={0.85}
-                            onPress={() => navigation.navigate("cadastar_tanque", { onCadastrar: handleAdicionarTanque })}
+                            onPress={() => navigation.navigate("cadastar_tanque")}
                             style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
                         >
                             <Feather name="plus" size={18} color="#fff" />
@@ -118,10 +150,7 @@ export default function Estoque() {
                         </TouchableOpacity>
                         <TouchableOpacity
                             activeOpacity={0.85}
-                            onPress={() => navigation.navigate("registrar_movimentacao", {
-                                tanques,
-                                onRegistrar: handleRegistrarMovimento
-                            })}
+                            onPress={() => navigation.navigate("registrar_movimentacao", { tanques })}
                             style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
                         >
                             <Feather name="trending-up" size={18} color="#fff" />
@@ -158,7 +187,6 @@ export default function Estoque() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 14 }}>Resumo Geral</Text>
-
                         <View style={{ gap: 8 }}>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 12, backgroundColor: "#eff6ff", borderRadius: 10 }}>
                                 <Text style={{ fontSize: 13, color: "#6b7280" }}>Volume Total Armazenado</Text>
@@ -173,7 +201,6 @@ export default function Estoque() {
                                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#16a34a" }}>{(capacidadeTotal - volumeTotal).toFixed(1)} L</Text>
                             </View>
                         </View>
-
                         <View style={{ marginTop: 14 }}>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 }}>
                                 <Text style={{ fontSize: 13, color: "#6b7280" }}>Taxa de Ocupação</Text>
@@ -200,16 +227,7 @@ export default function Estoque() {
                                 const tempRuim = tank.temperatura > 4;
                                 const qcfg = QUALIDADE_CFG[tank.qualidade];
                                 return (
-                                    <View
-                                        key={tank.id}
-                                        style={{
-                                            backgroundColor: critico || tempRuim ? "#fff7ed" : "#fff",
-                                            borderRadius: 14,
-                                            padding: 14,
-                                            borderWidth: 1,
-                                            borderColor: critico || tempRuim ? "#fed7aa" : "#f1f5f9",
-                                        }}
-                                    >
+                                    <View key={tank.id} style={{ backgroundColor: critico || tempRuim ? "#fff7ed" : "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: critico || tempRuim ? "#fed7aa" : "#f1f5f9" }}>
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                                             <View style={{ flex: 1 }}>
                                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
@@ -225,9 +243,22 @@ export default function Estoque() {
                                                     Atualizado: {new Date(tank.atualizadoEm).toLocaleString("pt-BR")}
                                                 </Text>
                                             </View>
-                                            <TouchableOpacity onPress={() => handleExcluir(tank)} style={{ padding: 6 }} activeOpacity={0.7}>
-                                                <Feather name="trash-2" size={16} color="#9ca3af" />
-                                            </TouchableOpacity>
+                                            <View style={{ flexDirection: "row", gap: 6 }}>
+                                                <TouchableOpacity
+                                                    onPress={() => navigation.navigate("cadastar_tanque", { tanque: tank })}
+                                                    activeOpacity={0.7}
+                                                    style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
+                                                >
+                                                    <Feather name="edit-2" size={16} color="#fff" />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => handleExcluir(tank)}
+                                                    activeOpacity={0.7}
+                                                    style={{ width: 32, height: 32, backgroundColor: "#ef4444", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
+                                                >
+                                                    <Feather name="trash-2" size={16} color="#fff" />
+                                                </TouchableOpacity>
+                                            </View>
                                         </View>
 
                                         <View style={{ flexDirection: "row", gap: 6, marginBottom: 10 }}>
@@ -277,11 +308,7 @@ export default function Estoque() {
                                 {movimentacoes.slice(0, 10).map((m) => (
                                     <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 10, backgroundColor: "#f9fafb", borderRadius: 10 }}>
                                         <View style={{ padding: 8, borderRadius: 8, backgroundColor: m.tipo === "entrada" ? "#dcfce7" : "#fee2e2" }}>
-                                            <Feather
-                                                name={m.tipo === "entrada" ? "trending-up" : "trending-down"}
-                                                size={14}
-                                                color={m.tipo === "entrada" ? "#16a34a" : "#dc2626"}
-                                            />
+                                            <Feather name={m.tipo === "entrada" ? "trending-up" : "trending-down"} size={14} color={m.tipo === "entrada" ? "#16a34a" : "#dc2626"} />
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
