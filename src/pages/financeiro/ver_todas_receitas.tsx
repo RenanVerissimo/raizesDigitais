@@ -6,16 +6,18 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { excluirReceita, listarReceitas } from "../../services/api";
 import type { Receita } from "./financeiro";
+import Toast from "react-native-toast-message";
 
-const PERIODOS = ["7D", "15D", "30D", "6M", "1A", "Tudo"] as const;
-type PeriodoReceita = typeof PERIODOS[number];
 
 export default function ver_todas_receitas() {
+    const PERIODOS = ["Hoje", "7D", "Mês", "Mês ant.", "Ano", "Tudo"] as const;
+    type PeriodoReceita = typeof PERIODOS[number];
+
+
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const [receitas, setReceitas] = useState<Receita[]>([]);
-    const [periodo, setPeriodo] = useState<PeriodoReceita>("6M");
-    const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
+    const [periodo, setPeriodo] = useState<PeriodoReceita>("Mês"); const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
     const [receitaSelecionada, setReceitaSelecionada] = useState<Receita | null>(null);
 
     async function carregarReceitas() {
@@ -39,24 +41,33 @@ export default function ver_todas_receitas() {
         const hoje = new Date();
         const data = new Date(dataTexto + "T12:00:00");
 
-        if (periodo === "6M" || periodo === "1A") {
-            const meses = periodo === "6M" ? 6 : 12;
-            const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - (meses - 1), 1);
-            const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
-            return data >= inicio && data <= fim;
+        if (periodo === "Hoje") {
+            return data.toDateString() === hoje.toDateString();
         }
 
-        const dias = Number(periodo.replace("D", ""));
-        const inicio = new Date(hoje);
-        inicio.setDate(hoje.getDate() - (dias - 1));
-        inicio.setHours(0, 0, 0, 0);
+        if (periodo === "7D") {
+            const inicio = new Date(hoje);
+            inicio.setDate(hoje.getDate() - 6);
+            inicio.setHours(0, 0, 0, 0);
+            return data >= inicio;
+        }
 
-        const fim = new Date(hoje);
-        fim.setHours(23, 59, 59, 999);
+        if (periodo === "Mês") {
+            return data.getMonth() === hoje.getMonth() && data.getFullYear() === hoje.getFullYear();
+        }
 
-        return data >= inicio && data <= fim;
+        if (periodo === "Mês ant.") {
+            const mesAnterior = hoje.getMonth() === 0 ? 11 : hoje.getMonth() - 1;
+            const anoMesAnterior = hoje.getMonth() === 0 ? hoje.getFullYear() - 1 : hoje.getFullYear();
+            return data.getMonth() === mesAnterior && data.getFullYear() === anoMesAnterior;
+        }
+
+        if (periodo === "Ano") {
+            return data.getFullYear() === hoje.getFullYear();
+        }
+
+        return true;
     }
-
     const receitasFiltradas = receitas.filter((receita) => dataDentroDoPeriodo(receita.data));
     const totalFiltrado = receitasFiltradas.reduce((s, receita) => s + receita.valorTotal, 0);
 
@@ -65,19 +76,32 @@ export default function ver_todas_receitas() {
         setModalExcluirVisible(true);
     }
 
-    async function confirmarExclusaoReceita() {
-        if (!receitaSelecionada) return;
-
-        try {
-            await excluirReceita(receitaSelecionada.id);
-            setReceitas((prev) => prev.filter((r) => r.id !== receitaSelecionada.id));
-        } catch (error: any) {
-            Alert.alert("Erro", error.message || "Não foi possível excluir a receita.");
-        } finally {
-            setModalExcluirVisible(false);
-            setReceitaSelecionada(null);
-        }
+async function confirmarExclusaoReceita() {
+    if (!receitaSelecionada) return;
+    const nomeComprador = receitaSelecionada.comprador;
+    try {
+        await excluirReceita(receitaSelecionada.id);
+        setReceitas((prev) => prev.filter((r) => r.id !== receitaSelecionada.id));
+        Toast.show({
+            type: "success",
+            text1: "Receita excluída",
+            text2: `Venda de ${nomeComprador} foi removida com sucesso.`,
+            position: "top",
+            visibilityTime: 3000,
+        });
+    } catch (error: any) {
+        Toast.show({
+            type: "error",
+            text1: "Erro ao excluir",
+            text2: error.message || "Não foi possível excluir a receita.",
+            position: "top",
+            visibilityTime: 3000,
+        });
+    } finally {
+        setModalExcluirVisible(false);
+        setReceitaSelecionada(null);
     }
+}
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -114,7 +138,12 @@ export default function ver_todas_receitas() {
                         <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a", marginBottom: 10 }}>
                             Filtrar por período
                         </Text>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                        <View style={{
+                            flexDirection: "row",
+                            backgroundColor: "#f3f4f6",
+                            borderRadius: 10,
+                            padding: 3,
+                        }}>
                             {PERIODOS.map((p) => {
                                 const ativo = periodo === p;
                                 return (
@@ -123,15 +152,23 @@ export default function ver_todas_receitas() {
                                         onPress={() => setPeriodo(p)}
                                         activeOpacity={0.75}
                                         style={{
-                                            flexGrow: 1,
-                                            flexBasis: "24%",
-                                            backgroundColor: ativo ? "#4a90e2" : "#f3f4f6",
-                                            paddingVertical: 8,
-                                            borderRadius: 10,
+                                            flex: 1,
+                                            backgroundColor: ativo ? "#fff" : "transparent",
+                                            paddingVertical: 7,
+                                            borderRadius: 8,
                                             alignItems: "center",
+                                            shadowColor: ativo ? "#000" : "transparent",
+                                            shadowOffset: { width: 0, height: 1 },
+                                            shadowOpacity: ativo ? 0.08 : 0,
+                                            shadowRadius: 2,
+                                            elevation: ativo ? 2 : 0,
                                         }}
                                     >
-                                        <Text style={{ fontSize: 12, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>
+                                        <Text style={{
+                                            fontSize: 10,
+                                            fontWeight: ativo ? "700" : "500",
+                                            color: ativo ? "#4a90e2" : "#9ca3af",
+                                        }}>
                                             {p}
                                         </Text>
                                     </TouchableOpacity>
@@ -162,7 +199,7 @@ export default function ver_todas_receitas() {
                                         </View>
                                         <View style={{ flexDirection: "row", gap: 6 }}>
                                             <TouchableOpacity
-                                                onPress={() => navigation.navigate("cadastrar_receita", { receita })}
+                                                onPress={() => navigation.navigate("editar_receita", { receita })}
                                                 activeOpacity={0.7}
                                                 style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
                                             >
