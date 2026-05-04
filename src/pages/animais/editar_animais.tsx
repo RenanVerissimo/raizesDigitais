@@ -30,7 +30,21 @@ export default function EditarAnimais() {
         descricao: animal?.descricao ?? "",
         dataNascimento: toBr(animal?.data_nascimento),
         dataUltimoParto: toBr(animal?.data_ultimo_parto),
+
+        // 🔥 NOVOS
+        prenha: animal?.prenha ?? false,
+        emCio: animal?.em_cio ?? false,
+        abortou: animal?.abortou ?? false,
+        naoEmprenha: animal?.nao_emprenha ?? false,
+        dataCobertura: toBr(animal?.data_cobertura),
     });
+
+    const statusReprodutivo = [
+        { key: "prenha", label: "Prenha", cor: "#22c55e", icon: "check-circle" },
+        { key: "emCio", label: "Em Cio", cor: "#f59e0b", icon: "alert-circle" },
+        { key: "abortou", label: "Abortou", cor: "#ef4444", icon: "x-circle" },
+        { key: "naoEmprenha", label: "Não Emprenha", cor: "#6b7280", icon: "slash" },
+    ] as const;
 
     useEffect(() => {
         if (animal) {
@@ -43,6 +57,13 @@ export default function EditarAnimais() {
                 descricao: animal.descricao ?? "",
                 dataNascimento: toBr(animal.data_nascimento),
                 dataUltimoParto: toBr(animal.data_ultimo_parto),
+
+                // 🔥 NOVOS
+                prenha: animal.prenha ?? false,
+                emCio: animal.em_cio ?? false,
+                abortou: animal.abortou ?? false,
+                naoEmprenha: animal.nao_emprenha ?? false,
+                dataCobertura: toBr(animal.data_cobertura),
             });
         }
     }, [animal?.id]);
@@ -91,6 +112,13 @@ export default function EditarAnimais() {
                 descricao: formData.descricao.trim() || null,
                 data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
+
+                // 🔥 NOVOS
+                prenha: formData.prenha,
+                em_cio: formData.emCio,
+                abortou: formData.abortou,
+                nao_emprenha: formData.naoEmprenha,
+                data_cobertura: toIso(formData.dataCobertura),
             });
 
             Toast.show({
@@ -249,6 +277,44 @@ export default function EditarAnimais() {
                             value={formData.dataUltimoParto}
                             onChange={(v) => setFormData({ ...formData, dataUltimoParto: v })}
                         />
+                    </View>
+                    <View style={cardStyle}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                            <MaterialCommunityIcons name="cow" size={16} color="#f59e0b" />
+                            <Text style={labelStyle}>Status Reprodutivo</Text>
+                        </View>
+
+                        <View style={{ gap: 10 }}>
+                            {statusReprodutivo.map((item) => {
+                                const ativo = formData[item.key] as boolean;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={item.key}
+                                        onPress={() => {
+                                            if (item.key === "prenha" && ativo) {
+                                                setFormData({ ...formData, prenha: false, dataCobertura: "" });
+                                            } else {
+                                                setFormData({ ...formData, [item.key]: !ativo });
+                                            }
+                                        }}
+                                        style={{
+                                            flexDirection: "row",
+                                            justifyContent: "space-between",
+                                            padding: 12,
+                                            backgroundColor: ativo ? `${item.cor}15` : "#f9fafb",
+                                            borderWidth: 1,
+                                            borderColor: ativo ? item.cor : "#e5e7eb",
+                                            borderRadius: 10,
+                                        }}
+                                    >
+                                        <Text style={{ color: ativo ? item.cor : "#6b7280" }}>
+                                            {item.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
                     </View>
 
                     {/* Descrição */}

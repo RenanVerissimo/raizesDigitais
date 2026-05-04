@@ -59,11 +59,20 @@ export async function atualizarProducao(id: number, dados: {
 // ANIMAIS
 // ============================================
 
+// ============================================
+// ANIMAIS
+// ============================================
+
 export async function listarAnimais(): Promise<Animal[]> {
     try {
         const response = await fetch(`${BASE_URL}/animais`);
-        if (!response.ok) throw new Error(`Erro ao listar animais (status ${response.status})`);
+
+        if (!response.ok) {
+            throw new Error(`Erro ao listar animais (status ${response.status})`);
+        }
+
         return await response.json();
+
     } catch (err) {
         console.error("Falha em listarAnimais:", err);
         throw new Error("Não foi possível carregar os animais. Verifique a conexão.");
@@ -73,12 +82,22 @@ export async function listarAnimais(): Promise<Animal[]> {
 export async function criarAnimal(dados: {
     nome: string;
     identificador: string;
+
     producao_media_diaria: number | null;
     raca?: string | null;
-    peso?: number | null;                  // ← NOVO
+    peso?: number | null;
     descricao?: string | null;
-    data_nascimento: string;               // ← AGORA OBRIGATÓRIO
+
+    data_nascimento: string;
     data_ultimo_parto?: string | null;
+
+    // 🔥 NOVOS CAMPOS
+    prenha: boolean;
+    em_cio: boolean;
+    abortou: boolean;
+    nao_emprenha: boolean;
+
+    data_cobertura?: string | null;
 }) {
     try {
         const response = await fetch(`${BASE_URL}/animais`, {
@@ -86,8 +105,13 @@ export async function criarAnimal(dados: {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(dados),
         });
-        if (!response.ok) throw new Error(`Erro ao cadastrar (status ${response.status})`);
+
+        if (!response.ok) {
+            throw new Error(`Erro ao cadastrar (status ${response.status})`);
+        }
+
         return await response.json();
+
     } catch (err) {
         console.error("Falha em criarAnimal:", err);
         throw new Error("Não foi possível cadastrar o animal. Verifique a conexão.");
@@ -97,12 +121,22 @@ export async function criarAnimal(dados: {
 export async function atualizarAnimal(id: number, dados: {
     nome: string;
     identificador: string;
+
     producao_media_diaria: number | null;
     raca?: string | null;
-    peso?: number | null;                  // ← NOVO
+    peso?: number | null;
     descricao?: string | null;
-    data_nascimento: string;               // ← AGORA OBRIGATÓRIO
+
+    data_nascimento: string;
     data_ultimo_parto?: string | null;
+
+    // 🔥 NOVOS CAMPOS
+    prenha: boolean;
+    em_cio: boolean;
+    abortou: boolean;
+    nao_emprenha: boolean;
+
+    data_cobertura?: string | null;
 }) {
     try {
         const response = await fetch(`${BASE_URL}/animais/${id}`, {
@@ -110,8 +144,13 @@ export async function atualizarAnimal(id: number, dados: {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(dados),
         });
-        if (!response.ok) throw new Error(`Erro ao atualizar (status ${response.status})`);
+
+        if (!response.ok) {
+            throw new Error(`Erro ao atualizar (status ${response.status})`);
+        }
+
         return await response.json();
+
     } catch (err) {
         console.error("Falha em atualizarAnimal:", err);
         throw new Error("Não foi possível atualizar o animal. Verifique a conexão.");
@@ -120,9 +159,16 @@ export async function atualizarAnimal(id: number, dados: {
 
 export async function excluirAnimal(id: number) {
     try {
-        const response = await fetch(`${BASE_URL}/animais/${id}`, { method: "DELETE" });
-        if (!response.ok) throw new Error(`Erro ao excluir (status ${response.status})`);
+        const response = await fetch(`${BASE_URL}/animais/${id}`, {
+            method: "DELETE",
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro ao excluir (status ${response.status})`);
+        }
+
         return await response.json();
+
     } catch (err) {
         console.error("Falha em excluirAnimal:", err);
         throw new Error("Não foi possível excluir o animal. Verifique a conexão.");
@@ -366,5 +412,43 @@ export async function criarMovimentacao(dados: {
 export async function excluirMovimentacao(id: number) {
     const res = await fetch(`${BASE_URL}/estoque/movimentacoes/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Erro ao excluir movimentação");
+    return res.json();
+}
+
+
+// ============================================
+// AUTH
+// ============================================
+
+export async function login(email: string, senha: string) {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha }),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao realizar login");
+    }
+    return res.json();
+}
+
+export async function cadastrar(dados: {
+    nome: string;
+    email: string;
+    telefone?: string;
+    nome_fazenda?: string;
+    senha: string;
+    confirmar_senha: string;
+}) {
+    const res = await fetch(`${BASE_URL}/auth/cadastrar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao cadastrar");
+    }
     return res.json();
 }

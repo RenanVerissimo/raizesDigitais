@@ -39,13 +39,25 @@ export interface Animal {
     id: number;
     nome: string;
     identificador: string;
-    producao_media_diaria: number | null;
+
+    producao_media_diaria?: number | null;
     raca?: string | null;
     peso?: number | null;
     descricao?: string | null;
+
     data_nascimento: string;
     data_ultimo_parto?: string | null;
-    criado_em?: string;
+
+    // Novos campos
+    prenha: boolean;
+    em_cio: boolean;
+    abortou: boolean;
+    nao_emprenha: boolean;
+
+    data_cobertura?: string | null;
+    data_prevista_parto?: string | null;
+    data_prevista_secagem?: string | null;
+
 }
 
 export type CategoriaCompra = "racao" | "medicamento" | "equipamento" | "manutencao" | "outros";

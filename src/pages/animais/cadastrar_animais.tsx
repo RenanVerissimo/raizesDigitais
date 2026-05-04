@@ -14,13 +14,11 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Animal } from "../../interfaces/interfaces";
 import { criarAnimal, listarAnimais } from "../../services/api";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
 import { toIso } from "../../utils/formatters";
 import { normalizarId } from "../../utils/normalizarId";
-
 
 export default function CadastrarAnimais() {
     const insets = useSafeAreaInsets();
@@ -36,6 +34,12 @@ export default function CadastrarAnimais() {
         descricao: "",
         dataNascimento: "",
         dataUltimoParto: "",
+        // Reprodutivo
+        prenha: false,
+        emCio: false,
+        abortou: false,
+        naoEmprenha: false,
+        dataCobertura: "",
     });
 
     function handleCancelar() {
@@ -56,7 +60,6 @@ export default function CadastrarAnimais() {
             return;
         }
 
-        // ✅ NOVA VALIDAÇÃO: data de nascimento obrigatória
         const dataNascIso = toIso(formData.dataNascimento);
         if (!dataNascIso) {
             Alert.alert("Atenção", "Informe uma data de nascimento válida (DD/MM/AAAA)");
@@ -81,17 +84,13 @@ export default function CadastrarAnimais() {
             }
         }
 
-
-        // 🛡️ Verifica se identificador já existe
         const todosAnimais = await listarAnimais();
         const novoId = normalizarId(formData.identificador);
-        const jaExiste = todosAnimais.some(
-            (a) => normalizarId(a.identificador) === novoId
-        );
+        const jaExiste = todosAnimais.some((a) => normalizarId(a.identificador) === novoId);
         if (jaExiste) {
             Toast.show({
                 type: "error",
-                text1: "Identificador já cadastrado. Por favor insira outro.",
+                text1: "Identificador já cadastrado.",
                 text2: `Já existe um animal com o ID "${formData.identificador}".`,
                 position: "top",
                 visibilityTime: 4000,
@@ -109,6 +108,11 @@ export default function CadastrarAnimais() {
                 descricao: formData.descricao.trim() || null,
                 data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
+                prenha: formData.prenha,
+                em_cio: formData.emCio,
+                abortou: formData.abortou,
+                nao_emprenha: formData.naoEmprenha,
+                data_cobertura: toIso(formData.dataCobertura),
             });
 
             Toast.show({
@@ -125,6 +129,14 @@ export default function CadastrarAnimais() {
             Toast.show({ type: "error", text1: "Erro", text2: "Não foi possível salvar." });
         }
     }
+
+    const statusReprodutivo = [
+        { key: "prenha", label: "Prenha", cor: "#22c55e", icon: "check-circle" },
+        { key: "emCio", label: "Em Cio", cor: "#f59e0b", icon: "alert-circle" },
+        { key: "abortou", label: "Abortou", cor: "#ef4444", icon: "x-circle" },
+        { key: "naoEmprenha", label: "Não Emprenha", cor: "#6b7280", icon: "slash" },
+    ] as const;
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -164,11 +176,12 @@ export default function CadastrarAnimais() {
 
                 <View style={{ padding: 20, gap: 16 }}>
 
+                    {/* Nome */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="tag" size={16} color="#4a90e2" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Nome do Animal *
+                                Nome do Animal <Text style={{ color: "#ef4444" }}>*</Text>
                             </Text>
                         </View>
                         <TextInput
@@ -180,11 +193,12 @@ export default function CadastrarAnimais() {
                         />
                     </View>
 
+                    {/* Identificador */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="hash" size={16} color="#4a90e2" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Número/Identificação *
+                                Número/Identificação <Text style={{ color: "#ef4444" }}>*</Text>
                             </Text>
                         </View>
                         <TextInput
@@ -196,11 +210,12 @@ export default function CadastrarAnimais() {
                         />
                     </View>
 
+                    {/* Produção */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="droplet" size={16} color="#6b7280" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Produção Média Diária (Litros) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                Produção Média Diária (L) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
                         <TextInput
@@ -213,6 +228,7 @@ export default function CadastrarAnimais() {
                         />
                     </View>
 
+                    {/* Raça */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <MaterialCommunityIcons name="cow" size={16} color="#6b7280" />
@@ -229,7 +245,7 @@ export default function CadastrarAnimais() {
                         />
                     </View>
 
-                    {/* Peso (kg) */}
+                    {/* Peso */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <MaterialCommunityIcons name="weight-kilogram" size={16} color="#6b7280" />
@@ -246,6 +262,7 @@ export default function CadastrarAnimais() {
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
                     </View>
+
                     {/* Data de Nascimento */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -274,35 +291,102 @@ export default function CadastrarAnimais() {
                         />
                     </View>
 
+                    {/* Descrição */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="file-text" size={16} color="#6b7280" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Descrição do Animal <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                Descrição <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
                         <TextInput
                             value={formData.descricao}
                             onChangeText={(v) => setFormData({ ...formData, descricao: v })}
-                            placeholder="Ex: Animal dócil, vacinada em janeiro, prenhe..."
+                            placeholder="Ex: Animal dócil, vacinada em janeiro..."
                             placeholderTextColor="#9ca3af"
                             multiline
                             numberOfLines={4}
                             textAlignVertical="top"
-                            style={{
-                                backgroundColor: "#f9fafb",
-                                borderWidth: 1,
-                                borderColor: "#e5e7eb",
-                                borderRadius: 10,
-                                paddingHorizontal: 14,
-                                paddingVertical: 12,
-                                fontSize: 15,
-                                color: "#0a0a0a",
-                                minHeight: 90,
-                            }}
+                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 90 }}
                         />
                     </View>
 
+                    {/* Status Reprodutivo */}
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                            <MaterialCommunityIcons name="cow" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Status Reprodutivo <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <View style={{ gap: 10 }}>
+                            {statusReprodutivo.map((item) => {
+                                const ativo = formData[item.key] as boolean;
+                                return (
+                                    <TouchableOpacity
+                                        key={item.key}
+                                        onPress={() => {
+                                            // Se desativar prenha, limpa a data de cobertura
+                                            if (item.key === "prenha" && ativo) {
+                                                setFormData({ ...formData, prenha: false, dataCobertura: "" });
+                                            } else {
+                                                setFormData({ ...formData, [item.key]: !ativo });
+                                            }
+                                        }}
+                                        activeOpacity={0.7}
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            padding: 12,
+                                            backgroundColor: ativo ? `${item.cor}15` : "#f9fafb",
+                                            borderWidth: 1,
+                                            borderColor: ativo ? item.cor : "#e5e7eb",
+                                            borderRadius: 10,
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                            <Feather name={item.icon} size={16} color={ativo ? item.cor : "#9ca3af"} />
+                                            <Text style={{ fontSize: 14, fontWeight: "500", color: ativo ? item.cor : "#6b7280" }}>
+                                                {item.label}
+                                            </Text>
+                                        </View>
+                                        <View style={{
+                                            width: 22, height: 22, borderRadius: 11,
+                                            backgroundColor: ativo ? item.cor : "#e5e7eb",
+                                            alignItems: "center", justifyContent: "center",
+                                        }}>
+                                            {ativo && <Feather name="check" size={13} color="#fff" />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+                    {/* Data de Cobertura — só aparece se prenha */}
+                    {formData.prenha && (
+                        <View style={{ backgroundColor: "#f0fdf4", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bbf7d0" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="calendar" size={16} color="#22c55e" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#15803d" }}>
+                                    Data de Cobertura <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                </Text>
+                            </View>
+                            <DateInput
+                                value={formData.dataCobertura}
+                                onChange={(v) => setFormData({ ...formData, dataCobertura: v })}
+                            />
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+                                <Feather name="info" size={12} color="#16a34a" />
+                                <Text style={{ fontSize: 11, color: "#16a34a", flex: 1 }}>
+                                    Parto previsto e secagem serão calculados automaticamente (283 dias)
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Botões */}
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
                         <TouchableOpacity
                             onPress={handleCancelar}

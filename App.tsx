@@ -26,6 +26,7 @@ import editar_animais from "./src/pages/animais/editar_animais";
 import ver_todos_animais from "./src/pages/animais/ver_todos_animais";
 import editar_compras from "./src/pages/compras_e_pedidos/editar_compras";
 import editar_receita from "./src/pages/financeiro/editar_receitas";
+import Alertas from "./src/pages/alertas/alertas";
 
 
 const Stack = createNativeStackNavigator();
@@ -55,6 +56,7 @@ export default function App() {
                     <Stack.Screen name="ver_todos_animais" component={ver_todos_animais} />
                     <Stack.Screen name="editar_compras" component={editar_compras} />
                     <Stack.Screen name="editar_receita" component={editar_receita} />
+                    <Stack.Screen name="Alertas" component={Alertas} />
 
                 </Stack.Navigator>
             </NavigationContainer>
