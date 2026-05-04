@@ -30,11 +30,16 @@ export default function Dashboard() {
     const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
 
+
+
     function getQualidadeStyle(qualidade: string) {
         if (qualidade === "excellent") return { bg: "#dcfce7", text: "#15803d", label: "Excelente" };
         if (qualidade === "good") return { bg: "#dbeafe", text: "#1d4ed8", label: "Boa" };
         return { bg: "#fef9c3", text: "#a16207", label: "Regular" };
     }
+
+
+    
 
     function handleLogout() {
         navigation.replace("Login");
@@ -286,6 +291,27 @@ export default function Dashboard() {
                         <Feather name="package" size={24} color="#4a90e2" />
                         <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Controle de Estoque</Text>
                     </TouchableOpacity>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                backgroundColor: "#fff",
+                                borderWidth: 1,
+                                borderColor: "#e5e7eb",
+                                borderRadius: 14,
+                                padding: 16,
+                                alignItems: "center",
+                                gap: 8,
+                            }}
+                            activeOpacity={0.7}
+                            onPress={() => navigation.navigate("Alertas")}
+                        >
+                            <Feather name="alert-triangle" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>
+                                Alertas
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
         </View>
