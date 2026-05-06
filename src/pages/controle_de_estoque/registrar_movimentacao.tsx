@@ -30,10 +30,12 @@ export default function registrar_movimentacao() {
         hora,
         motivo: "",
         comprador: "",
+        temperatura: "",
         observacoes: "",
     });
 
     const tanqueSelecionado = tanques.find((t) => String(t.id) === formData.tanqueId);
+    const ehEntrega = formData.tipo === "saida";
 
     function handleCancelar() {
         navigation.goBack();
@@ -57,6 +59,12 @@ export default function registrar_movimentacao() {
             return;
         }
 
+        const temperatura = parseFloat(formData.temperatura);
+        if (ehEntrega && (isNaN(temperatura) || temperatura < 0)) {
+            Toast.show({ type: "error", text1: "Atenção", text2: "Informe uma temperatura válida para a entrega.", position: "top", visibilityTime: 3000 });
+            return;
+        }
+
         try {
             await criarMovimentacao({
                 tanqueId: Number(formData.tanqueId),
@@ -66,6 +74,7 @@ export default function registrar_movimentacao() {
                 hora: formData.hora,
                 motivo: formData.motivo.trim(),
                 comprador: formData.comprador.trim() || null,
+                temperatura: ehEntrega ? temperatura : null,
                 observacoes: formData.observacoes.trim() || null,
             });
 
@@ -159,7 +168,7 @@ export default function registrar_movimentacao() {
                                 return (
                                     <TouchableOpacity
                                         key={tipo}
-                                        onPress={() => setFormData({ ...formData, tipo })}
+                                        onPress={() => setFormData({ ...formData, tipo, temperatura: tipo === "saida" ? formData.temperatura : "" })}
                                         activeOpacity={0.7}
                                         style={{ flex: 1, backgroundColor: ativo ? cor : "#f9fafb", borderWidth: 1, borderColor: ativo ? cor : "#e5e7eb", borderRadius: 10, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
                                     >
@@ -225,6 +234,24 @@ export default function registrar_movimentacao() {
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
                     </View>
+
+                    {/* Temperatura (só em entrega/saída) */}
+                    {ehEntrega && (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="thermometer" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Temperatura na entrega (°C) *</Text>
+                            </View>
+                            <TextInput
+                                value={formData.temperatura}
+                                onChangeText={(v) => setFormData({ ...formData, temperatura: v })}
+                                placeholder={tanqueSelecionado ? tanqueSelecionado.temperatura.toFixed(1) : "3.5"}
+                                placeholderTextColor="#9ca3af"
+                                keyboardType="decimal-pad"
+                                style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            />
+                        </View>
+                    )}
 
                     {/* Motivo */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>

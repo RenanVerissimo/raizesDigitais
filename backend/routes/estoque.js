@@ -125,6 +125,7 @@ router.get("/movimentacoes", async (req, res) => {
                 m.hora,
                 m.motivo,
                 m.comprador,
+                m.temperatura,
                 m.observacoes
             FROM movimentacoes_estoque m
             INNER JOIN tanques t ON t.id = m.tanque_id
@@ -140,7 +141,7 @@ router.get("/movimentacoes", async (req, res) => {
 // CRIAR MOVIMENTAÇÃO
 router.post("/movimentacoes", async (req, res) => {
     try {
-        const { tanqueId, tipo, volume, data, hora, motivo, comprador, observacoes } = req.body;
+        const { tanqueId, tipo, volume, data, hora, motivo, comprador, temperatura, observacoes } = req.body;
 
         if (!tanqueId || !tipo || !volume || !data || !motivo) {
             return res.status(400).json({ erro: "Preencha os campos obrigatórios" });
@@ -161,13 +162,27 @@ router.post("/movimentacoes", async (req, res) => {
 
         // Insere movimentação
         const [result] = await pool.query(
-            `INSERT INTO movimentacoes_estoque (tanque_id, tipo, quantidade, data, hora, motivo, comprador, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [tanqueId, tipo, vol, data, hora || "00:00", motivo, comprador || null, observacoes || null]
+            `INSERT INTO movimentacoes_estoque (tanque_id, tipo, quantidade, data, hora, motivo, comprador, temperatura, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                tanqueId,
+                tipo,
+                vol,
+                data,
+                hora || "00:00",
+                motivo,
+                comprador || null,
+                tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "" ? Number(temperatura) : null,
+                observacoes || null,
+            ]
         );
 
-        // Atualiza volume do tanque
-        await pool.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [novoVolume, tanqueId]);
+        // Atualiza volume do tanque e, em entregas, registra a temperatura medida.
+        if (tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "") {
+            await pool.query("UPDATE tanques SET quantidade_atual=?, temperatura=? WHERE id=?", [novoVolume, Number(temperatura), tanqueId]);
+        } else {
+            await pool.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [novoVolume, tanqueId]);
+        }
 
         res.status(201).json({
             id: result.insertId,
@@ -179,6 +194,7 @@ router.post("/movimentacoes", async (req, res) => {
             hora: hora || "00:00",
             motivo,
             comprador: comprador || null,
+            temperatura: tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "" ? Number(temperatura) : null,
             observacoes: observacoes || null,
             mensagem: "Movimentação registrada",
         });

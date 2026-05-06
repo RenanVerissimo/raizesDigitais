@@ -384,6 +384,7 @@ export async function listarMovimentacoes() {
     return dados.map((m: any) => ({
         ...m,
         volume: Number(m.volume),
+        temperatura: m.temperatura === null || m.temperatura === undefined ? null : Number(m.temperatura),
     }));
 }
 
@@ -395,6 +396,7 @@ export async function criarMovimentacao(dados: {
     hora: string;
     motivo: string;
     comprador?: string | null;
+    temperatura?: number | null;
     observacoes?: string | null;
 }) {
     const res = await fetch(`${BASE_URL}/estoque/movimentacoes`, {

@@ -45,7 +45,7 @@ export default function CadastrarTanque() {
     }
 
     async function handleSubmit() {
-        if (!formData.nome.trim() || !formData.capacidade || !formData.volumeAtual || !formData.temperatura) {
+        if (!formData.nome.trim() || !formData.capacidade || !formData.volumeAtual) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
         }
@@ -57,14 +57,13 @@ export default function CadastrarTanque() {
         if (isNaN(cap) || cap <= 0) { Alert.alert("Atenção", "Capacidade inválida."); return; }
         if (isNaN(vol) || vol < 0) { Alert.alert("Atenção", "Volume atual inválido."); return; }
         if (vol > cap) { Alert.alert("Atenção", "Volume atual não pode exceder a capacidade."); return; }
-        if (isNaN(temp)) { Alert.alert("Atenção", "Temperatura inválida."); return; }
 
         try {
             const dados = {
                 nome: formData.nome.trim(),
                 capacidade: cap,
                 volumeAtual: vol,
-                temperatura: temp,
+                temperatura: isNaN(temp) ? 0 : temp,
                 qualidade: formData.qualidade,
                 localizacao: formData.localizacao.trim() || null,
                 observacoes: formData.observacoes.trim() || null,
@@ -140,8 +139,6 @@ export default function CadastrarTanque() {
                             <Campo icone="droplet" label="Volume Atual (L) *" valor={formData.volumeAtual} onChange={(v: any) => setFormData({ ...formData, volumeAtual: v })} placeholder="0" keyboard="decimal-pad" />
                         </View>
                     </View>
-
-                    <Campo icone="thermometer" label="Temperatura (°C) *" valor={formData.temperatura} onChange={(v: any) => setFormData({ ...formData, temperatura: v })} placeholder="3.5" keyboard="decimal-pad" />
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
