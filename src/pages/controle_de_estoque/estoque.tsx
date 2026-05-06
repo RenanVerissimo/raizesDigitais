@@ -55,6 +55,7 @@ export default function Estoque() {
 
     const [tanques, setTanques] = useState<Tanque[]>([]);
     const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
+    const [dicasAberto, setDicasAberto] = useState(true);
 
     async function carregarDados() {
         try {
@@ -335,17 +336,33 @@ export default function Estoque() {
                     </View>
 
                     <View style={{ backgroundColor: "rgba(74,144,226,0.08)", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "rgba(74,144,226,0.2)", marginBottom: insets.bottom + 20 }}>
-                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a", marginBottom: 10 }}>💡 Dicas</Text>
-                        {[
-                            "Mantenha a temperatura do leite entre 2°C e 4°C",
-                            "Leite resfriado pode ser armazenado por até 48 horas",
-                            "Programe entregas quando tanques atingirem 80% da capacidade",
-                        ].map((dica, i) => (
-                            <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}>
-                                <Text style={{ color: "#4a90e2" }}>•</Text>
-                                <Text style={{ flex: 1, fontSize: 13, color: "#374151", lineHeight: 18 }}>{dica}</Text>
+                        <TouchableOpacity
+                            activeOpacity={0.75}
+                            onPress={() => setDicasAberto((aberto) => !aberto)}
+                            accessibilityRole="button"
+                            accessibilityLabel={dicasAberto ? "Fechar dicas" : "Abrir dicas"}
+                            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                        >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Feather name="info" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>Dicas</Text>
                             </View>
-                        ))}
+                            <Feather name={dicasAberto ? "chevron-up" : "chevron-down"} size={20} color="#4a90e2" />
+                        </TouchableOpacity>
+                        {dicasAberto && (
+                            <View style={{ marginTop: 10 }}>
+                                {[
+                                    "Mantenha a temperatura do leite entre 2°C e 4°C",
+                                    "Leite resfriado pode ser armazenado por até 48 horas",
+                                    "Programe entregas quando tanques atingirem 80% da capacidade",
+                                ].map((dica, i) => (
+                                    <View key={i} style={{ flexDirection: "row", gap: 8, marginBottom: 6 }}>
+                                        <Text style={{ color: "#4a90e2" }}>•</Text>
+                                        <Text style={{ flex: 1, fontSize: 13, color: "#374151", lineHeight: 18 }}>{dica}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
                     </View>
                 </View>
             </ScrollView>

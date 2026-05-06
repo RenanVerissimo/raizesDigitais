@@ -22,6 +22,7 @@ export default function graficos() {
     const navigation = useNavigation<any>();
     const [producoes, setProducoes] = useState<Producao[]>([]);
     const [carregando, setCarregando] = useState(true);
+    const [insightsAberto, setInsightsAberto] = useState(true);
 
     useFocusEffect(
         useCallback(() => {
@@ -364,18 +365,29 @@ export default function graficos() {
                                 borderRadius: 14, padding: 18,
                                 marginBottom: insets.bottom + 20,
                             }}>
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                    <Feather name="zap" size={16} color="#4a90e2" />
-                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Insightss</Text>
-                                </View>
-                                <View style={{ gap: 8 }}>
+                                <TouchableOpacity
+                                    activeOpacity={0.75}
+                                    onPress={() => setInsightsAberto((aberto) => !aberto)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={insightsAberto ? "Fechar insights" : "Abrir insights"}
+                                    style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                                >
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                        <Feather name="zap" size={16} color="#4a90e2" />
+                                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Insights</Text>
+                                    </View>
+                                    <Feather name={insightsAberto ? "chevron-up" : "chevron-down"} size={20} color="#4a90e2" />
+                                </TouchableOpacity>
+                                {insightsAberto && (
+                                    <View style={{ gap: 8, marginTop: 12 }}>
                                     <Insight texto={`Média de produção diária: ${mediaProducao} litros`} />
                                     <Insight texto={`Variação: ${maxProducao - minProducao} litros entre máximo e mínimo`} />
                                     {qualidadePredominante && (
                                         <Insight texto={`Qualidade predominante: ${qualidadePredominante}`} />
                                     )}
                                     <Insight texto={`Total de ${producoes.length} ${producoes.length === 1 ? "registro" : "registros"} analisado${producoes.length === 1 ? "" : "s"}`} />
-                                </View>
+                                    </View>
+                                )}
                             </View>
                         </>
                     )}

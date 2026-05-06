@@ -18,6 +18,7 @@ export default function Animais() {
     const navigation = useNavigation<any>();
     const [animais, setAnimais] = useState<Animal[]>([]);
     const [carregando, setCarregando] = useState(true);
+    const [dicasAberto, setDicasAberto] = useState(true);
 
     const totalAnimais = animais.length;
     /*     const producaoDiariaEstimada = animais.reduce((s, a) => s + Number(a.producao_media_diaria), 0);
@@ -255,12 +256,25 @@ export default function Animais() {
                     </View>
 
 
-                    {/* 💡 Dicas */}
+                    {/* Dicas */}
                     <View style={{ backgroundColor: "rgba(74,144,226,0.08)", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: "rgba(74,144,226,0.2)", marginBottom: insets.bottom + 20 }}>
-                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a", marginBottom: 10 }}>
-                            💡 Dicas
-                        </Text>
-                        <View style={{ gap: 8 }}>
+                        <TouchableOpacity
+                            activeOpacity={0.75}
+                            onPress={() => setDicasAberto((aberto) => !aberto)}
+                            accessibilityRole="button"
+                            accessibilityLabel={dicasAberto ? "Fechar dicas" : "Abrir dicas"}
+                            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
+                        >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Feather name="info" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>
+                                    Dicas
+                                </Text>
+                            </View>
+                            <Feather name={dicasAberto ? "chevron-up" : "chevron-down"} size={20} color="#4a90e2" />
+                        </TouchableOpacity>
+                        {dicasAberto && (
+                            <View style={{ gap: 8, marginTop: 10 }}>
                             {[
                                 "Mantenha o cadastro atualizado para estimativas mais precisas",
                                 "A produção média varia conforme raça, alimentação e saúde",
@@ -271,7 +285,8 @@ export default function Animais() {
                                     <Text style={{ flex: 1, fontSize: 13, color: "#374151" }}>{dica}</Text>
                                 </View>
                             ))}
-                        </View>
+                            </View>
+                        )}
                     </View>
 
                 </View>
