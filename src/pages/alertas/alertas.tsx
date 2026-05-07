@@ -83,9 +83,10 @@ export default function Alertas() {
     // 4. Datas (Parto e Secagem) - Só funcionam se houver "data_cobertura"
     // 3. Próximos Partos (Ajustado para evitar o erro de 'null')
     const proximosPartos = vacasPrenhas.filter(a => {
-        if (!a.data_cobertura) return false;
+        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        if (!dataBaseGestacao) return false;
 
-        const parto = calcularDataParto(a.data_cobertura);
+        const parto = calcularDataParto(dataBaseGestacao);
 
         // Verificação de segurança: se o parto for null, ignora este animal
         if (!parto) return false;
@@ -96,9 +97,10 @@ export default function Alertas() {
 
     // 4. Sugestão de Secagem (Ajustado para evitar o erro de 'null')
     const secagem = vacasPrenhas.filter(a => {
-        if (!a.data_cobertura) return false;
+        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        if (!dataBaseGestacao) return false;
 
-        const parto = calcularDataParto(a.data_cobertura);
+        const parto = calcularDataParto(dataBaseGestacao);
 
         // Verificação de segurança: se o parto for null, ignora este animal
         if (!parto) return false;

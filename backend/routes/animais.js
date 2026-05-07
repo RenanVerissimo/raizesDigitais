@@ -31,7 +31,9 @@ router.post("/", async (req, res) => {
             abortou,
             nao_emprenha,
             mastite,
-            data_cobertura
+            data_cobertura,
+            data_inseminacao,
+            data_confirmacao_prenhez
         } = req.body;
 
         if (!nome || !identificador) {
@@ -59,9 +61,11 @@ router.post("/", async (req, res) => {
                 abortou,
                 nao_emprenha,
                 mastite,
-                data_cobertura
+                data_cobertura,
+                data_inseminacao,
+                data_confirmacao_prenhez
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 nome,
                 identificador,
@@ -80,6 +84,8 @@ router.post("/", async (req, res) => {
                 mastite ? 1 : 0,
 
                 data_cobertura || null,
+                data_inseminacao || null,
+                data_confirmacao_prenhez || null,
             ]
         );
 
@@ -109,7 +115,9 @@ router.put("/:id", async (req, res) => {
             abortou,
             nao_emprenha,
             mastite,
-            data_cobertura
+            data_cobertura,
+            data_inseminacao,
+            data_confirmacao_prenhez
         } = req.body;
 
         if (!data_nascimento) {
@@ -133,7 +141,9 @@ router.put("/:id", async (req, res) => {
                 abortou = ?,
                 nao_emprenha = ?,
                 mastite = ?,
-                data_cobertura = ?
+                data_cobertura = ?,
+                data_inseminacao = ?,
+                data_confirmacao_prenhez = ?
 
             WHERE id = ?`,
             [
@@ -153,6 +163,8 @@ router.put("/:id", async (req, res) => {
                 nao_emprenha ? 1 : 0,
                 mastite ? 1 : 0,
                 data_cobertura || null,
+                data_inseminacao || null,
+                data_confirmacao_prenhez || null,
 
                 req.params.id,
             ]

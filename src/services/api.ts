@@ -99,6 +99,8 @@ export async function criarAnimal(dados: {
     mastite: boolean;
 
     data_cobertura?: string | null;
+    data_inseminacao?: string | null;
+    data_confirmacao_prenhez?: string | null;
 }) {
     try {
         const response = await fetch(`${BASE_URL}/animais`, {
@@ -139,6 +141,8 @@ export async function atualizarAnimal(id: number, dados: {
     mastite: boolean;
 
     data_cobertura?: string | null;
+    data_inseminacao?: string | null;
+    data_confirmacao_prenhez?: string | null;
 }) {
     try {
         const response = await fetch(`${BASE_URL}/animais/${id}`, {

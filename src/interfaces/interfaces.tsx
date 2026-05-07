@@ -56,6 +56,8 @@ export interface Animal {
     mastite: boolean;
 
     data_cobertura?: string | null;
+    data_inseminacao?: string | null;
+    data_confirmacao_prenhez?: string | null;
     data_prevista_parto?: string | null;
     data_prevista_secagem?: string | null;
 

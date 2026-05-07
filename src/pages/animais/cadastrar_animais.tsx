@@ -41,6 +41,8 @@ export default function CadastrarAnimais() {
         naoEmprenha: false,
         mastite: false,
         dataCobertura: "",
+        dataInseminacao: "",
+        dataConfirmacaoPrenhez: "",
     });
 
     function handleCancelar() {
@@ -114,7 +116,9 @@ export default function CadastrarAnimais() {
                 abortou: formData.abortou,
                 nao_emprenha: formData.naoEmprenha,
                 mastite: formData.mastite,
-                data_cobertura: toIso(formData.dataCobertura),
+                data_cobertura: toIso(formData.dataInseminacao || formData.dataCobertura),
+                data_inseminacao: toIso(formData.dataInseminacao),
+                data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
             });
 
             Toast.show({
@@ -332,9 +336,9 @@ export default function CadastrarAnimais() {
                                     <TouchableOpacity
                                         key={item.key}
                                         onPress={() => {
-                                            // Se desativar prenha, limpa a data de cobertura
+                                            // Se desativar prenha, limpa a data de confirmação.
                                             if (item.key === "prenha" && ativo) {
-                                                setFormData({ ...formData, prenha: false, dataCobertura: "" });
+                                                setFormData({ ...formData, prenha: false, dataConfirmacaoPrenhez: "" });
                                             } else {
                                                 setFormData({ ...formData, [item.key]: !ativo });
                                             }
@@ -362,7 +366,7 @@ export default function CadastrarAnimais() {
                                             backgroundColor: ativo ? item.cor : "#e5e7eb",
                                             alignItems: "center", justifyContent: "center",
                                         }}>
-                                            {ativo && <Feather name="check" size={13} color="#fff" />}
+                                            {ativo ? <Feather name="check" size={13} color="#fff" /> : null}
                                         </View>
                                     </TouchableOpacity>
                                 );
@@ -370,18 +374,32 @@ export default function CadastrarAnimais() {
                         </View>
                     </View>
 
-                    {/* Data de Cobertura — só aparece se prenha */}
+                    {/* Data de Inseminação */}
+                    <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bfdbfe" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="calendar" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#1d4ed8" }}>
+                                Data de Inseminação <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <DateInput
+                            value={formData.dataInseminacao}
+                            onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataCobertura: v })}
+                        />
+                    </View>
+
+                    {/* Data de confirmação — só aparece se prenha */}
                     {formData.prenha && (
                         <View style={{ backgroundColor: "#f0fdf4", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bbf7d0" }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                 <Feather name="calendar" size={16} color="#22c55e" />
                                 <Text style={{ fontSize: 14, fontWeight: "500", color: "#15803d" }}>
-                                    Data de Cobertura <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                    Data da Confirmação da Prenhez <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                                 </Text>
                             </View>
                             <DateInput
-                                value={formData.dataCobertura}
-                                onChange={(v) => setFormData({ ...formData, dataCobertura: v })}
+                                value={formData.dataConfirmacaoPrenhez}
+                                onChange={(v) => setFormData({ ...formData, dataConfirmacaoPrenhez: v })}
                             />
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
                                 <Feather name="info" size={12} color="#16a34a" />
@@ -430,7 +448,7 @@ export default function CadastrarAnimais() {
                                             backgroundColor: ativo ? item.cor : "#e5e7eb",
                                             alignItems: "center", justifyContent: "center",
                                         }}>
-                                            {ativo && <Feather name="check" size={13} color="#fff" />}
+                                            {ativo ? <Feather name="check" size={13} color="#fff" /> : null}
                                         </View>
                                     </TouchableOpacity>
                                 );

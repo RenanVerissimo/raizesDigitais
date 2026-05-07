@@ -38,6 +38,8 @@ export default function EditarAnimais() {
         naoEmprenha: Number(animal?.nao_emprenha) === 1,
         mastite: Number(animal?.mastite) === 1,
         dataCobertura: toBr(animal?.data_cobertura),
+        dataInseminacao: toBr(animal?.data_inseminacao || animal?.data_cobertura),
+        dataConfirmacaoPrenhez: toBr(animal?.data_confirmacao_prenhez),
     });
 
     const statusReprodutivo = [
@@ -70,6 +72,8 @@ export default function EditarAnimais() {
                 naoEmprenha: Number(animal.nao_emprenha) === 1,
                 mastite: Number(animal.mastite) === 1,
                 dataCobertura: toBr(animal.data_cobertura),
+                dataInseminacao: toBr(animal.data_inseminacao || animal.data_cobertura),
+                dataConfirmacaoPrenhez: toBr(animal.data_confirmacao_prenhez),
             });
         }
     }, [animal?.id]);
@@ -125,7 +129,9 @@ export default function EditarAnimais() {
                 abortou: formData.abortou,
                 nao_emprenha: formData.naoEmprenha,
                 mastite: formData.mastite,
-                data_cobertura: toIso(formData.dataCobertura),
+                data_cobertura: toIso(formData.dataInseminacao || formData.dataCobertura),
+                data_inseminacao: toIso(formData.dataInseminacao),
+                data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
             });
 
             Toast.show({
@@ -300,7 +306,7 @@ export default function EditarAnimais() {
                                         key={item.key}
                                         onPress={() => {
                                             if (item.key === "prenha" && ativo) {
-                                                setFormData({ ...formData, prenha: false, dataCobertura: "" });
+                                                setFormData({ ...formData, prenha: false, dataConfirmacaoPrenhez: "" });
                                             } else {
                                                 setFormData({ ...formData, [item.key]: !ativo });
                                             }
@@ -323,6 +329,42 @@ export default function EditarAnimais() {
                             })}
                         </View>
                     </View>
+
+                    {/* Data de Inseminação */}
+                    <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bfdbfe" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="calendar" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#1d4ed8" }}>
+                                Data de Inseminação <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <DateInput
+                            value={formData.dataInseminacao}
+                            onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataCobertura: v })}
+                        />
+                    </View>
+
+                    {/* Data de confirmação — só aparece se prenha */}
+                    {formData.prenha && (
+                        <View style={{ backgroundColor: "#f0fdf4", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bbf7d0" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="calendar" size={16} color="#22c55e" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#15803d" }}>
+                                    Data da Confirmação da Prenhez <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                </Text>
+                            </View>
+                            <DateInput
+                                value={formData.dataConfirmacaoPrenhez}
+                                onChange={(v) => setFormData({ ...formData, dataConfirmacaoPrenhez: v })}
+                            />
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 }}>
+                                <Feather name="info" size={12} color="#16a34a" />
+                                <Text style={{ fontSize: 11, color: "#16a34a", flex: 1 }}>
+                                    Parto previsto e secagem continuam usando a data de inseminação.
+                                </Text>
+                            </View>
+                        </View>
+                    )}
 
                     {/* Saúde */}
                     <View style={cardStyle}>
