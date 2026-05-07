@@ -39,6 +39,7 @@ export default function CadastrarAnimais() {
         emCio: false,
         abortou: false,
         naoEmprenha: false,
+        mastite: false,
         dataCobertura: "",
     });
 
@@ -112,6 +113,7 @@ export default function CadastrarAnimais() {
                 em_cio: formData.emCio,
                 abortou: formData.abortou,
                 nao_emprenha: formData.naoEmprenha,
+                mastite: formData.mastite,
                 data_cobertura: toIso(formData.dataCobertura),
             });
 
@@ -135,6 +137,10 @@ export default function CadastrarAnimais() {
         { key: "emCio", label: "Em Cio", cor: "#f59e0b", icon: "alert-circle" },
         { key: "abortou", label: "Abortou", cor: "#ef4444", icon: "x-circle" },
         { key: "naoEmprenha", label: "Não Emprenha", cor: "#6b7280", icon: "slash" },
+    ] as const;
+
+    const statusSaude = [
+        { key: "mastite", label: "Mastite", cor: "#dc2626", icon: "alert-triangle" },
     ] as const;
 
     return (
@@ -385,6 +391,52 @@ export default function CadastrarAnimais() {
                             </View>
                         </View>
                     )}
+
+                    {/* Saúde */}
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                            <Feather name="heart" size={16} color="#dc2626" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Saúde <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <View style={{ gap: 10 }}>
+                            {statusSaude.map((item) => {
+                                const ativo = formData[item.key] as boolean;
+                                return (
+                                    <TouchableOpacity
+                                        key={item.key}
+                                        onPress={() => setFormData({ ...formData, [item.key]: !ativo })}
+                                        activeOpacity={0.7}
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            padding: 12,
+                                            backgroundColor: ativo ? `${item.cor}15` : "#f9fafb",
+                                            borderWidth: 1,
+                                            borderColor: ativo ? item.cor : "#e5e7eb",
+                                            borderRadius: 10,
+                                        }}
+                                    >
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                            <Feather name={item.icon} size={16} color={ativo ? item.cor : "#9ca3af"} />
+                                            <Text style={{ fontSize: 14, fontWeight: "500", color: ativo ? item.cor : "#6b7280" }}>
+                                                {item.label}
+                                            </Text>
+                                        </View>
+                                        <View style={{
+                                            width: 22, height: 22, borderRadius: 11,
+                                            backgroundColor: ativo ? item.cor : "#e5e7eb",
+                                            alignItems: "center", justifyContent: "center",
+                                        }}>
+                                            {ativo && <Feather name="check" size={13} color="#fff" />}
+                                        </View>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
 
                     {/* Botões */}
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>

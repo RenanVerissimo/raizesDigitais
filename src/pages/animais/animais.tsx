@@ -227,6 +227,11 @@ export default function Animais() {
                                                     <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
                                                         Descrição: {animal.descricao || "—"}
                                                     </Text>
+                                                    {Number(animal.mastite) === 1 && (
+                                                        <View style={{ alignSelf: "flex-start", backgroundColor: "#fee2e2", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 6 }}>
+                                                            <Text style={{ fontSize: 11, color: "#dc2626", fontWeight: "600" }}>Mastite</Text>
+                                                        </View>
+                                                    )}
                                                 </View>
                                             </View>
                                             {/*                                             <View style={{ flexDirection: "row", gap: 6 }}>

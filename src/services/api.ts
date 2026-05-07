@@ -96,6 +96,7 @@ export async function criarAnimal(dados: {
     em_cio: boolean;
     abortou: boolean;
     nao_emprenha: boolean;
+    mastite: boolean;
 
     data_cobertura?: string | null;
 }) {
@@ -135,6 +136,7 @@ export async function atualizarAnimal(id: number, dados: {
     em_cio: boolean;
     abortou: boolean;
     nao_emprenha: boolean;
+    mastite: boolean;
 
     data_cobertura?: string | null;
 }) {

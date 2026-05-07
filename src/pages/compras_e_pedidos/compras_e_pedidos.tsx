@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<StatusCompra, { label: string; bg: string; text: str
     cancelado: { label: "Cancelado", bg: "#fee2e2", text: "#b91c1c", iconColor: "#dc2626", icon: "x-circle" },
 };
 
-export default function compras_e_pedidos() {
+export default function ComprasEPedidos() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();

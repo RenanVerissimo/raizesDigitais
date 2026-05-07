@@ -10,7 +10,7 @@ import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
 import { toIso, toBr } from "../../utils/formatters";
 
-export default function registrar_movimentacao() {
+export default function RegistrarMovimentacao() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();

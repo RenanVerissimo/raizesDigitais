@@ -13,7 +13,7 @@ import Toast from "react-native-toast-message";
 import { toBr, toIso } from "../../utils/formatters";
 import { Receita } from "./financeiro";
 
-export default function editar_receita() {
+export default function EditarReceita() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();

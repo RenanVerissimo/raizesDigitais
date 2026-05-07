@@ -53,6 +53,7 @@ export interface Animal {
     em_cio: boolean;
     abortou: boolean;
     nao_emprenha: boolean;
+    mastite: boolean;
 
     data_cobertura?: string | null;
     data_prevista_parto?: string | null;

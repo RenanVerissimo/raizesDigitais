@@ -17,7 +17,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const CHART_WIDTH = SCREEN_WIDTH - 40;
 
 
-export default function graficos() {
+export default function Graficos() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const [producoes, setProducoes] = useState<Producao[]>([]);

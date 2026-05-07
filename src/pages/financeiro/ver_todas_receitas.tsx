@@ -9,7 +9,7 @@ import type { Receita } from "./financeiro";
 import Toast from "react-native-toast-message";
 
 
-export default function ver_todas_receitas() {
+export default function VerTodasReceitas() {
     const PERIODOS = ["Hoje", "7D", "Mês", "Mês ant.", "Ano", "Tudo"] as const;
     type PeriodoReceita = typeof PERIODOS[number];
 

@@ -13,7 +13,7 @@ import Toast from "react-native-toast-message";
 
 
 
-export default function ver_todos_animais() {
+export default function VerTodosAnimais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const [animais, setAnimais] = useState<Animal[]>([]);
@@ -164,6 +164,11 @@ function CardAnimal({ animal, onEditar, onExcluir }: { animal: Animal; onEditar:
                         <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
                             Descrição: {animal.descricao || "—"}
                         </Text>
+                        {Number(animal.mastite) === 1 && (
+                            <View style={{ alignSelf: "flex-start", backgroundColor: "#fee2e2", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 6 }}>
+                                <Text style={{ fontSize: 11, color: "#dc2626", fontWeight: "600" }}>Mastite</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
                 <View style={{ flexDirection: "row", gap: 6 }}>

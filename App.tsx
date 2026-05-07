@@ -10,22 +10,22 @@ import Dashboard from "./src/pages/dashboard/dashboard";
 import LoginScreen from "./src/pages/login/login";
 
 import Toast from "react-native-toast-message";
-import producao_edicao from "./src/pages/producao/producao_edicao";
+import ProducaoEdicao from "./src/pages/producao/producao_edicao";
 import Animais from "./src/pages/animais/animais";
 import CadastrarAnimais from "./src/pages/animais/cadastrar_animais";
-import cadastrar_compras from "./src/pages/compras_e_pedidos/cadastrar_compras";
-import compras_e_pedidos from "./src/pages/compras_e_pedidos/compras_e_pedidos";
-import cadastar_tanque from "./src/pages/controle_de_estoque/cadastar_tanque";
-import estoque from "./src/pages/controle_de_estoque/estoque";
-import registrar_movimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
-import financeiro from "./src/pages/financeiro/financeiro";
-import cadastrar_receita from "./src/pages/financeiro/cadastrar_receita";
-import ver_todas_receitas from "./src/pages/financeiro/ver_todas_receitas";
-import graficos from "./src/pages/graficos/graficos";
-import editar_animais from "./src/pages/animais/editar_animais";
-import ver_todos_animais from "./src/pages/animais/ver_todos_animais";
-import editar_compras from "./src/pages/compras_e_pedidos/editar_compras";
-import editar_receita from "./src/pages/financeiro/editar_receitas";
+import CadastrarCompras from "./src/pages/compras_e_pedidos/cadastrar_compras";
+import ComprasEPedidos from "./src/pages/compras_e_pedidos/compras_e_pedidos";
+import CadastrarTanque from "./src/pages/controle_de_estoque/cadastar_tanque";
+import Estoque from "./src/pages/controle_de_estoque/estoque";
+import RegistrarMovimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
+import Financeiro from "./src/pages/financeiro/financeiro";
+import CadastrarReceita from "./src/pages/financeiro/cadastrar_receita";
+import VerTodasReceitas from "./src/pages/financeiro/ver_todas_receitas";
+import Graficos from "./src/pages/graficos/graficos";
+import EditarAnimais from "./src/pages/animais/editar_animais";
+import VerTodosAnimais from "./src/pages/animais/ver_todos_animais";
+import EditarCompras from "./src/pages/compras_e_pedidos/editar_compras";
+import EditarReceita from "./src/pages/financeiro/editar_receitas";
 import Alertas from "./src/pages/alertas/alertas";
 
 
@@ -40,22 +40,22 @@ export default function App() {
                     <Stack.Screen name="Dashboard" component={Dashboard} />
                     <Stack.Screen name="ProducaoRegistro" component={ProducaoRegistro} />
                     <Stack.Screen name="ProducaoHistorico" component={ProducaoHistorico} />
-                    <Stack.Screen name="ProducaoEdicao" component={producao_edicao} />
+                    <Stack.Screen name="ProducaoEdicao" component={ProducaoEdicao} />
                     <Stack.Screen name="Animais" component={Animais} />
                     <Stack.Screen name="CadastrarAnimais" component={CadastrarAnimais} />
-                    <Stack.Screen name="compras_e_pedidos" component={compras_e_pedidos} />
-                    <Stack.Screen name="cadastrar_compras" component={cadastrar_compras} />
-                    <Stack.Screen name="cadastar_tanque" component={cadastar_tanque} />
-                    <Stack.Screen name="estoque" component={estoque} />
-                    <Stack.Screen name="registrar_movimentacao" component={registrar_movimentacao} />
-                    <Stack.Screen name="financeiro" component={financeiro} />
-                    <Stack.Screen name="cadastrar_receita" component={cadastrar_receita} />
-                    <Stack.Screen name="ver_todas_receitas" component={ver_todas_receitas} />
-                    <Stack.Screen name="graficos" component={graficos} />
-                    <Stack.Screen name="editar_animais" component={editar_animais} />
-                    <Stack.Screen name="ver_todos_animais" component={ver_todos_animais} />
-                    <Stack.Screen name="editar_compras" component={editar_compras} />
-                    <Stack.Screen name="editar_receita" component={editar_receita} />
+                    <Stack.Screen name="compras_e_pedidos" component={ComprasEPedidos} />
+                    <Stack.Screen name="cadastrar_compras" component={CadastrarCompras} />
+                    <Stack.Screen name="cadastar_tanque" component={CadastrarTanque} />
+                    <Stack.Screen name="estoque" component={Estoque} />
+                    <Stack.Screen name="registrar_movimentacao" component={RegistrarMovimentacao} />
+                    <Stack.Screen name="financeiro" component={Financeiro} />
+                    <Stack.Screen name="cadastrar_receita" component={CadastrarReceita} />
+                    <Stack.Screen name="ver_todas_receitas" component={VerTodasReceitas} />
+                    <Stack.Screen name="graficos" component={Graficos} />
+                    <Stack.Screen name="editar_animais" component={EditarAnimais} />
+                    <Stack.Screen name="ver_todos_animais" component={VerTodosAnimais} />
+                    <Stack.Screen name="editar_compras" component={EditarCompras} />
+                    <Stack.Screen name="editar_receita" component={EditarReceita} />
                     <Stack.Screen name="Alertas" component={Alertas} />
 
                 </Stack.Navigator>

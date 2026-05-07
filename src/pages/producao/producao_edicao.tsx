@@ -16,7 +16,7 @@ import { atualizarProducao } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 
-export default function producao_edicao() {
+export default function ProducaoEdicao() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();

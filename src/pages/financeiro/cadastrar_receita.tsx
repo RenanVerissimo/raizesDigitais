@@ -12,7 +12,7 @@ import { toBr, toIso } from "../../utils/formatters";
 import { criarReceita } from "../../services/api";
 import Toast from "react-native-toast-message";
 
-export default function cadastrar_receita() {
+export default function CadastrarReceita() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();

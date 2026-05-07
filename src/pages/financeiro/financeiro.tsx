@@ -4,8 +4,8 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { excluirReceita, listarCompras, listarReceitas } from "../../services/api";
-import { Compra } from "../../interfaces/interfaces";
+import { excluirReceita, listarAnimais, listarCompras, listarReceitas } from "../../services/api";
+import { Animal, Compra } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 
 
@@ -37,13 +37,15 @@ const NOMES_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set"
 const PERIODOS_GRAFICO = ["7D", "15D", "30D", "6M", "1A"] as const;
 type PeriodoGrafico = typeof PERIODOS_GRAFICO[number];
 
-export default function financeiro() {
+export default function Financeiro() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
 
     const [receitas, setReceitas] = useState<Receita[]>([]);
     const [despesas, setDespesas] = useState<DespesaResumo[]>([]);
     const [despesasPendentes, setDespesasPendentes] = useState<Compra[]>([]);
+    const [comprasMastite, setComprasMastite] = useState<Compra[]>([]);
+    const [animaisMastite, setAnimaisMastite] = useState<Animal[]>([]);
     const [periodoReceitaDespesa, setPeriodoReceitaDespesa] = useState<PeriodoGrafico>("6M");
     const [periodoFluxoCaixa, setPeriodoFluxoCaixa] = useState<PeriodoGrafico>("6M");
     const [periodoCategorias, setPeriodoCategorias] = useState<PeriodoGrafico>("6M");
@@ -53,13 +55,18 @@ export default function financeiro() {
     async function carregarDadosFinanceiros() {
         try {
             // listarCompras() busca os dados da tabela/página compras para separar despesas concluídas e pendentes.
-            const [receitasDados, comprasDados] = await Promise.all([
+            const [receitasDados, comprasDados, animaisDados] = await Promise.all([
                 listarReceitas(),
                 listarCompras(),
+                listarAnimais(),
             ]);
 
             const comprasConcluidas = comprasDados.filter((compra) => compra.status === "concluido");
             const comprasPendentes = comprasDados.filter((compra) => compra.status === "pendente");
+            const comprasTratamentoMastite = comprasConcluidas.filter((compra) => {
+                const texto = `${compra.item} ${compra.observacoes || ""}`.toLowerCase();
+                return compra.categoria === "medicamento" && texto.includes("mastite");
+            });
 
             setReceitas(receitasDados);
             setDespesas(
@@ -70,6 +77,8 @@ export default function financeiro() {
                 }))
             );
             setDespesasPendentes(comprasPendentes);
+            setComprasMastite(comprasTratamentoMastite);
+            setAnimaisMastite(animaisDados.filter((animal) => Number(animal.mastite) === 1));
         } catch (error: any) {
             Alert.alert("Erro", error.message || "Não foi possível carregar os dados financeiros.");
         }
@@ -130,6 +139,7 @@ export default function financeiro() {
     // ===== Cálculos =====
     const totalReceitas = receitas.reduce((s, r) => s + r.valorTotal, 0);
     const totalDespesas = despesas.reduce((s, d) => s + d.valor, 0);
+    const totalCustoMastite = comprasMastite.reduce((s, compra) => s + compra.precoTotal, 0);
     const saldo = totalReceitas - totalDespesas;
 
     const hoje = new Date();
@@ -374,6 +384,26 @@ export default function financeiro() {
                                 R$ {totalDespesas.toFixed(2)}
                             </Text>
                         </View>
+                    </View>
+
+                    {/* Custo com Mastite */}
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#fee2e2" }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Feather name="heart" size={16} color="#dc2626" />
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Custo com Mastite</Text>
+                            </View>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#dc2626" }}>
+                                {animaisMastite.length} {animaisMastite.length === 1 ? "caso ativo" : "casos ativos"}
+                            </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", padding: 12, backgroundColor: "#fef2f2", borderRadius: 10 }}>
+                            <Text style={{ fontSize: 13, color: "#6b7280" }}>Medicamentos vinculados</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#dc2626" }}>R$ {totalCustoMastite.toFixed(2)}</Text>
+                        </View>
+                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>
+                            Considera compras concluídas em Medicamentos com "mastite" no item ou nas observações.
+                        </Text>
                     </View>
 
                     {/* Mês Atual */}

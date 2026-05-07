@@ -30,6 +30,7 @@ router.post("/", async (req, res) => {
             em_cio,
             abortou,
             nao_emprenha,
+            mastite,
             data_cobertura
         } = req.body;
 
@@ -57,9 +58,10 @@ router.post("/", async (req, res) => {
                 em_cio,
                 abortou,
                 nao_emprenha,
+                mastite,
                 data_cobertura
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 nome,
                 identificador,
@@ -75,6 +77,7 @@ router.post("/", async (req, res) => {
                 em_cio ? 1 : 0,
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
+                mastite ? 1 : 0,
 
                 data_cobertura || null,
             ]
@@ -105,6 +108,7 @@ router.put("/:id", async (req, res) => {
             em_cio,
             abortou,
             nao_emprenha,
+            mastite,
             data_cobertura
         } = req.body;
 
@@ -128,6 +132,7 @@ router.put("/:id", async (req, res) => {
                 em_cio = ?,
                 abortou = ?,
                 nao_emprenha = ?,
+                mastite = ?,
                 data_cobertura = ?
 
             WHERE id = ?`,
@@ -146,6 +151,7 @@ router.put("/:id", async (req, res) => {
                 em_cio ? 1 : 0,
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
+                mastite ? 1 : 0,
                 data_cobertura || null,
 
                 req.params.id,
