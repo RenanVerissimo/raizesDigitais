@@ -176,6 +176,70 @@ export default function Dashboard() {
                     </View>
                 </LinearGradient>
 
+                <View style={{ paddingHorizontal: 20, paddingTop: 16, gap: 20, marginTop: 8, marginBottom: 6 }}>
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("Animais")}>
+                            <MaterialCommunityIcons name="cow" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Animais</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("ProducaoHistorico")}>
+                            <Feather name="clock" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Histórico</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("graficos")}>
+                            <Feather name="bar-chart-2" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Gráficos</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity
+                            style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }}
+                            activeOpacity={0.7}
+                            onPress={() => navigation.navigate("compras_e_pedidos")}
+                        >
+                            <Feather name="shopping-cart" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Compras</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("financeiro")}
+                        >
+                            <Feather name="dollar-sign" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Financeiro</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("estoque")}>
+                            <Feather name="package" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Estoque</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                backgroundColor: "#fff",
+                                borderWidth: 1,
+                                borderColor: "#e5e7eb",
+                                borderRadius: 14,
+                                padding: 16,
+                                alignItems: "center",
+                                gap: 8,
+                            }}
+                            activeOpacity={0.7}
+                            onPress={() => navigation.navigate("Alertas")}
+                        >
+                            <Feather name="alert-triangle" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>
+                                Alertas
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 <View style={{ padding: 20, gap: 20 }}>
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 }}>
@@ -251,67 +315,7 @@ export default function Dashboard() {
 
 
 
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
-                            onPress={() => navigation.navigate("Animais")}>
-                            <MaterialCommunityIcons name="cow" size={24} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Animais</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
-                            onPress={() => navigation.navigate("ProducaoHistorico")}>
-                            <Feather name="clock" size={24} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Histórico</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
-                            onPress={() => navigation.navigate("graficos")}>
-                            <Feather name="bar-chart-2" size={24} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Gráficos</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                        <TouchableOpacity
-                            style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }}
-                            activeOpacity={0.7}
-                            onPress={() => navigation.navigate("compras_e_pedidos")}
-                        >
-                            <Feather name="shopping-cart" size={24} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Compras</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
-                            onPress={() => navigation.navigate("financeiro")}
-                        >
-                            <Feather name="dollar-sign" size={24} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Financeiro</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <TouchableOpacity style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8, marginBottom: insets.bottom + 20 }} activeOpacity={0.7}
-                        onPress={() => navigation.navigate("estoque")}>
-                        <Feather name="package" size={24} color="#4a90e2" />
-                        <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Controle de Estoque</Text>
-                    </TouchableOpacity>
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                        <TouchableOpacity
-                            style={{
-                                flex: 1,
-                                backgroundColor: "#fff",
-                                borderWidth: 1,
-                                borderColor: "#e5e7eb",
-                                borderRadius: 14,
-                                padding: 16,
-                                alignItems: "center",
-                                gap: 8,
-                            }}
-                            activeOpacity={0.7}
-                            onPress={() => navigation.navigate("Alertas")}
-                        >
-                            <Feather name="alert-triangle" size={24} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>
-                                Alertas
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
+                  
                 </View>
             </ScrollView>
         </View>
