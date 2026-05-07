@@ -32,24 +32,28 @@ export default function RegistrarMovimentacao() {
         comprador: "",
         temperatura: "",
         consumoProprio: "",
+        destinoSaida: "entrega" as "entrega" | "consumo_proprio",
         observacoes: "",
     });
 
     const tanqueSelecionado = tanques.find((t) => String(t.id) === formData.tanqueId);
-    const ehEntrega = formData.tipo === "saida";
+    const ehSaida = formData.tipo === "saida";
+    const ehConsumoProprio = ehSaida && formData.destinoSaida === "consumo_proprio";
+    const ehEntrega = ehSaida && formData.destinoSaida === "entrega";
 
     function handleCancelar() {
         navigation.goBack();
     }
 
     async function handleSubmit() {
-        if (!formData.tanqueId || !formData.motivo.trim()) {
+        const motivo = formData.motivo.trim() || (ehConsumoProprio ? "Consumo próprio" : "");
+        if (!formData.tanqueId || !motivo) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Preencha os campos obrigatórios.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         const vol = parseFloat(formData.volume || "0");
-        const consumoProprio = ehEntrega ? parseFloat(formData.consumoProprio || "0") : 0;
+        const consumoProprio = ehSaida ? parseFloat(formData.consumoProprio || "0") : 0;
         if (isNaN(vol) || vol < 0) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Volume inválido.", position: "top", visibilityTime: 3000 });
             return;
@@ -58,7 +62,7 @@ export default function RegistrarMovimentacao() {
             Toast.show({ type: "error", text1: "Atenção", text2: "Consumo próprio inválido.", position: "top", visibilityTime: 3000 });
             return;
         }
-        if ((formData.tipo === "entrada" && vol <= 0) || (ehEntrega && vol + consumoProprio <= 0)) {
+        if ((formData.tipo === "entrada" && vol <= 0) || (ehSaida && vol + consumoProprio <= 0)) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Informe pelo menos um volume maior que 0.", position: "top", visibilityTime: 3000 });
             return;
         }
@@ -82,10 +86,10 @@ export default function RegistrarMovimentacao() {
                 volume: vol,
                 data: dataIso,
                 hora: formData.hora,
-                motivo: formData.motivo.trim(),
-                comprador: formData.comprador.trim() || null,
+                motivo,
+                comprador: ehEntrega ? formData.comprador.trim() || null : null,
                 temperatura: ehEntrega ? temperatura : null,
-                consumoProprio: ehEntrega ? consumoProprio : 0,
+                consumoProprio: ehSaida ? consumoProprio : 0,
                 observacoes: formData.observacoes.trim() || null,
             });
 
@@ -179,7 +183,14 @@ export default function RegistrarMovimentacao() {
                                 return (
                                     <TouchableOpacity
                                         key={tipo}
-                                        onPress={() => setFormData({ ...formData, tipo, temperatura: tipo === "saida" ? formData.temperatura : "", consumoProprio: tipo === "saida" ? formData.consumoProprio : "" })}
+                                        onPress={() => setFormData({
+                                            ...formData,
+                                            tipo,
+                                            temperatura: tipo === "saida" ? formData.temperatura : "",
+                                            consumoProprio: tipo === "saida" ? formData.consumoProprio : "",
+                                            comprador: tipo === "saida" ? formData.comprador : "",
+                                            destinoSaida: tipo === "saida" ? formData.destinoSaida : "entrega",
+                                        })}
                                         activeOpacity={0.7}
                                         style={{ flex: 1, backgroundColor: ativo ? cor : "#f9fafb", borderWidth: 1, borderColor: ativo ? cor : "#e5e7eb", borderRadius: 10, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
                                     >
@@ -193,7 +204,44 @@ export default function RegistrarMovimentacao() {
                         </View>
                     </View>
 
+                    {/* Destino da saída */}
+                    {ehSaida && (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="map-pin" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Destino da saída *</Text>
+                            </View>
+                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                {[
+                                    { key: "entrega" as const, label: "Entrega/Venda", icon: "truck" as const },
+                                    { key: "consumo_proprio" as const, label: "Consumo próprio", icon: "home" as const },
+                                ].map((destino) => {
+                                    const ativo = formData.destinoSaida === destino.key;
+                                    return (
+                                        <TouchableOpacity
+                                            key={destino.key}
+                                            activeOpacity={0.75}
+                                            onPress={() => setFormData({
+                                                ...formData,
+                                                destinoSaida: destino.key,
+                                                volume: destino.key === "consumo_proprio" ? "" : formData.volume,
+                                                temperatura: destino.key === "consumo_proprio" ? "" : formData.temperatura,
+                                                comprador: destino.key === "consumo_proprio" ? "" : formData.comprador,
+                                                motivo: destino.key === "consumo_proprio" && !formData.motivo.trim() ? "Consumo próprio" : formData.motivo,
+                                            })}
+                                            style={{ flex: 1, backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                                        >
+                                            <Feather name={destino.icon} size={16} color={ativo ? "#fff" : "#6b7280"} />
+                                            <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>{destino.label}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
+
                     {/* Volume */}
+                    {!ehConsumoProprio && (
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="droplet" size={16} color="#4a90e2" />
@@ -216,14 +264,15 @@ export default function RegistrarMovimentacao() {
                             </Text>
                         )}
                     </View>
+                    )}
 
                     {/* Consumo próprio */}
-                    {ehEntrega && (
+                    {ehSaida && (
                         <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                 <Feather name="home" size={16} color="#4a90e2" />
                                 <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                    Consumo próprio (L) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                    Consumo próprio (L) {ehEntrega ? <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text> : null}
                                 </Text>
                             </View>
                             <TextInput
@@ -234,6 +283,11 @@ export default function RegistrarMovimentacao() {
                                 keyboardType="decimal-pad"
                                 style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                             />
+                            {ehConsumoProprio && tanqueSelecionado && formData.consumoProprio && !isNaN(parseFloat(formData.consumoProprio || "0")) && (
+                                <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                                    Após movimentação: {(tanqueSelecionado.volumeAtual - parseFloat(formData.consumoProprio || "0")).toFixed(1)} L
+                                </Text>
+                            )}
                         </View>
                     )}
 
@@ -288,19 +342,21 @@ export default function RegistrarMovimentacao() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="file-text" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Motivo *</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Motivo {ehConsumoProprio ? <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text> : null}
+                            </Text>
                         </View>
                         <TextInput
                             value={formData.motivo}
                             onChangeText={(v) => setFormData({ ...formData, motivo: v })}
-                            placeholder="Ex: Coleta da manhã, Entrega, Transferência"
+                            placeholder={ehConsumoProprio ? "Consumo próprio" : "Ex: Coleta da manhã, Entrega, Transferência"}
                             placeholderTextColor="#9ca3af"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
                     </View>
 
                     {/* Comprador (só em saída) */}
-                    {formData.tipo === "saida" && (
+                    {ehEntrega && (
                         <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                 <Feather name="user" size={16} color="#4a90e2" />
