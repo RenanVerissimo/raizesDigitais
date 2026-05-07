@@ -33,6 +33,7 @@ export interface Movimentacao {
     hora: string;
     motivo: string;
     comprador?: string;
+    consumoProprio?: number;
     observacoes?: string;
 }
 
@@ -322,13 +323,23 @@ export default function Estoque() {
                                             </View>
                                             <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{m.motivo}</Text>
                                             {m.comprador && <Text style={{ fontSize: 10, color: "#9ca3af" }}>Comprador: {m.comprador}</Text>}
+                                            {Number(m.consumoProprio || 0) > 0 && (
+                                                <Text style={{ fontSize: 10, color: "#9ca3af" }}>
+                                                    Consumo próprio: {Number(m.consumoProprio).toFixed(1)} L
+                                                </Text>
+                                            )}
                                             <Text style={{ fontSize: 10, color: "#9ca3af" }}>
                                                 {new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR")} às {m.hora}
                                             </Text>
                                         </View>
-                                        <Text style={{ fontSize: 13, fontWeight: "700", color: m.tipo === "entrada" ? "#16a34a" : "#dc2626" }}>
-                                            {m.tipo === "entrada" ? "+" : "-"}{m.volume} L
-                                        </Text>
+                                        <View style={{ alignItems: "flex-end" }}>
+                                            <Text style={{ fontSize: 13, fontWeight: "700", color: m.tipo === "entrada" ? "#16a34a" : "#dc2626" }}>
+                                                {m.tipo === "entrada" ? "+" : "-"}{m.tipo === "entrada" ? m.volume : m.volume + Number(m.consumoProprio || 0)} L
+                                            </Text>
+                                            {Number(m.consumoProprio || 0) > 0 && (
+                                                <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>Total saída</Text>
+                                            )}
+                                        </View>
                                     </View>
                                 ))}
                             </View>

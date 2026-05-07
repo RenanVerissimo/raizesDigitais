@@ -391,6 +391,7 @@ export async function listarMovimentacoes() {
         ...m,
         volume: Number(m.volume),
         temperatura: m.temperatura === null || m.temperatura === undefined ? null : Number(m.temperatura),
+        consumoProprio: m.consumoProprio === null || m.consumoProprio === undefined ? 0 : Number(m.consumoProprio),
     }));
 }
 
@@ -403,6 +404,7 @@ export async function criarMovimentacao(dados: {
     motivo: string;
     comprador?: string | null;
     temperatura?: number | null;
+    consumoProprio?: number;
     observacoes?: string | null;
 }) {
     const res = await fetch(`${BASE_URL}/estoque/movimentacoes`, {

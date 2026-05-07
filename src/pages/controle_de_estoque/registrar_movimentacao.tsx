@@ -31,6 +31,7 @@ export default function RegistrarMovimentacao() {
         motivo: "",
         comprador: "",
         temperatura: "",
+        consumoProprio: "",
         observacoes: "",
     });
 
@@ -42,14 +43,23 @@ export default function RegistrarMovimentacao() {
     }
 
     async function handleSubmit() {
-        if (!formData.tanqueId || !formData.volume || !formData.motivo.trim()) {
+        if (!formData.tanqueId || !formData.motivo.trim()) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Preencha os campos obrigatórios.", position: "top", visibilityTime: 3000 });
             return;
         }
 
-        const vol = parseFloat(formData.volume);
-        if (isNaN(vol) || vol <= 0) {
+        const vol = parseFloat(formData.volume || "0");
+        const consumoProprio = ehEntrega ? parseFloat(formData.consumoProprio || "0") : 0;
+        if (isNaN(vol) || vol < 0) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Volume inválido.", position: "top", visibilityTime: 3000 });
+            return;
+        }
+        if (isNaN(consumoProprio) || consumoProprio < 0) {
+            Toast.show({ type: "error", text1: "Atenção", text2: "Consumo próprio inválido.", position: "top", visibilityTime: 3000 });
+            return;
+        }
+        if ((formData.tipo === "entrada" && vol <= 0) || (ehEntrega && vol + consumoProprio <= 0)) {
+            Toast.show({ type: "error", text1: "Atenção", text2: "Informe pelo menos um volume maior que 0.", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -75,13 +85,14 @@ export default function RegistrarMovimentacao() {
                 motivo: formData.motivo.trim(),
                 comprador: formData.comprador.trim() || null,
                 temperatura: ehEntrega ? temperatura : null,
+                consumoProprio: ehEntrega ? consumoProprio : 0,
                 observacoes: formData.observacoes.trim() || null,
             });
 
             Toast.show({
                 type: "success",
                 text1: "Movimentação registrada!",
-                text2: `${formData.tipo === "entrada" ? "Entrada" : "Saída"} de ${vol}L registrada com sucesso.`,
+                text2: `${formData.tipo === "entrada" ? "Entrada" : "Saída"} de ${formData.tipo === "entrada" ? vol : vol + consumoProprio}L registrada com sucesso.`,
                 position: "top",
                 visibilityTime: 3000,
             });
@@ -168,7 +179,7 @@ export default function RegistrarMovimentacao() {
                                 return (
                                     <TouchableOpacity
                                         key={tipo}
-                                        onPress={() => setFormData({ ...formData, tipo, temperatura: tipo === "saida" ? formData.temperatura : "" })}
+                                        onPress={() => setFormData({ ...formData, tipo, temperatura: tipo === "saida" ? formData.temperatura : "", consumoProprio: tipo === "saida" ? formData.consumoProprio : "" })}
                                         activeOpacity={0.7}
                                         style={{ flex: 1, backgroundColor: ativo ? cor : "#f9fafb", borderWidth: 1, borderColor: ativo ? cor : "#e5e7eb", borderRadius: 10, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
                                     >
@@ -196,15 +207,35 @@ export default function RegistrarMovimentacao() {
                             keyboardType="decimal-pad"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
-                        {tanqueSelecionado && formData.volume && !isNaN(parseFloat(formData.volume)) && (
+                        {tanqueSelecionado && (formData.volume || formData.consumoProprio) && !isNaN(parseFloat(formData.volume || "0")) && !isNaN(parseFloat(formData.consumoProprio || "0")) && (
                             <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
                                 Após movimentação: {(formData.tipo === "entrada"
-                                    ? tanqueSelecionado.volumeAtual + parseFloat(formData.volume)
-                                    : tanqueSelecionado.volumeAtual - parseFloat(formData.volume)
+                                    ? tanqueSelecionado.volumeAtual + parseFloat(formData.volume || "0")
+                                    : tanqueSelecionado.volumeAtual - parseFloat(formData.volume || "0") - parseFloat(formData.consumoProprio || "0")
                                 ).toFixed(1)} L
                             </Text>
                         )}
                     </View>
+
+                    {/* Consumo próprio */}
+                    {ehEntrega && (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="home" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                    Consumo próprio (L) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                </Text>
+                            </View>
+                            <TextInput
+                                value={formData.consumoProprio}
+                                onChangeText={(v) => setFormData({ ...formData, consumoProprio: v })}
+                                placeholder="0"
+                                placeholderTextColor="#9ca3af"
+                                keyboardType="decimal-pad"
+                                style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            />
+                        </View>
+                    )}
 
                     {/* Data */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
