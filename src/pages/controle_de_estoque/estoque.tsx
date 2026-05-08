@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -33,6 +33,7 @@ export interface Movimentacao {
     hora: string;
     motivo: string;
     comprador?: string;
+    temperatura?: number | null;
     consumoProprio?: number;
     observacoes?: string;
 }
@@ -133,12 +134,21 @@ export default function Estoque() {
                         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
-                        <View>
+                        <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Estoque de Leite</Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
                                 {tanques.length} {tanques.length === 1 ? "tanque" : "tanques"}
                             </Text>
                         </View>
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() => navigation.navigate("estoque_racao")}
+                            style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Abrir estoque de ração"
+                        >
+                            <MaterialCommunityIcons name="swap-vertical" size={22} color="#fff" />
+                        </TouchableOpacity>
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
@@ -300,7 +310,17 @@ export default function Estoque() {
                     </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 12 }}>Movimentações Recentes</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Movimentações Recentes</Text>
+                            <TouchableOpacity
+                                activeOpacity={0.75}
+                                onPress={() => navigation.navigate("todas_movimentacoes")}
+                                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5 }}
+                            >
+                                <Text style={{ fontSize: 12, fontWeight: "700", color: "#4a90e2" }}>Ver todas</Text>
+                                <Feather name="chevron-right" size={15} color="#4a90e2" />
+                            </TouchableOpacity>
+                        </View>
                         {movimentacoes.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 16 }}>
                                 Nenhuma movimentação registrada
@@ -324,9 +344,15 @@ export default function Estoque() {
                                             <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{m.motivo}</Text>
                                             {m.comprador && <Text style={{ fontSize: 10, color: "#9ca3af" }}>Comprador: {m.comprador}</Text>}
                                             {Number(m.consumoProprio || 0) > 0 && (
-                                                <Text style={{ fontSize: 10, color: "#9ca3af" }}>
-                                                    Consumo próprio: {Number(m.consumoProprio).toFixed(1)} L
-                                                </Text>
+                                                <View style={{ alignSelf: "flex-start", marginTop: 6, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, backgroundColor: "#fff7ed", borderWidth: 1, borderColor: "#fed7aa", flexDirection: "row", alignItems: "center", gap: 5 }}>
+                                                    <Feather name="home" size={12} color="#ea580c" />
+                                                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#9a3412" }}>
+                                                        Consumo próprio
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, fontWeight: "700", color: "#ea580c" }}>
+                                                        {Number(m.consumoProprio).toFixed(1)} L
+                                                    </Text>
+                                                </View>
                                             )}
                                             <Text style={{ fontSize: 10, color: "#9ca3af" }}>
                                                 {new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR")} às {m.hora}

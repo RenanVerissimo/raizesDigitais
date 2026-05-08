@@ -17,7 +17,10 @@ import CadastrarCompras from "./src/pages/compras_e_pedidos/cadastrar_compras";
 import ComprasEPedidos from "./src/pages/compras_e_pedidos/compras_e_pedidos";
 import CadastrarTanque from "./src/pages/controle_de_estoque/cadastar_tanque";
 import Estoque from "./src/pages/controle_de_estoque/estoque";
+import EstoqueRacao from "./src/pages/controle_de_estoque/estoque_racao";
 import RegistrarMovimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
+import TodasMovimentacoes from "./src/pages/controle_de_estoque/todas_movimentacoes";
+import EditarMovimentacao from "./src/pages/controle_de_estoque/editar_movimentacao";
 import Financeiro from "./src/pages/financeiro/financeiro";
 import CadastrarReceita from "./src/pages/financeiro/cadastrar_receita";
 import VerTodasReceitas from "./src/pages/financeiro/ver_todas_receitas";
@@ -47,7 +50,10 @@ export default function App() {
                     <Stack.Screen name="cadastrar_compras" component={CadastrarCompras} />
                     <Stack.Screen name="cadastar_tanque" component={CadastrarTanque} />
                     <Stack.Screen name="estoque" component={Estoque} />
+                    <Stack.Screen name="estoque_racao" component={EstoqueRacao} />
                     <Stack.Screen name="registrar_movimentacao" component={RegistrarMovimentacao} />
+                    <Stack.Screen name="todas_movimentacoes" component={TodasMovimentacoes} />
+                    <Stack.Screen name="editar_movimentacao" component={EditarMovimentacao} />
                     <Stack.Screen name="financeiro" component={Financeiro} />
                     <Stack.Screen name="cadastrar_receita" component={CadastrarReceita} />
                     <Stack.Screen name="ver_todas_receitas" component={VerTodasReceitas} />

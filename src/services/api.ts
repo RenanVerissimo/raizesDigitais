@@ -427,9 +427,36 @@ export async function criarMovimentacao(dados: {
     return res.json();
 }
 
+export async function atualizarMovimentacao(id: number, dados: {
+    tanqueId: number;
+    tipo: "entrada" | "saida";
+    volume: number;
+    data: string;
+    hora: string;
+    motivo: string;
+    comprador?: string | null;
+    temperatura?: number | null;
+    consumoProprio?: number;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/estoque/movimentacoes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao atualizar movimentação");
+    }
+    return res.json();
+}
+
 export async function excluirMovimentacao(id: number) {
     const res = await fetch(`${BASE_URL}/estoque/movimentacoes/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Erro ao excluir movimentação");
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao excluir movimentação");
+    }
     return res.json();
 }
 
