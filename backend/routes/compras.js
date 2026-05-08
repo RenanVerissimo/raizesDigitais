@@ -2,9 +2,34 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../database/conecction");
 
+async function ensureComprasSchema() {
+    const [columns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'compras'
+    `);
+    const existingColumns = new Set(columns.map((column) => column.COLUMN_NAME));
+
+    if (!existingColumns.has("finalidade_tratamento")) {
+        await pool.query(`
+            ALTER TABLE compras
+            ADD COLUMN finalidade_tratamento VARCHAR(40) NULL AFTER status
+        `);
+    }
+
+    if (!existingColumns.has("finalidade_descricao")) {
+        await pool.query(`
+            ALTER TABLE compras
+            ADD COLUMN finalidade_descricao VARCHAR(120) NULL AFTER finalidade_tratamento
+        `);
+    }
+}
+
 // LISTAR TODAS
 router.get("/", async (req, res) => {
     try {
+        await ensureComprasSchema();
         const [rows] = await pool.query(`
             SELECT 
                 id,
@@ -16,6 +41,8 @@ router.get("/", async (req, res) => {
                 fornecedor,
                 DATE_FORMAT(data, '%Y-%m-%d') AS data,
                 status,
+                finalidade_tratamento AS finalidadeTratamento,
+                finalidade_descricao AS finalidadeDescricao,
                 observacoes
             FROM compras
             ORDER BY data DESC, id DESC
@@ -30,9 +57,10 @@ router.get("/", async (req, res) => {
 // CRIAR
 router.post("/", async (req, res) => {
     try {
+        await ensureComprasSchema();
         const {
             categoria, item, quantidade, precoUnitario,
-            fornecedor, data, status, observacoes
+            fornecedor, data, status, finalidadeTratamento, finalidadeDescricao, observacoes
         } = req.body;
 
         if (!categoria || !item || !quantidade || !precoUnitario || !fornecedor || !data) {
@@ -43,8 +71,8 @@ router.post("/", async (req, res) => {
 
         const [result] = await pool.query(
             `INSERT INTO compras
-             (categoria, item, quantidade, preco_unitario, preco_total, fornecedor, data, status, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (categoria, item, quantidade, preco_unitario, preco_total, fornecedor, data, status, finalidade_tratamento, finalidade_descricao, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 categoria,
                 item,
@@ -54,6 +82,8 @@ router.post("/", async (req, res) => {
                 fornecedor,
                 data,
                 status || "pendente",
+                categoria === "medicamento" ? finalidadeTratamento || "uso_geral" : null,
+                categoria === "medicamento" && finalidadeTratamento === "outro_tratamento" ? finalidadeDescricao || null : null,
                 observacoes || null,
             ]
         );
@@ -68,6 +98,7 @@ router.post("/", async (req, res) => {
 // ATUALIZAR STATUS (bônus — útil pro botão de marcar como concluído)
 router.patch("/:id/status", async (req, res) => {
     try {
+        await ensureComprasSchema();
         const { status } = req.body;
         const [result] = await pool.query(
             "UPDATE compras SET status = ? WHERE id = ?",
@@ -95,6 +126,7 @@ router.delete("/:id", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
     try {
+        await ensureComprasSchema();
         const { id } = req.params;
         const {
             categoria,
@@ -104,6 +136,8 @@ router.put("/:id", async (req, res) => {
             fornecedor,
             data,
             status,
+            finalidadeTratamento,
+            finalidadeDescricao,
             observacoes
         } = req.body;
 
@@ -119,6 +153,8 @@ router.put("/:id", async (req, res) => {
                 fornecedor = ?, 
                 data = ?, 
                 status = ?, 
+                finalidade_tratamento = ?,
+                finalidade_descricao = ?,
                 observacoes = ?
              WHERE id = ?`,
             [
@@ -130,6 +166,8 @@ router.put("/:id", async (req, res) => {
                 fornecedor,
                 data,
                 status,
+                categoria === "medicamento" ? finalidadeTratamento || "uso_geral" : null,
+                categoria === "medicamento" && finalidadeTratamento === "outro_tratamento" ? finalidadeDescricao || null : null,
                 observacoes || null,
                 id
             ]

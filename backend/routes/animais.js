@@ -2,9 +2,33 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../database/conecction");
 
+async function ensureAnimaisSchema() {
+    const requiredColumns = [
+        { name: "doente", sql: "ADD COLUMN doente TINYINT(1) NOT NULL DEFAULT 0 AFTER mastite" },
+        { name: "doenca", sql: "ADD COLUMN doenca VARCHAR(40) NULL AFTER doente" },
+        { name: "descricao_doenca", sql: "ADD COLUMN descricao_doenca VARCHAR(255) NULL AFTER doenca" },
+    ];
+
+    const [columns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'animais'
+    `);
+
+    const existingColumns = new Set(columns.map((column) => column.COLUMN_NAME));
+
+    for (const column of requiredColumns) {
+        if (!existingColumns.has(column.name)) {
+            await pool.query(`ALTER TABLE animais ${column.sql}`);
+        }
+    }
+}
+
 // LISTAR TODOS
 router.get("/", async (req, res) => {
     try {
+        await ensureAnimaisSchema();
         const [rows] = await pool.query("SELECT * FROM animais ORDER BY criado_em DESC");
         res.json(rows);
     } catch (err) {
@@ -15,6 +39,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
     try {
+        await ensureAnimaisSchema();
         const {
             nome,
             identificador,
@@ -31,6 +56,9 @@ router.post("/", async (req, res) => {
             abortou,
             nao_emprenha,
             mastite,
+            doente,
+            doenca,
+            descricao_doenca,
             data_cobertura,
             data_inseminacao,
             data_confirmacao_prenhez
@@ -61,11 +89,14 @@ router.post("/", async (req, res) => {
                 abortou,
                 nao_emprenha,
                 mastite,
+                doente,
+                doenca,
+                descricao_doenca,
                 data_cobertura,
                 data_inseminacao,
                 data_confirmacao_prenhez
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 nome,
                 identificador,
@@ -82,6 +113,9 @@ router.post("/", async (req, res) => {
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
                 mastite ? 1 : 0,
+                doente ? 1 : 0,
+                doente ? doenca || null : null,
+                doente && doenca === "outra" ? descricao_doenca || null : null,
 
                 data_cobertura || null,
                 data_inseminacao || null,
@@ -99,6 +133,7 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
     try {
+        await ensureAnimaisSchema();
         const {
             nome,
             identificador,
@@ -115,6 +150,9 @@ router.put("/:id", async (req, res) => {
             abortou,
             nao_emprenha,
             mastite,
+            doente,
+            doenca,
+            descricao_doenca,
             data_cobertura,
             data_inseminacao,
             data_confirmacao_prenhez
@@ -141,6 +179,9 @@ router.put("/:id", async (req, res) => {
                 abortou = ?,
                 nao_emprenha = ?,
                 mastite = ?,
+                doente = ?,
+                doenca = ?,
+                descricao_doenca = ?,
                 data_cobertura = ?,
                 data_inseminacao = ?,
                 data_confirmacao_prenhez = ?
@@ -162,6 +203,9 @@ router.put("/:id", async (req, res) => {
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
                 mastite ? 1 : 0,
+                doente ? 1 : 0,
+                doente ? doenca || null : null,
+                doente && doenca === "outra" ? descricao_doenca || null : null,
                 data_cobertura || null,
                 data_inseminacao || null,
                 data_confirmacao_prenhez || null,

@@ -41,6 +41,11 @@ function Secao({ titulo, dados, cor, icone }: any) {
                         {a.mastite === 1 && (
                             <Text style={{ fontSize: 12, color: "#dc2626", fontWeight: "600", marginTop: 4 }}>Mastite registrada</Text>
                         )}
+                        {Number(a.doente) === 1 && a.doenca === "outra" && (
+                            <Text style={{ fontSize: 12, color: "#1d4ed8", fontWeight: "600", marginTop: 4 }}>
+                                Doença: {a.descricao_doenca || "Outra"}
+                            </Text>
+                        )}
                     </View>
                     <Feather name="chevron-right" size={18} color="#d1d5db" />
                 </View>
@@ -78,7 +83,8 @@ export default function Alertas() {
     // 3. Abortos: No seu JSON é o campo "abortou": 1
     const abortos = animais.filter(a => a.abortou === 1);
 
-    const mastite = animais.filter(a => a.mastite === 1);
+    const mastite = animais.filter(a => Number(a.mastite) === 1);
+    const outrasDoencas = animais.filter(a => Number(a.doente) === 1 && a.doenca === "outra");
 
     // 4. Datas (Parto e Secagem) - Só funcionam se houver "data_cobertura"
     // 3. Próximos Partos (Ajustado para evitar o erro de 'null')
@@ -151,7 +157,9 @@ export default function Alertas() {
 
                 <Secao titulo="Saúde: Mastite" dados={mastite} cor="#dc2626" icone="medical-bag" />
 
-                {emCio.length === 0 && vacasPrenhas.length === 0 && abortos.length === 0 && mastite.length === 0 && (
+                <Secao titulo="Saúde: Outras Doenças" dados={outrasDoencas} cor="#1d4ed8" icone="heart-pulse" />
+
+                {emCio.length === 0 && vacasPrenhas.length === 0 && abortos.length === 0 && mastite.length === 0 && outrasDoencas.length === 0 && (
                     <View style={{ alignItems: "center", marginTop: 60 }}>
                         <MaterialCommunityIcons name="check-decagram" size={60} color="#d1d5db" />
                         <Text style={{ color: "#9ca3af", fontSize: 16, marginTop: 10 }}>Nenhum alerta no momento</Text>

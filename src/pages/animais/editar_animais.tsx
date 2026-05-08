@@ -13,6 +13,8 @@ import { atualizarAnimal } from "../../services/api";
 import Toast from "react-native-toast-message";
 import { toBr, toIso } from "../../utils/formatters";
 
+type TipoDoenca = "mastite" | "outra";
+
 export default function EditarAnimais() {
 
 
@@ -36,7 +38,9 @@ export default function EditarAnimais() {
         emCio: Number(animal?.em_cio) === 1,
         abortou: Number(animal?.abortou) === 1,
         naoEmprenha: Number(animal?.nao_emprenha) === 1,
-        mastite: Number(animal?.mastite) === 1,
+        doente: Number(animal?.doente) === 1 || Number(animal?.mastite) === 1 || !!animal?.doenca,
+        tipoDoenca: ((animal?.doenca as TipoDoenca | null) || (Number(animal?.mastite) === 1 ? "mastite" : "mastite")) as TipoDoenca,
+        descricaoDoenca: animal?.descricao_doenca ?? "",
         dataCobertura: toBr(animal?.data_cobertura),
         dataInseminacao: toBr(animal?.data_inseminacao || animal?.data_cobertura),
         dataConfirmacaoPrenhez: toBr(animal?.data_confirmacao_prenhez),
@@ -47,10 +51,6 @@ export default function EditarAnimais() {
         { key: "emCio", label: "Em Cio", cor: "#f59e0b", icon: "alert-circle" },
         { key: "abortou", label: "Abortou", cor: "#ef4444", icon: "x-circle" },
         { key: "naoEmprenha", label: "Não Emprenha", cor: "#6b7280", icon: "slash" },
-    ] as const;
-
-    const statusSaude = [
-        { key: "mastite", label: "Mastite", cor: "#dc2626", icon: "alert-triangle" },
     ] as const;
 
     useEffect(() => {
@@ -70,7 +70,9 @@ export default function EditarAnimais() {
                 emCio: Number(animal.em_cio) === 1,
                 abortou: Number(animal.abortou) === 1,
                 naoEmprenha: Number(animal.nao_emprenha) === 1,
-                mastite: Number(animal.mastite) === 1,
+                doente: Number(animal.doente) === 1 || Number(animal.mastite) === 1 || !!animal.doenca,
+                tipoDoenca: ((animal.doenca as TipoDoenca | null) || (Number(animal.mastite) === 1 ? "mastite" : "mastite")) as TipoDoenca,
+                descricaoDoenca: animal.descricao_doenca ?? "",
                 dataCobertura: toBr(animal.data_cobertura),
                 dataInseminacao: toBr(animal.data_inseminacao || animal.data_cobertura),
                 dataConfirmacaoPrenhez: toBr(animal.data_confirmacao_prenhez),
@@ -112,6 +114,11 @@ export default function EditarAnimais() {
             }
         }
 
+        if (formData.doente && formData.tipoDoenca === "outra" && !formData.descricaoDoenca.trim()) {
+            Alert.alert("AtenÃ§Ã£o", "Informe qual doenÃ§a o animal possui.");
+            return;
+        }
+
         try {
             await atualizarAnimal(animal.id, {
                 nome: formData.nome.trim(),
@@ -128,7 +135,10 @@ export default function EditarAnimais() {
                 em_cio: formData.emCio,
                 abortou: formData.abortou,
                 nao_emprenha: formData.naoEmprenha,
-                mastite: formData.mastite,
+                mastite: formData.doente && formData.tipoDoenca === "mastite",
+                doente: formData.doente,
+                doenca: formData.doente ? formData.tipoDoenca : null,
+                descricao_doenca: formData.doente && formData.tipoDoenca === "outra" ? formData.descricaoDoenca.trim() : null,
                 data_cobertura: toIso(formData.dataInseminacao || formData.dataCobertura),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
@@ -373,31 +383,68 @@ export default function EditarAnimais() {
                             <Text style={labelStyle}>Saúde</Text>
                         </View>
 
-                        <View style={{ gap: 10 }}>
-                            {statusSaude.map((item) => {
-                                const ativo = formData[item.key] as boolean;
+                        <View style={{ gap: 12 }}>
+                            <TouchableOpacity
+                                onPress={() => setFormData({ ...formData, doente: !formData.doente })}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    padding: 12,
+                                    backgroundColor: formData.doente ? "#fee2e2" : "#f9fafb",
+                                    borderWidth: 1,
+                                    borderColor: formData.doente ? "#dc2626" : "#e5e7eb",
+                                    borderRadius: 10,
+                                }}
+                            >
+                                <Text style={{ color: formData.doente ? "#dc2626" : "#6b7280", fontWeight: "500" }}>
+                                    Está doente?
+                                </Text>
+                                {formData.doente ? <Feather name="check" size={16} color="#dc2626" /> : null}
+                            </TouchableOpacity>
 
-                                return (
-                                    <TouchableOpacity
-                                        key={item.key}
-                                        onPress={() => setFormData({ ...formData, [item.key]: !ativo })}
-                                        style={{
-                                            flexDirection: "row",
-                                            justifyContent: "space-between",
-                                            padding: 12,
-                                            backgroundColor: ativo ? `${item.cor}15` : "#f9fafb",
-                                            borderWidth: 1,
-                                            borderColor: ativo ? item.cor : "#e5e7eb",
-                                            borderRadius: 10,
-                                        }}
-                                    >
-                                        <Text style={{ color: ativo ? item.cor : "#6b7280" }}>
-                                            {item.label}
-                                        </Text>
-                                        {ativo ? <Feather name="check" size={16} color={item.cor} /> : null}
-                                    </TouchableOpacity>
-                                );
-                            })}
+                            {formData.doente && (
+                                <>
+                                    <View style={{ flexDirection: "row", gap: 8 }}>
+                                        {([
+                                            { key: "mastite" as TipoDoenca, label: "Mastite", cor: "#dc2626" },
+                                            { key: "outra" as TipoDoenca, label: "Outra", cor: "#f59e0b" },
+                                        ]).map((item) => {
+                                            const ativo = formData.tipoDoenca === item.key;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={item.key}
+                                                    activeOpacity={0.75}
+                                                    onPress={() => setFormData({ ...formData, tipoDoenca: item.key })}
+                                                    style={{
+                                                        flex: 1,
+                                                        backgroundColor: ativo ? item.cor : "#f9fafb",
+                                                        borderWidth: 1,
+                                                        borderColor: ativo ? item.cor : "#e5e7eb",
+                                                        borderRadius: 10,
+                                                        paddingVertical: 12,
+                                                        alignItems: "center",
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>
+                                                        {item.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+
+                                    {formData.tipoDoenca === "outra" && (
+                                        <TextInput
+                                            value={formData.descricaoDoenca}
+                                            onChangeText={(v) => setFormData({ ...formData, descricaoDoenca: v })}
+                                            placeholder="Qual doença?"
+                                            placeholderTextColor="#9ca3af"
+                                            style={inputStyle}
+                                        />
+                                    )}
+                                </>
+                            )}
                         </View>
                     </View>
 

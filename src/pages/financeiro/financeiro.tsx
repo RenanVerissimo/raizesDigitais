@@ -4,8 +4,8 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { excluirReceita, listarAnimais, listarCompras, listarReceitas } from "../../services/api";
-import { Animal, Compra } from "../../interfaces/interfaces";
+import { excluirReceita, listarCompras, listarReceitas } from "../../services/api";
+import { Compra } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 
 
@@ -36,6 +36,32 @@ const CATEGORIA_LABEL: Record<DespesaResumo["categoria"], { label: string; cor: 
 const NOMES_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const PERIODOS_GRAFICO = ["7D", "15D", "30D", "6M", "1A"] as const;
 type PeriodoGrafico = typeof PERIODOS_GRAFICO[number];
+type GrupoMedicamento = { chave: string; label: string; cor: string };
+
+const GRUPOS_MEDICAMENTO_PRODUTO: Record<string, GrupoMedicamento> = {
+    vacina: { chave: "vacina", label: "Vacina", cor: "#2563eb" },
+    antibiotico: { chave: "antibiotico", label: "Antibiótico", cor: "#7c3aed" },
+    remedio: { chave: "remedio", label: "Remédio", cor: "#dc2626" },
+    outro: { chave: "outro", label: "Outro", cor: "#4b5563" },
+};
+
+function normalizarTexto(texto: string) {
+    return texto
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+function classificarMedicamento(compra: Compra): GrupoMedicamento {
+    const item = normalizarTexto(compra.item);
+
+    if (item === "vacina" || item.includes("vacina") || item.includes("vacin")) return GRUPOS_MEDICAMENTO_PRODUTO.vacina;
+    if (item === "antibiotico" || item.includes("antibiotico")) return GRUPOS_MEDICAMENTO_PRODUTO.antibiotico;
+    if (item === "remedio" || item.includes("remedio")) return GRUPOS_MEDICAMENTO_PRODUTO.remedio;
+
+    return GRUPOS_MEDICAMENTO_PRODUTO.outro;
+}
 
 export default function Financeiro() {
     const insets = useSafeAreaInsets();
@@ -44,8 +70,7 @@ export default function Financeiro() {
     const [receitas, setReceitas] = useState<Receita[]>([]);
     const [despesas, setDespesas] = useState<DespesaResumo[]>([]);
     const [despesasPendentes, setDespesasPendentes] = useState<Compra[]>([]);
-    const [comprasMastite, setComprasMastite] = useState<Compra[]>([]);
-    const [animaisMastite, setAnimaisMastite] = useState<Animal[]>([]);
+    const [comprasConcluidas, setComprasConcluidas] = useState<Compra[]>([]);
     const [periodoReceitaDespesa, setPeriodoReceitaDespesa] = useState<PeriodoGrafico>("6M");
     const [periodoFluxoCaixa, setPeriodoFluxoCaixa] = useState<PeriodoGrafico>("6M");
     const [periodoCategorias, setPeriodoCategorias] = useState<PeriodoGrafico>("6M");
@@ -55,20 +80,16 @@ export default function Financeiro() {
     async function carregarDadosFinanceiros() {
         try {
             // listarCompras() busca os dados da tabela/página compras para separar despesas concluídas e pendentes.
-            const [receitasDados, comprasDados, animaisDados] = await Promise.all([
+            const [receitasDados, comprasDados] = await Promise.all([
                 listarReceitas(),
                 listarCompras(),
-                listarAnimais(),
             ]);
 
             const comprasConcluidas = comprasDados.filter((compra) => compra.status === "concluido");
             const comprasPendentes = comprasDados.filter((compra) => compra.status === "pendente");
-            const comprasTratamentoMastite = comprasConcluidas.filter((compra) => {
-                const texto = `${compra.item} ${compra.observacoes || ""}`.toLowerCase();
-                return compra.categoria === "medicamento" && texto.includes("mastite");
-            });
 
             setReceitas(receitasDados);
+            setComprasConcluidas(comprasConcluidas);
             setDespesas(
                 comprasConcluidas.map((compra) => ({
                     categoria: compra.categoria,
@@ -77,8 +98,6 @@ export default function Financeiro() {
                 }))
             );
             setDespesasPendentes(comprasPendentes);
-            setComprasMastite(comprasTratamentoMastite);
-            setAnimaisMastite(animaisDados.filter((animal) => Number(animal.mastite) === 1));
         } catch (error: any) {
             Alert.alert("Erro", error.message || "Não foi possível carregar os dados financeiros.");
         }
@@ -139,7 +158,6 @@ export default function Financeiro() {
     // ===== Cálculos =====
     const totalReceitas = receitas.reduce((s, r) => s + r.valorTotal, 0);
     const totalDespesas = despesas.reduce((s, d) => s + d.valor, 0);
-    const totalCustoMastite = comprasMastite.reduce((s, compra) => s + compra.precoTotal, 0);
     const saldo = totalReceitas - totalDespesas;
 
     const hoje = new Date();
@@ -312,6 +330,31 @@ export default function Financeiro() {
         }))
         .sort((a, b) => b.valor - a.valor);
 
+    const comprasMedicamentos = comprasConcluidas.filter((compra) => compra.categoria === "medicamento");
+    const totalMedicamentos = comprasMedicamentos.reduce((s, compra) => s + compra.precoTotal, 0);
+    const dadosMedicamentosPorProduto = comprasMedicamentos.reduce((acc, compra) => {
+        const grupo = classificarMedicamento(compra);
+        acc[grupo.chave].valor += compra.precoTotal;
+        acc[grupo.chave].quantidade += 1;
+        return acc;
+    }, {
+        vacina: { ...GRUPOS_MEDICAMENTO_PRODUTO.vacina, valor: 0, quantidade: 0 },
+        antibiotico: { ...GRUPOS_MEDICAMENTO_PRODUTO.antibiotico, valor: 0, quantidade: 0 },
+        remedio: { ...GRUPOS_MEDICAMENTO_PRODUTO.remedio, valor: 0, quantidade: 0 },
+        outro: { ...GRUPOS_MEDICAMENTO_PRODUTO.outro, valor: 0, quantidade: 0 },
+    } as Record<string, GrupoMedicamento & { valor: number; quantidade: number }>);
+
+    const dadosGraficoMedicamentos = ["vacina", "antibiotico", "remedio", "outro"]
+        .map((chave) => {
+            const grupo = dadosMedicamentosPorProduto[chave];
+            return {
+                ...grupo,
+                percentual: totalMedicamentos > 0 ? (grupo.valor / totalMedicamentos) * 100 : 0,
+            };
+        });
+
+    const valorMaximoMedicamentos = Math.max(...dadosGraficoMedicamentos.map((grupo) => grupo.valor), 1);
+
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
             <StatusBar barStyle="light-content" />
@@ -384,26 +427,6 @@ export default function Financeiro() {
                                 R$ {totalDespesas.toFixed(2)}
                             </Text>
                         </View>
-                    </View>
-
-                    {/* Custo com Mastite */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#fee2e2" }}>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <Feather name="heart" size={16} color="#dc2626" />
-                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Custo com Mastite</Text>
-                            </View>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#dc2626" }}>
-                                {animaisMastite.length} {animaisMastite.length === 1 ? "caso ativo" : "casos ativos"}
-                            </Text>
-                        </View>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", padding: 12, backgroundColor: "#fef2f2", borderRadius: 10 }}>
-                            <Text style={{ fontSize: 13, color: "#6b7280" }}>Medicamentos vinculados</Text>
-                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#dc2626" }}>R$ {totalCustoMastite.toFixed(2)}</Text>
-                        </View>
-                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>
-                            Considera compras concluídas em Medicamentos com "mastite" no item ou nas observações.
-                        </Text>
                     </View>
 
                     {/* Mês Atual */}
@@ -590,7 +613,7 @@ export default function Financeiro() {
                     )}
 
                     {/* Receitas Recentes */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9", marginBottom: insets.bottom + 20 }}>
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
                                 Receitas Recentes
@@ -662,6 +685,50 @@ export default function Financeiro() {
                                 ))}
                             </View>
                         )}
+                    </View>
+
+                    {/* Gastos com Medicamentos */}
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#e5e7eb", marginBottom: insets.bottom + 20 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Feather name="plus-circle" size={16} color="#ef4444" />
+                                <View>
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Gastos com Medicamentos</Text>
+                                    <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>Por tipo de produto</Text>
+                                </View>
+                            </View>
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#ef4444" }}>
+                                R$ {totalMedicamentos.toFixed(2)}
+                            </Text>
+                        </View>
+                        <View style={{ gap: 8, marginTop: 12 }}>
+                            {dadosGraficoMedicamentos.length === 0 ? (
+                                <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 18 }}>
+                                    Nenhuma compra concluída em Medicamentos.
+                                </Text>
+                            ) : (
+                                dadosGraficoMedicamentos.map((dados) => (
+                                    <View key={dados.chave} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                        <Text style={{ width: 96, fontSize: 11, color: "#6b7280" }} numberOfLines={1}>
+                                            {dados.label}
+                                        </Text>
+                                        <View style={{ flex: 1, height: 22, backgroundColor: "#f3f4f6", borderRadius: 4, overflow: "hidden", flexDirection: "row", alignItems: "center" }}>
+                                            <View style={{
+                                                width: `${Math.min((dados.valor / valorMaximoMedicamentos) * 100, 100)}%`,
+                                                height: "100%",
+                                                backgroundColor: dados.cor,
+                                            }} />
+                                        </View>
+                                        <Text style={{ width: 86, fontSize: 11, fontWeight: "600", color: dados.cor, textAlign: "right" }}>
+                                            R$ {dados.valor.toFixed(0)}
+                                        </Text>
+                                    </View>
+                                ))
+                            )}
+                        </View>
+                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 10 }}>
+                            Considera compras concluídas na categoria Medicamentos.
+                        </Text>
                     </View>
                 </View>
             </ScrollView>

@@ -97,6 +97,9 @@ export async function criarAnimal(dados: {
     abortou: boolean;
     nao_emprenha: boolean;
     mastite: boolean;
+    doente?: boolean;
+    doenca?: "mastite" | "outra" | null;
+    descricao_doenca?: string | null;
 
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
@@ -139,6 +142,9 @@ export async function atualizarAnimal(id: number, dados: {
     abortou: boolean;
     nao_emprenha: boolean;
     mastite: boolean;
+    doente?: boolean;
+    doenca?: "mastite" | "outra" | null;
+    descricao_doenca?: string | null;
 
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
@@ -194,6 +200,8 @@ export async function listarCompras(): Promise<Compra[]> {
         quantidade: Number(c.quantidade),
         precoUnitario: Number(c.precoUnitario),
         precoTotal: Number(c.precoTotal),
+        finalidadeTratamento: c.finalidadeTratamento || null,
+        finalidadeDescricao: c.finalidadeDescricao || null,
     }));
 }
 

@@ -232,6 +232,13 @@ export default function Animais() {
                                                             <Text style={{ fontSize: 11, color: "#dc2626", fontWeight: "600" }}>Mastite</Text>
                                                         </View>
                                                     )}
+                                                    {Number(animal.doente) === 1 && animal.doenca === "outra" && (
+                                                        <View style={{ alignSelf: "flex-start", backgroundColor: "#dbeafe", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 6 }}>
+                                                            <Text style={{ fontSize: 11, color: "#1d4ed8", fontWeight: "600" }}>
+                                                                {animal.descricao_doenca || "Outra doença"}
+                                                            </Text>
+                                                        </View>
+                                                    )}
                                                 </View>
                                             </View>
                                             {/*                                             <View style={{ flexDirection: "row", gap: 6 }}>

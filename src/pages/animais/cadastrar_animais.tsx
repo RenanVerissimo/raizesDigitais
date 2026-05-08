@@ -20,6 +20,8 @@ import DateInput from "../../components/DateInput";
 import { toIso } from "../../utils/formatters";
 import { normalizarId } from "../../utils/normalizarId";
 
+type TipoDoenca = "mastite" | "outra";
+
 export default function CadastrarAnimais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -39,7 +41,9 @@ export default function CadastrarAnimais() {
         emCio: false,
         abortou: false,
         naoEmprenha: false,
-        mastite: false,
+        doente: false,
+        tipoDoenca: "mastite" as TipoDoenca,
+        descricaoDoenca: "",
         dataCobertura: "",
         dataInseminacao: "",
         dataConfirmacaoPrenhez: "",
@@ -87,6 +91,11 @@ export default function CadastrarAnimais() {
             }
         }
 
+        if (formData.doente && formData.tipoDoenca === "outra" && !formData.descricaoDoenca.trim()) {
+            Alert.alert("AtenÃ§Ã£o", "Informe qual doenÃ§a o animal possui.");
+            return;
+        }
+
         const todosAnimais = await listarAnimais();
         const novoId = normalizarId(formData.identificador);
         const jaExiste = todosAnimais.some((a) => normalizarId(a.identificador) === novoId);
@@ -115,7 +124,10 @@ export default function CadastrarAnimais() {
                 em_cio: formData.emCio,
                 abortou: formData.abortou,
                 nao_emprenha: formData.naoEmprenha,
-                mastite: formData.mastite,
+                mastite: formData.doente && formData.tipoDoenca === "mastite",
+                doente: formData.doente,
+                doenca: formData.doente ? formData.tipoDoenca : null,
+                descricao_doenca: formData.doente && formData.tipoDoenca === "outra" ? formData.descricaoDoenca.trim() : null,
                 data_cobertura: toIso(formData.dataInseminacao || formData.dataCobertura),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
@@ -141,10 +153,6 @@ export default function CadastrarAnimais() {
         { key: "emCio", label: "Em Cio", cor: "#f59e0b", icon: "alert-circle" },
         { key: "abortou", label: "Abortou", cor: "#ef4444", icon: "x-circle" },
         { key: "naoEmprenha", label: "Não Emprenha", cor: "#6b7280", icon: "slash" },
-    ] as const;
-
-    const statusSaude = [
-        { key: "mastite", label: "Mastite", cor: "#dc2626", icon: "alert-triangle" },
     ] as const;
 
     return (
@@ -418,41 +426,78 @@ export default function CadastrarAnimais() {
                                 Saúde <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
-                        <View style={{ gap: 10 }}>
-                            {statusSaude.map((item) => {
-                                const ativo = formData[item.key] as boolean;
-                                return (
-                                    <TouchableOpacity
-                                        key={item.key}
-                                        onPress={() => setFormData({ ...formData, [item.key]: !ativo })}
-                                        activeOpacity={0.7}
-                                        style={{
-                                            flexDirection: "row",
-                                            alignItems: "center",
-                                            justifyContent: "space-between",
-                                            padding: 12,
-                                            backgroundColor: ativo ? `${item.cor}15` : "#f9fafb",
-                                            borderWidth: 1,
-                                            borderColor: ativo ? item.cor : "#e5e7eb",
-                                            borderRadius: 10,
-                                        }}
-                                    >
-                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                            <Feather name={item.icon} size={16} color={ativo ? item.cor : "#9ca3af"} />
-                                            <Text style={{ fontSize: 14, fontWeight: "500", color: ativo ? item.cor : "#6b7280" }}>
-                                                {item.label}
-                                            </Text>
-                                        </View>
-                                        <View style={{
-                                            width: 22, height: 22, borderRadius: 11,
-                                            backgroundColor: ativo ? item.cor : "#e5e7eb",
-                                            alignItems: "center", justifyContent: "center",
-                                        }}>
-                                            {ativo ? <Feather name="check" size={13} color="#fff" /> : null}
-                                        </View>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                        <View style={{ gap: 12 }}>
+                            <TouchableOpacity
+                                onPress={() => setFormData({ ...formData, doente: !formData.doente })}
+                                activeOpacity={0.7}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    padding: 12,
+                                    backgroundColor: formData.doente ? "#fee2e2" : "#f9fafb",
+                                    borderWidth: 1,
+                                    borderColor: formData.doente ? "#dc2626" : "#e5e7eb",
+                                    borderRadius: 10,
+                                }}
+                            >
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                    <Feather name="alert-triangle" size={16} color={formData.doente ? "#dc2626" : "#9ca3af"} />
+                                    <Text style={{ fontSize: 14, fontWeight: "500", color: formData.doente ? "#dc2626" : "#6b7280" }}>
+                                        Está doente?
+                                    </Text>
+                                </View>
+                                <View style={{
+                                    width: 22, height: 22, borderRadius: 11,
+                                    backgroundColor: formData.doente ? "#dc2626" : "#e5e7eb",
+                                    alignItems: "center", justifyContent: "center",
+                                }}>
+                                    {formData.doente ? <Feather name="check" size={13} color="#fff" /> : null}
+                                </View>
+                            </TouchableOpacity>
+
+                            {formData.doente && (
+                                <>
+                                    <View style={{ flexDirection: "row", gap: 8 }}>
+                                        {([
+                                            { key: "mastite" as TipoDoenca, label: "Mastite", cor: "#dc2626" },
+                                            { key: "outra" as TipoDoenca, label: "Outra", cor: "#4a90e2" },
+                                        ]).map((item) => {
+                                            const ativo = formData.tipoDoenca === item.key;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={item.key}
+                                                    activeOpacity={0.75}
+                                                    onPress={() => setFormData({ ...formData, tipoDoenca: item.key })}
+                                                    style={{
+                                                        flex: 1,
+                                                        backgroundColor: ativo ? item.cor : "#f9fafb",
+                                                        borderWidth: 1,
+                                                        borderColor: ativo ? item.cor : "#e5e7eb",
+                                                        borderRadius: 10,
+                                                        paddingVertical: 12,
+                                                        alignItems: "center",
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>
+                                                        {item.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+
+                                    {formData.tipoDoenca === "outra" && (
+                                        <TextInput
+                                            value={formData.descricaoDoenca}
+                                            onChangeText={(v) => setFormData({ ...formData, descricaoDoenca: v })}
+                                            placeholder="Qual doença?"
+                                            placeholderTextColor="#9ca3af"
+                                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                                        />
+                                    )}
+                                </>
+                            )}
                         </View>
                     </View>
 

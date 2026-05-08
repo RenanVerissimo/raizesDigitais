@@ -54,6 +54,9 @@ export interface Animal {
     abortou: boolean;
     nao_emprenha: boolean;
     mastite: boolean;
+    doente?: boolean | number | null;
+    doenca?: "mastite" | "outra" | null;
+    descricao_doenca?: string | null;
 
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
@@ -64,6 +67,7 @@ export interface Animal {
 }
 
 export type CategoriaCompra = "racao" | "medicamento" | "equipamento" | "manutencao" | "outros";
+export type FinalidadeTratamento = "mastite" | "outro_tratamento" | "uso_geral";
 export type StatusCompra = "pendente" | "concluido" | "cancelado";
 
 export interface Compra {
@@ -76,6 +80,8 @@ export interface Compra {
     fornecedor: string;
     data: string;                // formato "YYYY-MM-DD"
     status: StatusCompra;
+    finalidadeTratamento?: FinalidadeTratamento | null;
+    finalidadeDescricao?: string | null;
     observacoes?: string | null;
 }
 

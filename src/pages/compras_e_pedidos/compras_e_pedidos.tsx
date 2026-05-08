@@ -35,6 +35,12 @@ const STATUS_CONFIG: Record<StatusCompra, { label: string; bg: string; text: str
     cancelado: { label: "Cancelado", bg: "#fee2e2", text: "#b91c1c", iconColor: "#dc2626", icon: "x-circle" },
 };
 
+const FINALIDADE_LABEL: Record<string, { label: string; bg: string; text: string }> = {
+    mastite: { label: "Mastite", bg: "#fee2e2", text: "#b91c1c" },
+    outro_tratamento: { label: "Tratamento", bg: "#dbeafe", text: "#1d4ed8" },
+    uso_geral: { label: "Uso geral", bg: "#f3f4f6", text: "#374151" },
+};
+
 export default function ComprasEPedidos() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -253,6 +259,7 @@ export default function ComprasEPedidos() {
                             {comprasFiltradas.map((compra) => {
                                 const cat = CATEGORIAS[compra.categoria];
                                 const status = STATUS_CONFIG[compra.status];
+                                const finalidade = compra.finalidadeTratamento ? FINALIDADE_LABEL[compra.finalidadeTratamento] : null;
 
                                 return (
                                     <View
@@ -279,6 +286,11 @@ export default function ComprasEPedidos() {
                                                         <Feather name={status.icon} size={11} color={status.iconColor} />
                                                         <Text style={{ fontSize: 11, color: status.text, fontWeight: "500" }}>{status.label}</Text>
                                                     </View>
+                                                    {compra.categoria === "medicamento" && finalidade && (
+                                                        <View style={{ backgroundColor: finalidade.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                                            <Text style={{ fontSize: 11, color: finalidade.text, fontWeight: "500" }}>{finalidade.label}</Text>
+                                                        </View>
+                                                    )}
                                                 </View>
                                             </View>
 
