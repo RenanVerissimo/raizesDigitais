@@ -15,6 +15,18 @@ import { useNavigation } from "@react-navigation/native";
 import { listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 
+function formatarDataLocal(data: Date) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+}
+
+function normalizarDataProducao(data?: string | null) {
+    if (!data) return "";
+    return data.slice(0, 10);
+}
+
 export default function Dashboard() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -60,32 +72,39 @@ export default function Dashboard() {
             const mesAtual = hoje.getMonth();
             const anoAtual = hoje.getFullYear();
 
-            const hojeStr = `${anoAtual}-${String(mesAtual + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+            const hojeStr = formatarDataLocal(hoje);
 
             // Produção de hoje
             const producaoHoje = producoes
                 .filter((p: any) => {
-                    const dataP = p.data ? p.data.slice(0, 10) : "";
+                    const dataP = normalizarDataProducao(p.data);
                     return dataP === hojeStr;
                 })
                 .reduce((sum: number, p: any) => sum + Number(p.producao_total), 0);
 
-            // Média dos últimos 7 dias (excluindo hoje)
-            const ultimos7 = Array.from({ length: 7 }, (_, i) => {
+            // Media diaria dos ultimos 7 dias, incluindo hoje.
+            const ultimos7 = new Set(Array.from({ length: 7 }, (_, i) => {
                 const d = new Date(hoje);
-                d.setDate(hoje.getDate() - (i + 1));
-                return d.toISOString().split("T")[0];
-            });
-            const producoes7dias = producoes.filter((p: any) => ultimos7.includes(p.data?.slice(0, 10)));
-            const media7 = producoes7dias.length > 0
-                ? producoes7dias.reduce((sum: number, p: any) => sum + Number(p.producao_total), 0) / 7
+                d.setDate(hoje.getDate() - i);
+                return formatarDataLocal(d);
+            }));
+            const totaisPorDia = producoes.reduce((acc: Record<string, number>, p: any) => {
+                const dataP = normalizarDataProducao(p.data);
+                if (ultimos7.has(dataP)) {
+                    acc[dataP] = (acc[dataP] ?? 0) + Number(p.producao_total);
+                }
+                return acc;
+            }, {});
+            const diasComProducao = Object.keys(totaisPorDia).length;
+            const media7 = diasComProducao > 0
+                ? Object.values(totaisPorDia).reduce((sum: number, total) => sum + Number(total), 0) / diasComProducao
                 : 0;
 
             // Produção total do mês atual
             const totalMes = producoes
                 .filter((p: any) => {
-                    const d = new Date(p.data);
-                    return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+                    const [ano, mes] = normalizarDataProducao(p.data).split("-").map(Number);
+                    return ano === anoAtual && mes === mesAtual + 1;
                 })
                 .reduce((sum: number, p: any) => sum + Number(p.producao_total), 0);
 
