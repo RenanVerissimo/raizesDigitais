@@ -368,6 +368,28 @@ router.put("/movimentacoes/:id", async (req, res) => {
 // ESTOQUE DE RACAO
 // ============================================
 
+const TIPOS_RACAO_LABEL = {
+    milho: "Milho",
+    farelo_soja: "Farelo de soja",
+    nucleo_mineral: "Núcleo mineral",
+    vitaminas: "Vitaminas",
+};
+
+function normalizarTexto(valor) {
+    return String(valor || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+}
+
+function normalizarTipoRacao(tipoRacao, item) {
+    if (tipoRacao && TIPOS_RACAO_LABEL[tipoRacao]) return tipoRacao;
+    const itemNormalizado = normalizarTexto(item);
+    const encontrado = Object.entries(TIPOS_RACAO_LABEL).find(([, label]) => normalizarTexto(label) === itemNormalizado);
+    return encontrado ? encontrado[0] : null;
+}
+
 async function ensureRacaoSchema() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS estoque_racao (
@@ -405,9 +427,97 @@ async function ensureRacaoSchema() {
     `);
 }
 
+async function ensureComprasRacaoSchema() {
+    const [columns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'compras'
+    `);
+    const existingColumns = new Set(columns.map((column) => column.COLUMN_NAME));
+
+    if (!existingColumns.has("tipo_racao")) {
+        await pool.query("ALTER TABLE compras ADD COLUMN tipo_racao VARCHAR(40) NULL AFTER categoria");
+    }
+    if (!existingColumns.has("unidade_compra")) {
+        await pool.query("ALTER TABLE compras ADD COLUMN unidade_compra VARCHAR(20) NULL AFTER tipo_racao");
+    }
+    if (!existingColumns.has("peso_unidade_kg")) {
+        await pool.query("ALTER TABLE compras ADD COLUMN peso_unidade_kg DECIMAL(12,2) NULL AFTER unidade_compra");
+    }
+    if (!existingColumns.has("quantidade_estoque_kg")) {
+        await pool.query("ALTER TABLE compras ADD COLUMN quantidade_estoque_kg DECIMAL(12,2) NULL AFTER peso_unidade_kg");
+    }
+}
+
+async function sincronizarRacoesCompradas() {
+    await ensureRacaoSchema();
+    await ensureComprasRacaoSchema();
+
+    const [compras] = await pool.query(`
+        SELECT
+            tipo_racao,
+            item,
+            quantidade,
+            quantidade_estoque_kg,
+            preco_total,
+            fornecedor
+        FROM compras
+        WHERE categoria = 'racao'
+          AND status = 'concluido'
+    `);
+
+    const agregadas = new Map();
+    compras.forEach((compra) => {
+        const tipo = normalizarTipoRacao(compra.tipo_racao, compra.item);
+        if (!tipo) return;
+
+        const quantidade = Number(compra.quantidade_estoque_kg ?? compra.quantidade ?? 0);
+        if (Number.isNaN(quantidade) || quantidade <= 0) return;
+
+        const atual = agregadas.get(tipo) || { quantidade: 0, valor: 0, fornecedor: null };
+        agregadas.set(tipo, {
+            quantidade: atual.quantidade + quantidade,
+            valor: atual.valor + Number(compra.preco_total || 0),
+            fornecedor: compra.fornecedor || atual.fornecedor,
+        });
+    });
+
+    for (const [tipo, dados] of agregadas.entries()) {
+        const custoUnitario = dados.quantidade > 0 ? dados.valor / dados.quantidade : null;
+        const [racoes] = await pool.query("SELECT id, quantidade_atual, custo_unitario, fornecedor FROM estoque_racao WHERE tipo = ? ORDER BY id ASC LIMIT 1", [tipo]);
+
+        if (racoes.length === 0) {
+            await pool.query(
+                `INSERT INTO estoque_racao (nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor)
+                 VALUES (?, ?, 'kg', ?, 0, ?, ?)`,
+                [TIPOS_RACAO_LABEL[tipo], tipo, dados.quantidade, custoUnitario, dados.fornecedor]
+            );
+            continue;
+        }
+
+        const racao = racoes[0];
+        const [movs] = await pool.query("SELECT COUNT(*) AS total FROM movimentacoes_racao WHERE racao_id = ?", [racao.id]);
+        const semMovimentacao = Number(movs[0]?.total || 0) === 0;
+        const quantidadeAtual = Number(racao.quantidade_atual || 0);
+
+        if (semMovimentacao && quantidadeAtual === 0) {
+            await pool.query(
+                "UPDATE estoque_racao SET quantidade_atual=?, custo_unitario=?, fornecedor=COALESCE(fornecedor, ?) WHERE id=?",
+                [dados.quantidade, custoUnitario, dados.fornecedor, racao.id]
+            );
+        } else if (racao.custo_unitario === null || racao.fornecedor === null) {
+            await pool.query(
+                "UPDATE estoque_racao SET custo_unitario=COALESCE(custo_unitario, ?), fornecedor=COALESCE(fornecedor, ?) WHERE id=?",
+                [custoUnitario, dados.fornecedor, racao.id]
+            );
+        }
+    }
+}
+
 router.get("/racoes", async (req, res) => {
     try {
-        await ensureRacaoSchema();
+        await sincronizarRacoesCompradas();
         const [rows] = await pool.query(`
             SELECT
                 id,
@@ -561,7 +671,8 @@ router.post("/racoes/movimentacoes", async (req, res) => {
         const qtd = Number(quantidade || 0);
 
         if (!racaoId || !tipo || !data || !motivo) return res.status(400).json({ erro: "Preencha os campos obrigatorios" });
-        if (!["entrada", "saida", "ajuste"].includes(tipo)) return res.status(400).json({ erro: "Tipo de movimentacao invalido" });
+        if (tipo === "entrada") return res.status(400).json({ erro: "Entrada de racao deve ser registrada pela compra concluida" });
+        if (!["saida", "ajuste"].includes(tipo)) return res.status(400).json({ erro: "Tipo de movimentacao invalido" });
         if (Number.isNaN(qtd) || qtd < 0 || (tipo !== "ajuste" && qtd <= 0)) return res.status(400).json({ erro: "Quantidade invalida" });
 
         await conn.beginTransaction();

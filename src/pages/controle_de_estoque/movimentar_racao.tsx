@@ -8,7 +8,9 @@ import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
 import { toIso } from "../../utils/formatters";
 import { criarMovimentacaoRacao } from "../../services/api";
-import { Racao, TipoMovRacao } from "./estoque_racao";
+import { Racao } from "./estoque_racao";
+
+type TipoMovRacaoFormulario = "saida" | "ajuste";
 
 function hojeBr() {
     const d = new Date();
@@ -20,11 +22,15 @@ export default function MovimentarRacao() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const racoes: Racao[] = route.params?.racoes || [];
+    const racaoIdInicial = route.params?.racaoId ? String(route.params.racaoId) : "";
+    const unidadeCompra = route.params?.unidadeCompra || null;
+    const pesoPorUnidadeKg = route.params?.pesoPorUnidadeKg ? Number(route.params.pesoPorUnidadeKg) : null;
 
     const [formData, setFormData] = useState({
-        racaoId: racoes[0]?.id ? String(racoes[0].id) : "",
-        tipo: "entrada" as TipoMovRacao,
+        racaoId: racaoIdInicial || (racoes[0]?.id ? String(racoes[0].id) : ""),
+        tipo: "saida" as TipoMovRacaoFormulario,
         quantidade: "",
+        descricaoQuantidade: "",
         data: hojeBr(),
         motivo: "",
         destino: "",
@@ -40,12 +46,22 @@ export default function MovimentarRacao() {
     async function handleSubmit() {
         const quantidade = parseFloat(formData.quantidade || "0");
         const data = toIso(formData.data);
-        const motivo = formData.motivo.trim() || (formData.tipo === "entrada" ? "Compra/entrada" : formData.tipo === "saida" ? "Consumo" : "Ajuste de inventario");
+        const motivo = formData.motivo.trim() || (formData.tipo === "saida" ? "Consumo" : "Ajuste de inventario");
 
         if (!formData.racaoId || !data || isNaN(quantidade) || quantidade < 0 || (formData.tipo !== "ajuste" && quantidade <= 0)) {
             Toast.show({ type: "error", text1: "Atencao", text2: "Confira item, data e quantidade.", position: "top" });
             return;
         }
+
+        if (formData.tipo === "saida" && racaoSelecionada && quantidade > racaoSelecionada.quantidadeAtual) {
+            Toast.show({ type: "error", text1: "Estoque insuficiente", text2: "A quantidade de saída é maior que o estoque atual.", position: "top" });
+            return;
+        }
+
+        const observacoes = [
+            formData.descricaoQuantidade.trim() ? `Descricao da saida: ${formData.descricaoQuantidade.trim()}` : null,
+            formData.observacoes.trim() || null,
+        ].filter(Boolean).join("\n") || null;
 
         try {
             await criarMovimentacaoRacao({
@@ -55,7 +71,7 @@ export default function MovimentarRacao() {
                 data,
                 motivo,
                 destino: formData.destino.trim() || null,
-                observacoes: formData.observacoes.trim() || null,
+                observacoes,
             });
 
             Toast.show({ type: "success", text1: "Movimentacao registrada", position: "top" });
@@ -77,9 +93,9 @@ export default function MovimentarRacao() {
                         <View>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                 <Feather name="repeat" size={20} color="#fff" />
-                                <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Movimentar Racao</Text>
+                                <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Movimentar Ração</Text>
                             </View>
-                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>Entrada, saida ou ajuste de estoque</Text>
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>Saída de consumo ou ajuste de estoque</Text>
                         </View>
                     </View>
                 </LinearGradient>
@@ -91,7 +107,7 @@ export default function MovimentarRacao() {
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Item *</Text>
                         </View>
                         {racoes.length === 0 ? (
-                            <Text style={{ fontSize: 13, color: "#9ca3af" }}>Nenhuma racao cadastrada.</Text>
+                            <Text style={{ fontSize: 13, color: "#9ca3af" }}>Nenhuma ração cadastrada.</Text>
                         ) : (
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                 <View style={{ flexDirection: "row", gap: 8 }}>
@@ -112,13 +128,12 @@ export default function MovimentarRacao() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="repeat" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Tipo *</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Movimentação *</Text>
                         </View>
                         <View style={{ flexDirection: "row", gap: 8 }}>
                             {[
-                                { key: "entrada" as TipoMovRacao, label: "Entrada", icon: "trending-up" as const, cor: "#22c55e" },
-                                { key: "saida" as TipoMovRacao, label: "Saida", icon: "trending-down" as const, cor: "#ef4444" },
-                                { key: "ajuste" as TipoMovRacao, label: "Ajuste", icon: "sliders" as const, cor: "#4a90e2" },
+                                { key: "saida" as TipoMovRacaoFormulario, label: "Saída", icon: "trending-down" as const, cor: "#ef4444" },
+                                { key: "ajuste" as TipoMovRacaoFormulario, label: "Ajuste", icon: "sliders" as const, cor: "#4a90e2" },
                             ].map((tipo) => {
                                 const ativo = formData.tipo === tipo.key;
                                 return (
@@ -131,16 +146,30 @@ export default function MovimentarRacao() {
                         </View>
                     </View>
 
-                    <Campo icone="archive" label={formData.tipo === "ajuste" ? "Nova quantidade *" : "Quantidade *"} valor={formData.quantidade} onChange={(v: string) => setFormData({ ...formData, quantidade: v })} placeholder="0" keyboard="decimal-pad" />
+                    <Campo icone="archive" label={formData.tipo === "ajuste" ? "Nova quantidade em kg *" : "Quantidade que saiu em kg *"} valor={formData.quantidade} onChange={(v: string) => setFormData({ ...formData, quantidade: v })} placeholder="0" keyboard="decimal-pad" />
+                    {formData.tipo === "saida" && (
+                        <Campo
+                            icone="edit-3"
+                            label="Descrição da saída"
+                            valor={formData.descricaoQuantidade}
+                            onChange={(v: string) => setFormData({ ...formData, descricaoQuantidade: v })}
+                            placeholder={unidadeCompra ? `Ex: meia ${unidadeCompra}, 1 ${unidadeCompra}, 2 baldes...` : "Ex: meia saca, 2 baldes, trato da manhã..."}
+                        />
+                    )}
                     {racaoSelecionada && formData.quantidade && !isNaN(parseFloat(formData.quantidade || "0")) && (
-                        <Text style={{ fontSize: 12, color: "#6b7280", marginTop: -8, marginLeft: 4 }}>
-                            Apos movimentacao: {(formData.tipo === "entrada"
-                                ? racaoSelecionada.quantidadeAtual + parseFloat(formData.quantidade || "0")
-                                : formData.tipo === "saida"
+                        <View style={{ marginTop: -8, marginLeft: 4, gap: 2 }}>
+                            <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                Após movimentação: {(formData.tipo === "saida"
                                     ? racaoSelecionada.quantidadeAtual - parseFloat(formData.quantidade || "0")
                                     : parseFloat(formData.quantidade || "0")
-                            ).toFixed(2)} {racaoSelecionada.unidade}
-                        </Text>
+                                ).toFixed(2)} kg
+                            </Text>
+                            {formData.tipo === "saida" && unidadeCompra && pesoPorUnidadeKg && parseFloat(formData.quantidade || "0") > 0 && (
+                                <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                    Equivale a aproximadamente {(parseFloat(formData.quantidade || "0") / pesoPorUnidadeKg).toFixed(2)} {unidadeCompra}
+                                </Text>
+                            )}
+                        </View>
                     )}
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
@@ -151,9 +180,9 @@ export default function MovimentarRacao() {
                         <DateInput value={formData.data} onChange={(v) => setFormData({ ...formData, data: v })} />
                     </View>
 
-                    <Campo icone="file-text" label="Motivo" valor={formData.motivo} onChange={(v: string) => setFormData({ ...formData, motivo: v })} placeholder="Compra, trato, ajuste..." />
-                    <Campo icone="map-pin" label="Destino" valor={formData.destino} onChange={(v: string) => setFormData({ ...formData, destino: v })} placeholder="Lote, piquete, animais em lactacao..." />
-                    <Campo icone="edit-3" label="Observacoes" valor={formData.observacoes} onChange={(v: string) => setFormData({ ...formData, observacoes: v })} placeholder="Opcional" multiline />
+                    <Campo icone="file-text" label="Motivo" valor={formData.motivo} onChange={(v: string) => setFormData({ ...formData, motivo: v })} placeholder="Trato, consumo, correção de estoque..." />
+                    <Campo icone="map-pin" label="Destino" valor={formData.destino} onChange={(v: string) => setFormData({ ...formData, destino: v })} placeholder="Lote, piquete, animais em lactação..." />
+                    <Campo icone="edit-3" label="Observações" valor={formData.observacoes} onChange={(v: string) => setFormData({ ...formData, observacoes: v })} placeholder="Opcional" multiline />
 
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
                         <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>

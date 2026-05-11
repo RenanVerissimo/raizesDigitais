@@ -5,7 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
-import { listarMovimentacoesRacao, listarRacoes } from "../../services/api";
+import { Compra } from "../../interfaces/interfaces";
+import { criarRacao, listarCompras, listarMovimentacoesRacao, listarRacoes } from "../../services/api";
 import { toBr } from "../../utils/formatters";
 
 export type TipoRacao = "milho" | "farelo_soja" | "nucleo_mineral" | "vitaminas";
@@ -42,12 +43,56 @@ interface MovimentacaoRacao {
 export const TIPOS_RACAO: { key: TipoRacao; label: string; color: string; bg: string }[] = [
     { key: "milho", label: "Milho", color: "#a16207", bg: "#fef9c3" },
     { key: "farelo_soja", label: "Farelo de soja", color: "#15803d", bg: "#dcfce7" },
-    { key: "nucleo_mineral", label: "Nucleo mineral", color: "#7c3aed", bg: "#ede9fe" },
+    { key: "nucleo_mineral", label: "Núcleo mineral", color: "#7c3aed", bg: "#ede9fe" },
     { key: "vitaminas", label: "Vitaminas", color: "#1d4ed8", bg: "#dbeafe" },
 ];
 
+const UNIDADES_COMPRA_RACAO: Record<string, string> = {
+    kg: "kg",
+    saco: "saco",
+    saca: "saca",
+    fardo: "fardo",
+    unidade: "un.",
+};
+
 function formatarNumero(valor: number) {
     return valor.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+}
+
+function normalizarTexto(valor?: string | null) {
+    return String(valor || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+}
+
+function obterTipoCompra(compra: Compra) {
+    return (
+        TIPOS_RACAO.find((t) => t.key === compra.tipoRacao) ||
+        TIPOS_RACAO.find((t) => normalizarTexto(t.label) === normalizarTexto(compra.item)) ||
+        TIPOS_RACAO[0]
+    );
+}
+
+function agruparComprasRacao(compras: Compra[]) {
+    const grupos = new Map<TipoRacao, { tipo: TipoRacao; quantidade: number; valor: number; fornecedor: string | null }>();
+
+    compras.forEach((compra) => {
+        const tipo = obterTipoCompra(compra).key;
+        const quantidade = Number(compra.quantidadeEstoqueKg ?? compra.quantidade ?? 0);
+        if (Number.isNaN(quantidade) || quantidade <= 0) return;
+
+        const atual = grupos.get(tipo) || { tipo, quantidade: 0, valor: 0, fornecedor: null };
+        grupos.set(tipo, {
+            tipo,
+            quantidade: atual.quantidade + quantidade,
+            valor: atual.valor + Number(compra.precoTotal || 0),
+            fornecedor: compra.fornecedor || atual.fornecedor,
+        });
+    });
+
+    return Array.from(grupos.values());
 }
 
 function diasAteValidade(validade?: string | null) {
@@ -63,14 +108,42 @@ export default function EstoqueRacao() {
     const navigation = useNavigation<any>();
     const [racoes, setRacoes] = useState<Racao[]>([]);
     const [movimentacoes, setMovimentacoes] = useState<MovimentacaoRacao[]>([]);
+    const [comprasRacao, setComprasRacao] = useState<Compra[]>([]);
 
     async function carregarDados() {
         try {
-            const [racoesDados, movsDados] = await Promise.all([listarRacoes(), listarMovimentacoesRacao()]);
-            setRacoes(racoesDados);
+            const [racoesDados, movsDados, comprasDados] = await Promise.all([listarRacoes(), listarMovimentacoesRacao(), listarCompras()]);
+            const comprasConcluidas = comprasDados
+                .filter((compra) => compra.categoria === "racao" && compra.status === "concluido")
+                .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+            let racoesAtualizadas = racoesDados as Racao[];
+            const tiposEmEstoque = new Set(racoesAtualizadas.map((racao) => racao.tipo));
+            const racoesFaltantes = agruparComprasRacao(comprasConcluidas).filter((grupo) => !tiposEmEstoque.has(grupo.tipo));
+
+            if (racoesFaltantes.length > 0) {
+                await Promise.all(racoesFaltantes.map((grupo) => {
+                    const tipo = TIPOS_RACAO.find((item) => item.key === grupo.tipo) || TIPOS_RACAO[0];
+                    return criarRacao({
+                        nome: tipo.label,
+                        tipo: grupo.tipo,
+                        unidade: "kg",
+                        quantidadeAtual: grupo.quantidade,
+                        estoqueMinimo: 0,
+                        custoUnitario: grupo.quantidade > 0 ? grupo.valor / grupo.quantidade : null,
+                        fornecedor: grupo.fornecedor,
+                        localizacao: null,
+                        validade: null,
+                        observacoes: "Gerado automaticamente a partir de compras de ração concluídas.",
+                    });
+                }));
+                racoesAtualizadas = await listarRacoes();
+            }
+
+            setRacoes(racoesAtualizadas);
             setMovimentacoes(movsDados);
+            setComprasRacao(comprasConcluidas);
         } catch (err: any) {
-            Toast.show({ type: "error", text1: "Erro ao carregar", text2: err.message || "Nao foi possivel carregar o estoque.", position: "top" });
+            Toast.show({ type: "error", text1: "Erro ao carregar", text2: err.message || "Não foi possível carregar o estoque.", position: "top" });
         }
     }
 
@@ -83,7 +156,15 @@ export default function EstoqueRacao() {
         const dias = diasAteValidade(r.validade);
         return dias !== null && dias >= 0 && dias <= 30;
     });
-    const valorTotal = racoes.reduce((sum, r) => sum + (r.custoUnitario ?? 0) * r.quantidadeAtual, 0);
+    function abrirMovimentacao(racao: Racao) {
+        const ultimaCompra = comprasRacao.find((compra) => compra.tipoRacao === racao.tipo || normalizarTexto(compra.item) === normalizarTexto(racao.nome));
+        navigation.navigate("movimentar_racao", {
+            racoes,
+            racaoId: racao.id,
+            unidadeCompra: ultimaCompra?.unidadeCompra || null,
+            pesoPorUnidadeKg: ultimaCompra?.pesoPorUnidadeKg || null,
+        });
+    }
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -96,14 +177,22 @@ export default function EstoqueRacao() {
                     style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 18 }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={() => navigation.navigate("Dashboard")} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Estoque de Racao</Text>
-                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>Controle opcional de alimentacao</Text>
+                            <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Estoque de Ração</Text>
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>Controle opcional de alimentação</Text>
                         </View>
-                        <MaterialCommunityIcons name="silo" size={28} color="#fff" />
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() => navigation.navigate("estoque")}
+                            style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" }}
+                            accessibilityRole="button"
+                            accessibilityLabel="Abrir estoque de leite"
+                        >
+                            <MaterialCommunityIcons name="cup-water" size={22} color="#fff" />
+                        </TouchableOpacity>
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
@@ -119,63 +208,86 @@ export default function EstoqueRacao() {
                         <View style={{ backgroundColor: "#fff7ed", borderWidth: 1, borderColor: "#fed7aa", borderRadius: 14, padding: 14, flexDirection: "row", gap: 10 }}>
                             <Feather name="alert-triangle" size={20} color="#ea580c" />
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#0a0a0a" }}>Atencao no estoque</Text>
-                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{baixoEstoque.length} abaixo do minimo e {vencendo.length} vencendo em ate 30 dias</Text>
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#0a0a0a" }}>Atenção no estoque</Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{baixoEstoque.length} abaixo do mínimo e {vencendo.length} vencendo em até 30 dias</Text>
                             </View>
                         </View>
                     )}
-
-                    <View style={{ flexDirection: "row", gap: 10 }}>
-                        <ResumoCard icon="package" label="Itens" valor={String(racoes.length)} color="#4a90e2" />
-                        <ResumoCard icon="alert-circle" label="Baixo" valor={String(baixoEstoque.length)} color="#ea580c" />
-                        <ResumoCard icon="dollar-sign" label="Valor" valor={`R$ ${valorTotal.toFixed(2)}`} color="#16a34a" />
-                    </View>
 
                     <View style={{ gap: 10 }}>
                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a" }}>Itens em estoque</Text>
                         {racoes.length === 0 ? (
                             <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
                                 <Feather name="package" size={44} color="#d1d5db" />
-                                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>Cadastre compras de racao para alimentar este estoque</Text>
+                                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>Cadastre compras de ração para alimentar este estoque</Text>
                             </View>
-                        ) : racoes.map((racao) => {
-                            const tipo = TIPOS_RACAO.find((t) => t.key === racao.tipo) || TIPOS_RACAO[0];
-                            const baixo = racao.quantidadeAtual <= racao.estoqueMinimo;
-                            const dias = diasAteValidade(racao.validade);
-                            const validadeRuim = dias !== null && dias <= 30;
-                            return (
-                                <View key={racao.id} style={{ backgroundColor: baixo || validadeRuim ? "#fff7ed" : "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: baixo || validadeRuim ? "#fed7aa" : "#f1f5f9" }}>
-                                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={{ fontSize: 16, fontWeight: "700", color: "#0a0a0a" }}>{racao.nome}</Text>
-                                            <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                                                <Tag label={tipo.label} bg={tipo.bg} text={tipo.color} />
-                                                {baixo && <Tag label="Baixo estoque" bg="#fee2e2" text="#b91c1c" />}
-                                                {validadeRuim && <Tag label={dias! < 0 ? "Vencida" : `Vence em ${dias}d`} bg="#fef9c3" text="#a16207" />}
+                        ) : (
+                            <View style={{ backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#f1f5f9", overflow: "hidden" }}>
+                                {racoes.map((racao) => {
+                                    const tipo = TIPOS_RACAO.find((t) => t.key === racao.tipo) || TIPOS_RACAO[0];
+                                    const baixo = racao.quantidadeAtual <= racao.estoqueMinimo;
+                                    const dias = diasAteValidade(racao.validade);
+                                    const validadeRuim = dias !== null && dias <= 30;
+                                    return (
+                                        <TouchableOpacity key={racao.id} activeOpacity={0.78} onPress={() => abrirMovimentacao(racao)} style={{ backgroundColor: baixo || validadeRuim ? "#fff7ed" : "#fff", paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                                <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: tipo.bg, alignItems: "center", justifyContent: "center" }}>
+                                                    {racao.tipo === "milho" ? (
+                                                        <MaterialCommunityIcons name="corn" size={21} color={tipo.color} />
+                                                    ) : (
+                                                        <Feather name="package" size={16} color={tipo.color} />
+                                                    )}
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: "800", color: "#0a0a0a" }}>{tipo.label}</Text>
+                                                    <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                                                        {baixo && <Tag label="Baixo" bg="#fee2e2" text="#b91c1c" />}
+                                                        {validadeRuim && <Tag label={dias! < 0 ? "Vencida" : `Vence ${dias}d`} bg="#fef9c3" text="#a16207" />}
+                                                    </View>
+                                                </View>
+                                                <View style={{ alignItems: "flex-end", minWidth: 92 }}>
+                                                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 17, fontWeight: "900", color: tipo.color }}>{formatarNumero(racao.quantidadeAtual)} kg</Text>
+                                                </View>
+                                                <Feather name="chevron-right" size={18} color="#9ca3af" />
                                             </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        )}
+                    </View>
+
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Compras de ração realizadas</Text>
+                        {comprasRacao.length === 0 ? (
+                            <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma compra de ração concluída</Text>
+                        ) : comprasRacao.slice(0, 8).map((compra) => {
+                            const tipo = obterTipoCompra(compra);
+                            const unidade = compra.unidadeCompra ? UNIDADES_COMPRA_RACAO[compra.unidadeCompra] || compra.unidadeCompra : "un.";
+                            return (
+                                <View key={compra.id} style={{ paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
+                                    <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 13, fontWeight: "800", color: "#0a0a0a" }}>{tipo.label}</Text>
+                                            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                                                {formatarNumero(compra.quantidade)} {unidade} - {formatarNumero(Number(compra.quantidadeEstoqueKg ?? compra.quantidade))} kg no estoque
+                                            </Text>
+                                            <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{toBr(compra.data)}{compra.fornecedor ? ` - ${compra.fornecedor}` : ""}</Text>
+                                        </View>
+                                        <View style={{ alignItems: "flex-end" }}>
+                                            <Tag label={tipo.label} bg={tipo.bg} text={tipo.color} />
+                                            <Text style={{ fontSize: 12, fontWeight: "800", color: "#16a34a", marginTop: 6 }}>R$ {compra.precoTotal.toFixed(2)}</Text>
                                         </View>
                                     </View>
-                                    <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
-                                        <Info label="Atual" value={`${formatarNumero(racao.quantidadeAtual)} ${racao.unidade}`} />
-                                        <Info label="Minimo" value={`${formatarNumero(racao.estoqueMinimo)} ${racao.unidade}`} />
-                                        <Info label="Custo" value={racao.custoUnitario == null ? "-" : `R$ ${racao.custoUnitario.toFixed(2)}`} />
-                                    </View>
-                                    {(racao.fornecedor || racao.localizacao || racao.validade) && (
-                                        <View style={{ marginTop: 10, gap: 3 }}>
-                                            {racao.fornecedor && <LinhaInfo icon="truck" texto={racao.fornecedor} />}
-                                            {racao.localizacao && <LinhaInfo icon="map-pin" texto={racao.localizacao} />}
-                                            {racao.validade && <LinhaInfo icon="calendar" texto={`Validade ${toBr(racao.validade)}`} />}
-                                        </View>
-                                    )}
                                 </View>
                             );
                         })}
                     </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Movimentacoes recentes</Text>
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Movimentações recentes</Text>
                         {movimentacoes.length === 0 ? (
-                            <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma movimentacao registrada</Text>
+                            <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma movimentação registrada</Text>
                         ) : movimentacoes.map((m) => (
                             <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
                                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: m.tipo === "entrada" ? "#dcfce7" : m.tipo === "saida" ? "#fee2e2" : "#dbeafe", alignItems: "center", justifyContent: "center" }}>
@@ -198,29 +310,10 @@ export default function EstoqueRacao() {
     );
 }
 
-function ResumoCard({ icon, label, valor, color }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string; valor: string; color: string }) {
-    return (
-        <View style={{ flex: 1, backgroundColor: "#fff", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
-            <Feather name={icon} size={15} color={color} />
-            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>{label}</Text>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 17, fontWeight: "800", color: "#0a0a0a", marginTop: 2 }}>{valor}</Text>
-        </View>
-    );
-}
-
 function Tag({ label, bg, text }: { label: string; bg: string; text: string }) {
     return (
         <View style={{ backgroundColor: bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
             <Text style={{ fontSize: 11, fontWeight: "700", color: text }}>{label}</Text>
-        </View>
-    );
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-    return (
-        <View style={{ flex: 1, backgroundColor: "#f9fafb", borderRadius: 10, padding: 10 }}>
-            <Text style={{ fontSize: 10, color: "#6b7280" }}>{label}</Text>
-            <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 13, fontWeight: "800", color: "#0a0a0a", marginTop: 2 }}>{value}</Text>
         </View>
     );
 }

@@ -549,7 +549,7 @@ export async function listarMovimentacoesRacao() {
 
 export async function criarMovimentacaoRacao(dados: {
     racaoId: number;
-    tipo: "entrada" | "saida" | "ajuste";
+    tipo: "saida" | "ajuste";
     quantidade: number;
     data: string;
     motivo: string;
