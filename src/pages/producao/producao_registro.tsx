@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import {
     View,
     Text,
@@ -11,11 +11,10 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
-import { criarProducao, atualizarProducao, listarTanques } from "../../services/api";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { criarProducao, atualizarProducao } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
-import { Tanque } from "../controle_de_estoque/estoque";
 
 export default function ProducaoRegistro() {
     const insets = useSafeAreaInsets();
@@ -24,36 +23,13 @@ export default function ProducaoRegistro() {
 
     const producaoEditando: Producao | undefined = route.params?.producao;
     const isEditando = !!producaoEditando;
-    const [tanques, setTanques] = useState<Tanque[]>([]);
-
     const [formData, setFormData] = useState({
         date: producaoEditando?.data?.split("T")[0] ?? new Date().toISOString().split("T")[0],
         morningProduction: producaoEditando?.producao_manha?.toString() ?? "",
         afternoonProduction: producaoEditando?.producao_tarde?.toString() ?? "",
         quality: (producaoEditando?.qualidade as "excellent" | "good" | "regular") ?? "good",
         notes: producaoEditando?.observacoes ?? "",
-        tanqueId: "",
     });
-
-    useFocusEffect(
-        useCallback(() => {
-            async function carregarTanques() {
-                if (isEditando) return;
-
-                try {
-                    const dados = await listarTanques();
-                    setTanques(dados);
-                    if (dados.length > 0 && !formData.tanqueId) {
-                        setFormData((atual) => ({ ...atual, tanqueId: String(dados[0].id) }));
-                    }
-                } catch (err: any) {
-                    Toast.show({ type: "error", text1: "Erro ao carregar tanques", text2: err.message || "Não foi possível listar os tanques.", position: "top" });
-                }
-            }
-
-            carregarTanques();
-        }, [isEditando])
-    );
 
     const total =
         (parseFloat(formData.morningProduction) || 0) +
@@ -76,11 +52,6 @@ export default function ProducaoRegistro() {
             Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
             return;
         }
-        if (!isEditando && !formData.tanqueId) {
-            Alert.alert("Atenção", "Selecione o tanque que recebeu a coleta.");
-            return;
-        }
-
         try {
             const dados = {
                 date: formData.date,
@@ -88,7 +59,6 @@ export default function ProducaoRegistro() {
                 afternoonProduction: Number(formData.afternoonProduction),
                 quality: formData.quality,
                 notes: formData.notes.trim() || null,
-                tanqueId: !isEditando ? Number(formData.tanqueId) : null,
             };
 
             if (isEditando) {
@@ -114,14 +84,13 @@ export default function ProducaoRegistro() {
                     afternoonProduction: "",
                     quality: "good",
                     notes: "",
-                    tanqueId: tanques[0]?.id ? String(tanques[0].id) : "",
                 });
             }
 
             setTimeout(() => navigation.goBack(), 500);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            Alert.alert("Erro", "Não foi possível salvar a produção. Tente novamente.");
+            Alert.alert("Erro", error.message || "Não foi possível salvar a produção. Tente novamente.");
         }
     }
 
@@ -146,7 +115,7 @@ export default function ProducaoRegistro() {
                                 {isEditando ? "Editar Coleta" : "Nova Coleta"}
                             </Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                {isEditando ? "Atualize os dados da produção" : "Registre a produção e envie ao tanque"}
+                                {isEditando ? "Atualize os dados da produção" : "Registre a produção diária"}
                             </Text>
                         </View>
                     </View>

@@ -50,7 +50,6 @@ export async function criarProducao(dados: {
     afternoonProduction: number;
     quality: string;
     notes: string | null;
-    tanqueId?: number | null;
 }) {
     const response = await apiFetch(`/producao`, {
         method: "POST",
@@ -58,7 +57,8 @@ export async function criarProducao(dados: {
         body: JSON.stringify(dados),
     });
     if (!response.ok) {
-        throw new Error("Erro ao salvar produção");
+        const erroData = await response.json().catch(() => ({}));
+        throw new Error(erroData.erro || erroData.error || "Erro ao salvar produção");
     }
     return response.json();
 

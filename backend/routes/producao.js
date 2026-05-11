@@ -29,53 +29,21 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-    const conn = await pool.getConnection();
     try {
         const usuarioId = await requireUsuario(req, res, ["producao"]);
         if (!usuarioId) return;
-        const { date, morningProduction, afternoonProduction, quality, notes, tanqueId } = req.body;
+        const { date, morningProduction, afternoonProduction, quality, notes } = req.body;
         const total = Number(morningProduction) + Number(afternoonProduction);
 
-        if (!tanqueId) {
-            return res.status(400).json({ error: "Informe o tanque que recebeu a coleta" });
-        }
-
-        await conn.beginTransaction();
-
-        const [tanques] = await conn.query("SELECT * FROM tanques WHERE id = ? AND usuario_id = ?", [tanqueId, usuarioId]);
-        if (tanques.length === 0) {
-            await conn.rollback();
-            return res.status(404).json({ error: "Tanque não encontrado" });
-        }
-
-        const tanque = tanques[0];
-        const novoVolume = Number(tanque.quantidade_atual || 0) + total;
-        if (novoVolume > Number(tanque.capacidade)) {
-            await conn.rollback();
-            return res.status(400).json({ error: "A coleta excede a capacidade do tanque selecionado" });
-        }
-
-        const [result] = await conn.query(
+        const [result] = await pool.query(
             "INSERT INTO producao (usuario_id, data, producao_manha, producao_tarde, producao_total, qualidade, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [usuarioId, date, morningProduction, afternoonProduction, total, quality, notes]
         );
 
-        await conn.query(
-            `INSERT INTO movimentacoes_estoque (tanque_id, tipo, quantidade, data, hora, motivo, comprador, temperatura, consumo_proprio, observacoes)
-             VALUES (?, 'entrada', ?, ?, ?, ?, NULL, NULL, 0, ?)`,
-            [tanqueId, total, date, "00:00", "Nova coleta", `Gerado automaticamente pela produção #${result.insertId}`]
-        );
-
-        await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id = ? AND usuario_id = ?", [novoVolume, tanqueId, usuarioId]);
-
-        await conn.commit();
         res.status(201).json({ id: result.insertId, message: "Produção registrada!" });
     } catch (error) {
-        await conn.rollback();
         console.error(error);
         res.status(500).json({ error: "Erro ao registrar produção" });
-    } finally {
-        conn.release();
     }
 });
 
