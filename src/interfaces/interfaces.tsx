@@ -69,6 +69,8 @@ export interface Animal {
 export type CategoriaCompra = "racao" | "medicamento" | "equipamento" | "manutencao" | "outros";
 export type FinalidadeTratamento = "mastite" | "outro_tratamento" | "uso_geral";
 export type StatusCompra = "pendente" | "concluido" | "cancelado";
+export type TipoRacaoCompra = "milho" | "farelo_soja" | "nucleo_mineral" | "vitaminas";
+export type UnidadeCompraRacao = "kg" | "saco" | "saca" | "fardo" | "unidade";
 
 export interface Compra {
     id: number;                  // 👈 era string, agora number (vem do MySQL)
@@ -80,6 +82,10 @@ export interface Compra {
     fornecedor: string;
     data: string;                // formato "YYYY-MM-DD"
     status: StatusCompra;
+    tipoRacao?: TipoRacaoCompra | null;
+    unidadeCompra?: UnidadeCompraRacao | null;
+    pesoPorUnidadeKg?: number | null;
+    quantidadeEstoqueKg?: number | null;
     finalidadeTratamento?: FinalidadeTratamento | null;
     finalidadeDescricao?: string | null;
     observacoes?: string | null;

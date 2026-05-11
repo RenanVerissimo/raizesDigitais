@@ -202,6 +202,10 @@ export async function listarCompras(): Promise<Compra[]> {
         precoTotal: Number(c.precoTotal),
         finalidadeTratamento: c.finalidadeTratamento || null,
         finalidadeDescricao: c.finalidadeDescricao || null,
+        tipoRacao: c.tipoRacao || null,
+        unidadeCompra: c.unidadeCompra || null,
+        pesoPorUnidadeKg: c.pesoPorUnidadeKg === null || c.pesoPorUnidadeKg === undefined ? null : Number(c.pesoPorUnidadeKg),
+        quantidadeEstoqueKg: c.quantidadeEstoqueKg === null || c.quantidadeEstoqueKg === undefined ? null : Number(c.quantidadeEstoqueKg),
     }));
 }
 
@@ -460,6 +464,109 @@ export async function excluirMovimentacao(id: number) {
     return res.json();
 }
 
+// ============================================
+// ESTOQUE - RACOES
+// ============================================
+
+export async function listarRacoes() {
+    const res = await fetch(`${BASE_URL}/estoque/racoes`);
+    if (!res.ok) throw new Error("Erro ao listar racoes");
+    const dados = await res.json();
+    return dados.map((r: any) => ({
+        ...r,
+        quantidadeAtual: Number(r.quantidadeAtual),
+        estoqueMinimo: Number(r.estoqueMinimo),
+        custoUnitario: r.custoUnitario === null || r.custoUnitario === undefined ? null : Number(r.custoUnitario),
+    }));
+}
+
+export async function criarRacao(dados: {
+    nome: string;
+    tipo: string;
+    unidade: string;
+    quantidadeAtual: number;
+    estoqueMinimo: number;
+    custoUnitario?: number | null;
+    fornecedor?: string | null;
+    localizacao?: string | null;
+    validade?: string | null;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/estoque/racoes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao cadastrar racao");
+    }
+    return res.json();
+}
+
+export async function atualizarRacao(id: number, dados: {
+    nome: string;
+    tipo: string;
+    unidade: string;
+    quantidadeAtual: number;
+    estoqueMinimo: number;
+    custoUnitario?: number | null;
+    fornecedor?: string | null;
+    localizacao?: string | null;
+    validade?: string | null;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/estoque/racoes/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao atualizar racao");
+    }
+    return res.json();
+}
+
+export async function excluirRacao(id: number) {
+    const res = await fetch(`${BASE_URL}/estoque/racoes/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao excluir racao");
+    }
+    return res.json();
+}
+
+export async function listarMovimentacoesRacao() {
+    const res = await fetch(`${BASE_URL}/estoque/racoes/movimentacoes`);
+    if (!res.ok) throw new Error("Erro ao listar movimentacoes de racao");
+    const dados = await res.json();
+    return dados.map((m: any) => ({
+        ...m,
+        quantidade: Number(m.quantidade),
+    }));
+}
+
+export async function criarMovimentacaoRacao(dados: {
+    racaoId: number;
+    tipo: "entrada" | "saida" | "ajuste";
+    quantidade: number;
+    data: string;
+    motivo: string;
+    destino?: string | null;
+    observacoes?: string | null;
+}) {
+    const res = await fetch(`${BASE_URL}/estoque/racoes/movimentacoes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao movimentar racao");
+    }
+    return res.json();
+}
 
 // ============================================
 // AUTH

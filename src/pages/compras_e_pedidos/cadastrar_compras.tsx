@@ -14,7 +14,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { CategoriaCompra, FinalidadeTratamento, StatusCompra } from "../../interfaces/interfaces";
+import { CategoriaCompra, FinalidadeTratamento, StatusCompra, TipoRacaoCompra, UnidadeCompraRacao } from "../../interfaces/interfaces";
 import { CATEGORIAS } from "./compras_e_pedidos";
 import Toast from "react-native-toast-message";
 import { criarCompra, listarAnimais } from "../../services/api";
@@ -36,6 +36,27 @@ const ITENS_PRODUTO: { key: ItemProdutoOpcao; label: string; cor: string }[] = [
     { key: "outro", label: "Outro", cor: "#6b7280" },
 ];
 
+const TIPOS_RACAO_COMPRA: { key: TipoRacaoCompra; label: string; cor: string }[] = [
+    { key: "milho", label: "Milho", cor: "#ca8a04" },
+    { key: "farelo_soja", label: "Farelo de soja", cor: "#16a34a" },
+    { key: "nucleo_mineral", label: "Núcleo mineral", cor: "#7c3aed" },
+    { key: "vitaminas", label: "Vitaminas", cor: "#2563eb" },
+];
+
+const UNIDADES_RACAO_COMPRA: { key: UnidadeCompraRacao; label: string }[] = [
+    { key: "kg", label: "Kg" },
+    { key: "saco", label: "Saco" },
+    { key: "saca", label: "Saca" },
+    { key: "fardo", label: "Fardo" },
+    { key: "unidade", label: "Unidade" },
+];
+
+const PESO_SUGERIDO_RACAO: Partial<Record<TipoRacaoCompra, Partial<Record<UnidadeCompraRacao, number>>>> = {
+    milho: { saca: 60 },
+    farelo_soja: { saca: 50, saco: 25 },
+    nucleo_mineral: { saco: 25 },
+};
+
 export default function CadastrarCompra() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -48,6 +69,9 @@ export default function CadastrarCompra() {
 
     const [formData, setFormData] = useState({
         categoria: "racao" as CategoriaCompra,
+        tipoRacao: "milho" as TipoRacaoCompra,
+        unidadeCompra: "saca" as UnidadeCompraRacao,
+        pesoPorUnidadeKg: "60",
         itemOpcao: "vacina" as ItemProdutoOpcao,
         itemOutro: "",
         itemDescricao: "",
@@ -63,11 +87,20 @@ export default function CadastrarCompra() {
     const [opcoesDoencas, setOpcoesDoencas] = useState<string[]>([]);
 
     const total = (parseFloat(formData.quantidade) || 0) * (parseFloat(formData.precoUnitario) || 0);
-    const itemSelecionado = formData.categoria !== "medicamento"
-        ? formData.itemDescricao.trim()
-        : formData.itemOpcao === "outro"
+    const quantidade = parseFloat(formData.quantidade) || 0;
+    const pesoPorUnidade = parseFloat(formData.pesoPorUnidadeKg) || 0;
+    const quantidadeEstoqueKg = formData.categoria === "racao"
+        ? formData.unidadeCompra === "kg"
+            ? quantidade
+            : quantidade * pesoPorUnidade
+        : null;
+    const itemSelecionado = formData.categoria === "racao"
+        ? TIPOS_RACAO_COMPRA.find((item) => item.key === formData.tipoRacao)?.label || ""
+        : formData.categoria === "medicamento"
+        ? formData.itemOpcao === "outro"
         ? formData.itemOutro.trim()
-        : ITENS_PRODUTO.find((item) => item.key === formData.itemOpcao)?.label || "";
+        : ITENS_PRODUTO.find((item) => item.key === formData.itemOpcao)?.label || ""
+        : formData.itemDescricao.trim();
 
     useEffect(() => {
         listarAnimais()
@@ -94,6 +127,24 @@ export default function CadastrarCompra() {
         }
     }
 
+    function atualizarTipoRacao(tipoRacao: TipoRacaoCompra) {
+        const pesoSugerido = PESO_SUGERIDO_RACAO[tipoRacao]?.[formData.unidadeCompra];
+        setFormData({
+            ...formData,
+            tipoRacao,
+            pesoPorUnidadeKg: formData.unidadeCompra === "kg" ? "" : pesoSugerido ? String(pesoSugerido) : formData.pesoPorUnidadeKg,
+        });
+    }
+
+    function atualizarUnidadeCompra(unidadeCompra: UnidadeCompraRacao) {
+        const pesoSugerido = PESO_SUGERIDO_RACAO[formData.tipoRacao]?.[unidadeCompra];
+        setFormData({
+            ...formData,
+            unidadeCompra,
+            pesoPorUnidadeKg: unidadeCompra === "kg" ? "" : pesoSugerido ? String(pesoSugerido) : formData.pesoPorUnidadeKg,
+        });
+    }
+
     async function handleSubmit() {
         if (!itemSelecionado || !formData.quantidade || !formData.precoUnitario || !formData.fornecedor.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
@@ -111,6 +162,10 @@ export default function CadastrarCompra() {
             Alert.alert("Atenção", "Selecione ou informe a doença relacionada ao tratamento.");
             return;
         }
+        if (formData.categoria === "racao" && formData.unidadeCompra !== "kg" && (isNaN(pesoPorUnidade) || pesoPorUnidade <= 0)) {
+            Alert.alert("AtenÃ§Ã£o", "Informe o peso por unidade para calcular o estoque em kg.");
+            return;
+        }
         const dataIso = toIso(formData.data);
         if (!dataIso) {
             Alert.alert("Atenção", "Informe uma data válida (DD/MM/AAAA).");
@@ -125,6 +180,10 @@ export default function CadastrarCompra() {
                 fornecedor: formData.fornecedor.trim(),
                 data: dataIso,
                 status: formData.status,
+                tipoRacao: formData.categoria === "racao" ? formData.tipoRacao : null,
+                unidadeCompra: formData.categoria === "racao" ? formData.unidadeCompra : null,
+                pesoPorUnidadeKg: formData.categoria === "racao" && formData.unidadeCompra !== "kg" ? pesoPorUnidade : null,
+                quantidadeEstoqueKg: formData.categoria === "racao" ? quantidadeEstoqueKg : null,
                 finalidadeTratamento: formData.categoria === "medicamento" ? formData.finalidadeTratamento : null,
                 finalidadeDescricao: formData.categoria === "medicamento" && formData.finalidadeTratamento === "outro_tratamento" ? formData.finalidadeDescricao.trim() : null,
                 observacoes: formData.observacoes.trim() || null,
@@ -229,7 +288,36 @@ export default function CadastrarCompra() {
                             <Feather name="package" size={16} color="#4a90e2" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Item / Produto *</Text>
                         </View>
-                        {formData.categoria === "medicamento" ? (
+                        {formData.categoria === "racao" ? (
+                            <View style={{ gap: 8 }}>
+                                {TIPOS_RACAO_COMPRA.map((tipo) => {
+                                    const ativo = formData.tipoRacao === tipo.key;
+                                    return (
+                                        <TouchableOpacity
+                                            key={tipo.key}
+                                            activeOpacity={0.75}
+                                            onPress={() => atualizarTipoRacao(tipo.key)}
+                                            style={{
+                                                backgroundColor: ativo ? tipo.cor : "#f9fafb",
+                                                borderWidth: 1,
+                                                borderColor: ativo ? tipo.cor : "#e5e7eb",
+                                                borderRadius: 10,
+                                                paddingVertical: 11,
+                                                paddingHorizontal: 12,
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                justifyContent: "space-between",
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>
+                                                {tipo.label}
+                                            </Text>
+                                            {ativo && <Feather name="check" size={16} color="#fff" />}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        ) : formData.categoria === "medicamento" ? (
                             <View style={{ gap: 8 }}>
                                 {ITENS_PRODUTO.map((item) => {
                                     const ativo = formData.itemOpcao === item.key;
@@ -277,6 +365,51 @@ export default function CadastrarCompra() {
                             />
                         )}
                     </View>
+
+                    {formData.categoria === "racao" && (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="archive" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Forma de compra *</Text>
+                            </View>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={{ flexDirection: "row", gap: 8 }}>
+                                    {UNIDADES_RACAO_COMPRA.map((unidade) => {
+                                        const ativo = formData.unidadeCompra === unidade.key;
+                                        return (
+                                            <TouchableOpacity
+                                                key={unidade.key}
+                                                onPress={() => atualizarUnidadeCompra(unidade.key)}
+                                                activeOpacity={0.75}
+                                                style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}
+                                            >
+                                                <Text style={{ fontSize: 13, fontWeight: "700", color: ativo ? "#fff" : "#6b7280" }}>{unidade.label}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </ScrollView>
+                            {formData.unidadeCompra !== "kg" && (
+                                <View style={{ marginTop: 12 }}>
+                                    <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 6 }}>Peso por {UNIDADES_RACAO_COMPRA.find((u) => u.key === formData.unidadeCompra)?.label.toLowerCase()} (kg)</Text>
+                                    <TextInput
+                                        value={formData.pesoPorUnidadeKg}
+                                        onChangeText={(v) => setFormData({ ...formData, pesoPorUnidadeKg: v })}
+                                        placeholder="Ex: 60"
+                                        placeholderTextColor="#9ca3af"
+                                        keyboardType="decimal-pad"
+                                        style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                                    />
+                                </View>
+                            )}
+                            {quantidadeEstoqueKg !== null && quantidadeEstoqueKg > 0 && (
+                                <View style={{ marginTop: 12, backgroundColor: "#f0fdf4", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#bbf7d0" }}>
+                                    <Text style={{ fontSize: 12, color: "#6b7280" }}>Entrada prevista no estoque</Text>
+                                    <Text style={{ fontSize: 18, fontWeight: "800", color: "#15803d", marginTop: 2 }}>{quantidadeEstoqueKg.toFixed(2)} kg</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                     {formData.categoria === "medicamento" && (
                         <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#fee2e2" }}>

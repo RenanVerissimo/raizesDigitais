@@ -364,4 +364,242 @@ router.put("/movimentacoes/:id", async (req, res) => {
     }
 });
 
+// ============================================
+// ESTOQUE DE RACAO
+// ============================================
+
+async function ensureRacaoSchema() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS estoque_racao (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nome VARCHAR(120) NOT NULL,
+            tipo VARCHAR(40) NOT NULL DEFAULT 'milho',
+            unidade VARCHAR(20) NOT NULL DEFAULT 'kg',
+            quantidade_atual DECIMAL(12,2) NOT NULL DEFAULT 0,
+            estoque_minimo DECIMAL(12,2) NOT NULL DEFAULT 0,
+            custo_unitario DECIMAL(12,2) NULL,
+            fornecedor VARCHAR(120) NULL,
+            localizacao VARCHAR(120) NULL,
+            validade DATE NULL,
+            observacoes TEXT NULL,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS movimentacoes_racao (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            racao_id INT NOT NULL,
+            tipo VARCHAR(20) NOT NULL,
+            quantidade DECIMAL(12,2) NOT NULL,
+            data DATE NOT NULL,
+            motivo VARCHAR(120) NOT NULL,
+            destino VARCHAR(120) NULL,
+            observacoes TEXT NULL,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_movimentacoes_racao_item
+                FOREIGN KEY (racao_id) REFERENCES estoque_racao(id)
+                ON DELETE CASCADE
+        )
+    `);
+}
+
+router.get("/racoes", async (req, res) => {
+    try {
+        await ensureRacaoSchema();
+        const [rows] = await pool.query(`
+            SELECT
+                id,
+                nome,
+                tipo,
+                unidade,
+                quantidade_atual AS quantidadeAtual,
+                estoque_minimo AS estoqueMinimo,
+                custo_unitario AS custoUnitario,
+                fornecedor,
+                localizacao,
+                DATE_FORMAT(validade, '%Y-%m-%d') AS validade,
+                observacoes,
+                atualizado_em AS atualizadoEm
+            FROM estoque_racao
+            ORDER BY nome ASC
+        `);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao listar racoes" });
+    }
+});
+
+router.post("/racoes", async (req, res) => {
+    try {
+        await ensureRacaoSchema();
+        const { nome, tipo, unidade, quantidadeAtual, estoqueMinimo, custoUnitario, fornecedor, localizacao, validade, observacoes } = req.body;
+
+        if (!nome || !tipo || !unidade) {
+            return res.status(400).json({ erro: "Preencha nome, tipo e unidade" });
+        }
+
+        const quantidade = Number(quantidadeAtual || 0);
+        const minimo = Number(estoqueMinimo || 0);
+        const custo = custoUnitario === null || custoUnitario === undefined || custoUnitario === "" ? null : Number(custoUnitario);
+
+        if (Number.isNaN(quantidade) || Number.isNaN(minimo) || quantidade < 0 || minimo < 0 || (custo !== null && (Number.isNaN(custo) || custo < 0))) {
+            return res.status(400).json({ erro: "Valores numericos invalidos" });
+        }
+
+        const [result] = await pool.query(
+            `INSERT INTO estoque_racao
+             (nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor, localizacao, validade, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                nome,
+                tipo,
+                unidade,
+                quantidade,
+                minimo,
+                custo,
+                fornecedor || null,
+                localizacao || null,
+                validade || null,
+                observacoes || null,
+            ]
+        );
+
+        res.status(201).json({ id: result.insertId, mensagem: "Racao cadastrada" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao cadastrar racao" });
+    }
+});
+
+router.put("/racoes/:id", async (req, res) => {
+    try {
+        await ensureRacaoSchema();
+        const { nome, tipo, unidade, quantidadeAtual, estoqueMinimo, custoUnitario, fornecedor, localizacao, validade, observacoes } = req.body;
+        const quantidade = Number(quantidadeAtual || 0);
+        const minimo = Number(estoqueMinimo || 0);
+        const custo = custoUnitario === null || custoUnitario === undefined || custoUnitario === "" ? null : Number(custoUnitario);
+
+        if (!nome || !tipo || !unidade) return res.status(400).json({ erro: "Preencha nome, tipo e unidade" });
+        if (Number.isNaN(quantidade) || Number.isNaN(minimo) || quantidade < 0 || minimo < 0 || (custo !== null && (Number.isNaN(custo) || custo < 0))) {
+            return res.status(400).json({ erro: "Valores numericos invalidos" });
+        }
+
+        const [result] = await pool.query(
+            `UPDATE estoque_racao
+             SET nome=?, tipo=?, unidade=?, quantidade_atual=?, estoque_minimo=?, custo_unitario=?, fornecedor=?, localizacao=?, validade=?, observacoes=?
+             WHERE id=?`,
+            [
+                nome,
+                tipo,
+                unidade,
+                quantidade,
+                minimo,
+                custo,
+                fornecedor || null,
+                localizacao || null,
+                validade || null,
+                observacoes || null,
+                req.params.id,
+            ]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ erro: "Racao nao encontrada" });
+        res.json({ mensagem: "Racao atualizada" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao atualizar racao" });
+    }
+});
+
+router.delete("/racoes/:id", async (req, res) => {
+    try {
+        await ensureRacaoSchema();
+        const [result] = await pool.query("DELETE FROM estoque_racao WHERE id=?", [req.params.id]);
+        if (result.affectedRows === 0) return res.status(404).json({ erro: "Racao nao encontrada" });
+        res.json({ mensagem: "Racao excluida" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao excluir racao" });
+    }
+});
+
+router.get("/racoes/movimentacoes", async (req, res) => {
+    try {
+        await ensureRacaoSchema();
+        const [rows] = await pool.query(`
+            SELECT
+                m.id,
+                m.racao_id AS racaoId,
+                r.nome AS racaoNome,
+                r.unidade,
+                m.tipo,
+                m.quantidade,
+                DATE_FORMAT(m.data, '%Y-%m-%d') AS data,
+                m.motivo,
+                m.destino,
+                m.observacoes
+            FROM movimentacoes_racao m
+            INNER JOIN estoque_racao r ON r.id = m.racao_id
+            ORDER BY m.data DESC, m.id DESC
+            LIMIT 20
+        `);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao listar movimentacoes de racao" });
+    }
+});
+
+router.post("/racoes/movimentacoes", async (req, res) => {
+    const conn = await pool.getConnection();
+    try {
+        await ensureRacaoSchema();
+        const { racaoId, tipo, quantidade, data, motivo, destino, observacoes } = req.body;
+        const qtd = Number(quantidade || 0);
+
+        if (!racaoId || !tipo || !data || !motivo) return res.status(400).json({ erro: "Preencha os campos obrigatorios" });
+        if (!["entrada", "saida", "ajuste"].includes(tipo)) return res.status(400).json({ erro: "Tipo de movimentacao invalido" });
+        if (Number.isNaN(qtd) || qtd < 0 || (tipo !== "ajuste" && qtd <= 0)) return res.status(400).json({ erro: "Quantidade invalida" });
+
+        await conn.beginTransaction();
+
+        const [racoes] = await conn.query("SELECT * FROM estoque_racao WHERE id=?", [racaoId]);
+        if (racoes.length === 0) {
+            await conn.rollback();
+            return res.status(404).json({ erro: "Racao nao encontrada" });
+        }
+
+        const racao = racoes[0];
+        const novaQuantidade = tipo === "entrada"
+            ? Number(racao.quantidade_atual) + qtd
+            : tipo === "saida"
+                ? Number(racao.quantidade_atual) - qtd
+                : qtd;
+
+        if (novaQuantidade < 0) {
+            await conn.rollback();
+            return res.status(400).json({ erro: "Quantidade insuficiente em estoque" });
+        }
+
+        const [result] = await conn.query(
+            `INSERT INTO movimentacoes_racao (racao_id, tipo, quantidade, data, motivo, destino, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [racaoId, tipo, qtd, data, motivo, destino || null, observacoes || null]
+        );
+        await conn.query("UPDATE estoque_racao SET quantidade_atual=? WHERE id=?", [novaQuantidade, racaoId]);
+
+        await conn.commit();
+        res.status(201).json({ id: result.insertId, mensagem: "Movimentacao de racao registrada" });
+    } catch (err) {
+        await conn.rollback();
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao movimentar racao" });
+    } finally {
+        conn.release();
+    }
+});
+
 module.exports = router;

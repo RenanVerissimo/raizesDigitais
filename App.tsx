@@ -18,6 +18,7 @@ import ComprasEPedidos from "./src/pages/compras_e_pedidos/compras_e_pedidos";
 import CadastrarTanque from "./src/pages/controle_de_estoque/cadastar_tanque";
 import Estoque from "./src/pages/controle_de_estoque/estoque";
 import EstoqueRacao from "./src/pages/controle_de_estoque/estoque_racao";
+import MovimentarRacao from "./src/pages/controle_de_estoque/movimentar_racao";
 import RegistrarMovimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
 import TodasMovimentacoes from "./src/pages/controle_de_estoque/todas_movimentacoes";
 import EditarMovimentacao from "./src/pages/controle_de_estoque/editar_movimentacao";
@@ -51,6 +52,7 @@ export default function App() {
                     <Stack.Screen name="cadastar_tanque" component={CadastrarTanque} />
                     <Stack.Screen name="estoque" component={Estoque} />
                     <Stack.Screen name="estoque_racao" component={EstoqueRacao} />
+                    <Stack.Screen name="movimentar_racao" component={MovimentarRacao} />
                     <Stack.Screen name="registrar_movimentacao" component={RegistrarMovimentacao} />
                     <Stack.Screen name="todas_movimentacoes" component={TodasMovimentacoes} />
                     <Stack.Screen name="editar_movimentacao" component={EditarMovimentacao} />
