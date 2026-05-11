@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
     View,
     Text,
@@ -11,10 +11,11 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { criarProducao, atualizarProducao } from "../../services/api";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import { criarProducao, atualizarProducao, listarTanques } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
+import { Tanque } from "../controle_de_estoque/estoque";
 
 export default function ProducaoRegistro() {
     const insets = useSafeAreaInsets();
@@ -23,6 +24,7 @@ export default function ProducaoRegistro() {
 
     const producaoEditando: Producao | undefined = route.params?.producao;
     const isEditando = !!producaoEditando;
+    const [tanques, setTanques] = useState<Tanque[]>([]);
 
     const [formData, setFormData] = useState({
         date: producaoEditando?.data?.split("T")[0] ?? new Date().toISOString().split("T")[0],
@@ -30,7 +32,28 @@ export default function ProducaoRegistro() {
         afternoonProduction: producaoEditando?.producao_tarde?.toString() ?? "",
         quality: (producaoEditando?.qualidade as "excellent" | "good" | "regular") ?? "good",
         notes: producaoEditando?.observacoes ?? "",
+        tanqueId: "",
     });
+
+    useFocusEffect(
+        useCallback(() => {
+            async function carregarTanques() {
+                if (isEditando) return;
+
+                try {
+                    const dados = await listarTanques();
+                    setTanques(dados);
+                    if (dados.length > 0 && !formData.tanqueId) {
+                        setFormData((atual) => ({ ...atual, tanqueId: String(dados[0].id) }));
+                    }
+                } catch (err: any) {
+                    Toast.show({ type: "error", text1: "Erro ao carregar tanques", text2: err.message || "Não foi possível listar os tanques.", position: "top" });
+                }
+            }
+
+            carregarTanques();
+        }, [isEditando])
+    );
 
     const total =
         (parseFloat(formData.morningProduction) || 0) +
@@ -53,6 +76,10 @@ export default function ProducaoRegistro() {
             Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
             return;
         }
+        if (!isEditando && !formData.tanqueId) {
+            Alert.alert("Atenção", "Selecione o tanque que recebeu a coleta.");
+            return;
+        }
 
         try {
             const dados = {
@@ -61,6 +88,7 @@ export default function ProducaoRegistro() {
                 afternoonProduction: Number(formData.afternoonProduction),
                 quality: formData.quality,
                 notes: formData.notes.trim() || null,
+                tanqueId: !isEditando ? Number(formData.tanqueId) : null,
             };
 
             if (isEditando) {
@@ -86,6 +114,7 @@ export default function ProducaoRegistro() {
                     afternoonProduction: "",
                     quality: "good",
                     notes: "",
+                    tanqueId: tanques[0]?.id ? String(tanques[0].id) : "",
                 });
             }
 
@@ -108,34 +137,20 @@ export default function ProducaoRegistro() {
                         paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24,
                     }}
                 >
-                    {/* View do título com seta de voltar (JÁ EXISTE) */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>
-                                Análises e Gráficos
+                                {isEditando ? "Editar Coleta" : "Nova Coleta"}
                             </Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                Visualize o desempenho da produção
+                                {isEditando ? "Atualize os dados da produção" : "Registre a produção e envie ao tanque"}
                             </Text>
                         </View>
                     </View>
 
-                    {/* 👇 COLA O BOTÃO AQUI 👇 */}
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate("ProducaoRegistro")}
-                        activeOpacity={0.85}
-                        style={{
-                            marginTop: 16, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1,
-                            borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12,
-                            flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-                        }}
-                    >
-                        <Feather name="plus" size={20} color="#fff" />
-                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Registrar Nova Coleta</Text>
-                    </TouchableOpacity>
 
                 </LinearGradient>
 
@@ -151,6 +166,8 @@ export default function ProducaoRegistro() {
                             </Text>
                         </View>
                     </View>
+
+
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>

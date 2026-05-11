@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Alert, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -12,6 +12,8 @@ export default function TodasMovimentacoes() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
+    const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
+    const [movimentacaoSelecionada, setMovimentacaoSelecionada] = useState<Movimentacao | null>(null);
 
     async function carregarDados() {
         try {
@@ -33,28 +35,29 @@ export default function TodasMovimentacoes() {
         }, [])
     );
 
-    function confirmarExclusao(mov: Movimentacao) {
-        Alert.alert("Excluir movimentação", `Excluir a movimentação de ${mov.tanqueNome}?`, [
-            { text: "Cancelar", style: "cancel" },
-            {
-                text: "Excluir",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        await excluirMovimentacao(mov.id);
-                        await carregarDados();
-                        Toast.show({ type: "success", text1: "Movimentação excluída", position: "top" });
-                    } catch (err: any) {
-                        Toast.show({
-                            type: "error",
-                            text1: "Erro ao excluir",
-                            text2: err.message || "Não foi possível excluir.",
-                            position: "top",
-                        });
-                    }
-                },
-            },
-        ]);
+    function abrirModalExclusao(mov: Movimentacao) {
+        setMovimentacaoSelecionada(mov);
+        setModalExcluirVisible(true);
+    }
+
+    async function confirmarExclusao() {
+        if (!movimentacaoSelecionada) return;
+
+        try {
+            await excluirMovimentacao(movimentacaoSelecionada.id);
+            setMovimentacoes((prev) => prev.filter((item) => item.id !== movimentacaoSelecionada.id));
+            setModalExcluirVisible(false);
+            setMovimentacaoSelecionada(null);
+            await carregarDados();
+            Toast.show({ type: "success", text1: "Movimentação excluída", position: "top" });
+        } catch (err: any) {
+            Toast.show({
+                type: "error",
+                text1: "Erro ao excluir",
+                text2: err.message || "Não foi possível excluir.",
+                position: "top",
+            });
+        }
     }
 
     return (
@@ -137,7 +140,7 @@ export default function TodasMovimentacoes() {
                                                     <Feather name="edit-2" size={15} color="#fff" />
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
-                                                    onPress={() => confirmarExclusao(m)}
+                                                    onPress={() => abrirModalExclusao(m)}
                                                     style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
                                                 >
                                                     <Feather name="trash-2" size={15} color="#fff" />
@@ -151,6 +154,46 @@ export default function TodasMovimentacoes() {
                     )}
                 </View>
             </ScrollView>
+            <Modal
+                visible={modalExcluirVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setModalExcluirVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+                    <View style={{ width: "100%", maxWidth: 360, backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
+                        <View style={{ alignItems: "center", marginBottom: 14 }}>
+                            <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#fecaca" }}>
+                                <Feather name="trash-2" size={25} color="#ef4444" />
+                            </View>
+                        </View>
+                        <Text style={{ fontSize: 19, fontWeight: "800", color: "#0a0a0a", textAlign: "center" }}>Excluir movimentação?</Text>
+                        <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", lineHeight: 19, marginTop: 8, marginBottom: 18 }}>
+                            Esta ação remove a movimentação de {movimentacaoSelecionada?.tanqueNome || "estoque"} e ajusta o volume do tanque.
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setModalExcluirVisible(false);
+                                    setMovimentacaoSelecionada(null);
+                                }}
+                                activeOpacity={0.75}
+                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+                            >
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmarExclusao}
+                                activeOpacity={0.8}
+                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                            >
+                                <Feather name="trash-2" size={16} color="#fff" />
+                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

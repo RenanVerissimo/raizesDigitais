@@ -16,15 +16,35 @@ import { atualizarProducao } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 
+function normalizarData(data?: string | null) {
+    if (!data) return "";
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(data)) {
+        const [dia, mes, ano] = data.split("/");
+        return `${ano}-${mes}-${dia}`;
+    }
+    return data.slice(0, 10);
+}
+
+function formatarDataBr(data?: string | null) {
+    const dataNormalizada = normalizarData(data);
+    if (!dataNormalizada) return "";
+
+    const [ano, mes, dia] = dataNormalizada.split("-");
+    if (!ano || !mes || !dia) return dataNormalizada;
+
+    return `${dia}/${mes}/${ano}`;
+}
+
 export default function ProducaoEdicao() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
 
     const producao: Producao = route.params.producao;
+    const dataProducao = normalizarData(producao.data);
 
     const [formData, setFormData] = useState({
-        date: producao.data.split("T")[0],
+        date: dataProducao,
         morningProduction: producao.producao_manha.toString(),
         afternoonProduction: producao.producao_tarde.toString(),
         quality: producao.qualidade as "excellent" | "good" | "regular",
@@ -73,7 +93,7 @@ export default function ProducaoEdicao() {
                 visibilityTime: 3000,
             });
 
-            setTimeout(() => navigation.goBack(), 500);
+            setTimeout(() => navigation.replace("ProducaoHistorico"), 500);
         } catch (error) {
             console.error(error);
             Alert.alert("Erro", "Não foi possível atualizar a produção. Tente novamente.");
@@ -81,10 +101,7 @@ export default function ProducaoEdicao() {
     }
 
     function handleCancel() {
-        Alert.alert("Cancelar edição", "Deseja descartar as alterações?", [
-            { text: "Continuar editando", style: "cancel" },
-            { text: "Descartar", style: "destructive", onPress: () => navigation.goBack() },
-        ]);
+        navigation.replace("ProducaoHistorico");
     }
 
     return (
@@ -104,7 +121,7 @@ export default function ProducaoEdicao() {
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={handleCancel} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={() => navigation.replace("ProducaoHistorico")} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View style={{ flex: 1 }}>
@@ -115,7 +132,7 @@ export default function ProducaoEdicao() {
                                 </Text>
                             </View>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                {new Date(producao.data + "T12:00:00").toLocaleDateString("pt-BR")}
+                                {formatarDataBr(producao.data)}
                             </Text>
                         </View>
                     </View>

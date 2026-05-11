@@ -5,7 +5,7 @@ import {
     TextInput,
     TouchableOpacity,
     ScrollView,
-    Alert,
+    Modal,
     StatusBar,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -27,6 +27,8 @@ export default function ProducaoHistorico() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterQuality, setFilterQuality] = useState<"all" | "excellent" | "good" | "regular">("all");
     const [allProducoes, setAllProducoes] = useState<Producao[]>([]);
+    const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
+    const [producaoSelecionada, setProducaoSelecionada] = useState<Producao | null>(null);
 
     const [paginaAtual, setPaginaAtual] = useState(1);
     const ITENS_POR_PAGINA = 5;
@@ -63,28 +65,34 @@ export default function ProducaoHistorico() {
         return { bg: "#fef9c3", text: "#a16207", label: "Regular" };
     }
 
-    function handleDelete(id: number) {
-        Alert.alert("Confirmar", "Deseja excluir este registro?", [
-            { text: "Cancelar", style: "cancel" },
-            {
-                text: "Excluir",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        await excluirProducao(id);
-                        setAllProducoes((prev) => prev.filter((p) => p.id !== id));
-                        Toast.show({
-                            type: "success",
-                            text1: "Excluído!",
-                            text2: "Registro removido com sucesso.",
-                            position: "top",
-                        });
-                    } catch (err) {
-                        Alert.alert("Erro", "Não foi possível excluir.");
-                    }
-                },
-            },
-        ]);
+    function abrirModalExclusao(producao: Producao) {
+        setProducaoSelecionada(producao);
+        setModalExcluirVisible(true);
+    }
+
+    async function confirmarExclusao() {
+        if (!producaoSelecionada) return;
+
+        try {
+            await excluirProducao(producaoSelecionada.id);
+            setAllProducoes((prev) => prev.filter((p) => p.id !== producaoSelecionada.id));
+            setModalExcluirVisible(false);
+            setProducaoSelecionada(null);
+            setPaginaAtual((pagina) => Math.max(1, Math.min(pagina, Math.ceil((allProducoes.length - 1) / ITENS_POR_PAGINA) || 1)));
+            Toast.show({
+                type: "success",
+                text1: "Excluído!",
+                text2: "Registro removido com sucesso.",
+                position: "top",
+            });
+        } catch (err: any) {
+            Toast.show({
+                type: "error",
+                text1: "Erro ao excluir",
+                text2: err.message || "Não foi possível excluir.",
+                position: "top",
+            });
+        }
     }
 
     function handleEdit(prod: Producao) {
@@ -119,7 +127,7 @@ export default function ProducaoHistorico() {
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={() => navigation.replace("Dashboard")} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
@@ -192,7 +200,7 @@ export default function ProducaoHistorico() {
                                             <TouchableOpacity onPress={() => handleEdit(prod)} style={{ padding: 8 }}>
                                                 <Feather name="edit-2" size={18} color="#4a90e2" />
                                             </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => handleDelete(prod.id)} style={{ padding: 8 }}>
+                                            <TouchableOpacity onPress={() => abrirModalExclusao(prod)} style={{ padding: 8 }}>
                                                 <Feather name="trash-2" size={18} color="#ef4444" />
                                             </TouchableOpacity>
                                         </View>
@@ -264,6 +272,46 @@ export default function ProducaoHistorico() {
                     <View style={{ height: insets.bottom + 20 }} />
                 </View>
             </ScrollView>
+            <Modal
+                visible={modalExcluirVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setModalExcluirVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+                    <View style={{ width: "100%", maxWidth: 360, backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
+                        <View style={{ alignItems: "center", marginBottom: 14 }}>
+                            <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#fecaca" }}>
+                                <Feather name="trash-2" size={25} color="#ef4444" />
+                            </View>
+                        </View>
+                        <Text style={{ fontSize: 19, fontWeight: "800", color: "#0a0a0a", textAlign: "center" }}>Excluir coleta?</Text>
+                        <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", lineHeight: 19, marginTop: 8, marginBottom: 18 }}>
+                            Deseja realmente excluir a coleta de {producaoSelecionada ? formatarData(producaoSelecionada.data) : "produção"}?
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setModalExcluirVisible(false);
+                                    setProducaoSelecionada(null);
+                                }}
+                                activeOpacity={0.75}
+                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+                            >
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmarExclusao}
+                                activeOpacity={0.8}
+                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                            >
+                                <Feather name="trash-2" size={16} color="#fff" />
+                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

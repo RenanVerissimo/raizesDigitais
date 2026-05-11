@@ -1,13 +1,46 @@
-import { Animal, Receita, StatusCompra } from "../interfaces/interfaces";
+﻿import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Animal, Compra, Receita, StatusCompra } from "../interfaces/interfaces";
 
 const BASE_URL = "http://192.168.32.108:3001/api";
+const USUARIO_STORAGE_KEY = "@raizes_digitais_usuario";
+
+export interface UsuarioLogado {
+    id: number;
+    nome: string;
+    email: string;
+    telefone?: string | null;
+    nome_fazenda?: string | null;
+}
+
+async function getUsuarioLogado() {
+    const raw = await AsyncStorage.getItem(USUARIO_STORAGE_KEY);
+    return raw ? JSON.parse(raw) as UsuarioLogado : null;
+}
+
+export async function salvarUsuarioLogado(usuario: UsuarioLogado) {
+    await AsyncStorage.setItem(USUARIO_STORAGE_KEY, JSON.stringify(usuario));
+}
+
+export async function limparUsuarioLogado() {
+    await AsyncStorage.removeItem(USUARIO_STORAGE_KEY);
+}
+
+async function apiFetch(path: string, init: RequestInit = {}) {
+    const usuario = await getUsuarioLogado();
+    const headers = {
+        ...(init.headers || {}),
+        ...(usuario?.id ? { "x-usuario-id": String(usuario.id) } : {}),
+    };
+
+    return fetch(`${BASE_URL}${path}`, { ...init, headers });
+}
 
 export async function listarProducoes() {
-    const response = await fetch(`${BASE_URL}/producao`);
+    const response = await apiFetch("/producao");
     return response.json();
 }
 export async function listarProducoesRecentes() {
-    const response = await fetch(`${BASE_URL}/producao/recentes`);
+    const response = await apiFetch("/producao/recentes");
     return response.json();
 }
 
@@ -17,8 +50,9 @@ export async function criarProducao(dados: {
     afternoonProduction: number;
     quality: string;
     notes: string | null;
+    tanqueId?: number | null;
 }) {
-    const response = await fetch(`${BASE_URL}/producao`, {
+    const response = await apiFetch(`/producao`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -32,7 +66,7 @@ export async function criarProducao(dados: {
 }
 
 export async function excluirProducao(id: number) {
-    const response = await fetch(`${BASE_URL}/producao/${id}`, {
+    const response = await apiFetch(`/producao/${id}`, {
         method: "DELETE",
     });
     if (!response.ok) throw new Error("Erro ao excluir");
@@ -46,7 +80,7 @@ export async function atualizarProducao(id: number, dados: {
     quality: string;
     notes: string | null;
 }) {
-    const response = await fetch(`${BASE_URL}/producao/${id}`, {
+    const response = await apiFetch(`/producao/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -65,7 +99,7 @@ export async function atualizarProducao(id: number, dados: {
 
 export async function listarAnimais(): Promise<Animal[]> {
     try {
-        const response = await fetch(`${BASE_URL}/animais`);
+        const response = await apiFetch(`/animais`);
 
         if (!response.ok) {
             throw new Error(`Erro ao listar animais (status ${response.status})`);
@@ -106,7 +140,7 @@ export async function criarAnimal(dados: {
     data_confirmacao_prenhez?: string | null;
 }) {
     try {
-        const response = await fetch(`${BASE_URL}/animais`, {
+        const response = await apiFetch(`/animais`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(dados),
@@ -151,7 +185,7 @@ export async function atualizarAnimal(id: number, dados: {
     data_confirmacao_prenhez?: string | null;
 }) {
     try {
-        const response = await fetch(`${BASE_URL}/animais/${id}`, {
+        const response = await apiFetch(`/animais/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(dados),
@@ -171,7 +205,7 @@ export async function atualizarAnimal(id: number, dados: {
 
 export async function excluirAnimal(id: number) {
     try {
-        const response = await fetch(`${BASE_URL}/animais/${id}`, {
+        const response = await apiFetch(`/animais/${id}`, {
             method: "DELETE",
         });
 
@@ -187,11 +221,9 @@ export async function excluirAnimal(id: number) {
     }
 }
 
-import { Compra } from "../interfaces/interfaces";
-
 // LISTAR COMPRAS
 export async function listarCompras(): Promise<Compra[]> {
-    const res = await fetch(`${BASE_URL}/compras`);
+    const res = await apiFetch(`/compras`);
     if (!res.ok) throw new Error("Erro ao listar compras");
     const dados = await res.json();
     // 🛡️ Converte os DECIMAL do MySQL (que vêm como string) para number
@@ -211,7 +243,7 @@ export async function listarCompras(): Promise<Compra[]> {
 
 // CRIAR COMPRA
 export async function criarCompra(dados: Omit<Compra, "id" | "precoTotal">) {
-    const res = await fetch(`${BASE_URL}/compras`, {
+    const res = await apiFetch(`/compras`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -226,7 +258,7 @@ export async function criarCompra(dados: Omit<Compra, "id" | "precoTotal">) {
 
 // ATUALIZAR STATUS
 export async function atualizarStatusCompra(id: number, status: StatusCompra) {
-    const res = await fetch(`${BASE_URL}/compras/${id}/status`, {
+    const res = await apiFetch(`/compras/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -237,13 +269,13 @@ export async function atualizarStatusCompra(id: number, status: StatusCompra) {
 
 // EXCLUIR COMPRA
 export async function excluirCompra(id: number) {
-    const res = await fetch(`${BASE_URL}/compras/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/compras/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Erro ao excluir compra");
     return res.json();
 }
 
 export async function atualizarCompra(id: number, dados: Omit<Compra, "id" | "precoTotal">) {
-    const res = await fetch(`${BASE_URL}/compras/${id}`, {
+    const res = await apiFetch(`/compras/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -258,7 +290,7 @@ export async function atualizarCompra(id: number, dados: Omit<Compra, "id" | "pr
 
 
 export async function listarReceitas(): Promise<Receita[]> {
-    const res = await fetch(`${BASE_URL}/receitas`);
+    const res = await apiFetch(`/receitas`);
 
     if (!res.ok) {
         throw new Error("Erro ao listar receitas");
@@ -281,7 +313,7 @@ export async function criarReceita(dados: {
     comprador: string;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/receitas`, {
+    const res = await apiFetch(`/receitas`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -303,7 +335,7 @@ export async function atualizarReceita(id: number, dados: {
     comprador: string;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/receitas/${id}`, {
+    const res = await apiFetch(`/receitas/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -318,7 +350,7 @@ export async function atualizarReceita(id: number, dados: {
 }
 
 export async function excluirReceita(id: number) {
-    const res = await fetch(`${BASE_URL}/receitas/${id}`, {
+    const res = await apiFetch(`/receitas/${id}`, {
         method: "DELETE",
     });
 
@@ -335,7 +367,7 @@ export async function excluirReceita(id: number) {
 // ============================================
 
 export async function listarTanques() {
-    const res = await fetch(`${BASE_URL}/estoque/tanques`);
+    const res = await apiFetch(`/estoque/tanques`);
     if (!res.ok) throw new Error("Erro ao listar tanques");
     const dados = await res.json();
     return dados.map((t: any) => ({
@@ -355,7 +387,7 @@ export async function criarTanque(dados: {
     localizacao?: string | null;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/estoque/tanques`, {
+    const res = await apiFetch(`/estoque/tanques`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -376,7 +408,7 @@ export async function atualizarTanque(id: number, dados: {
     localizacao?: string | null;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/estoque/tanques/${id}`, {
+    const res = await apiFetch(`/estoque/tanques/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -386,7 +418,7 @@ export async function atualizarTanque(id: number, dados: {
 }
 
 export async function excluirTanque(id: number) {
-    const res = await fetch(`${BASE_URL}/estoque/tanques/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/estoque/tanques/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error("Erro ao excluir tanque");
     return res.json();
 }
@@ -396,7 +428,7 @@ export async function excluirTanque(id: number) {
 // ============================================
 
 export async function listarMovimentacoes() {
-    const res = await fetch(`${BASE_URL}/estoque/movimentacoes`);
+    const res = await apiFetch(`/estoque/movimentacoes`);
     if (!res.ok) throw new Error("Erro ao listar movimentações");
     const dados = await res.json();
     return dados.map((m: any) => ({
@@ -419,7 +451,7 @@ export async function criarMovimentacao(dados: {
     consumoProprio?: number;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/estoque/movimentacoes`, {
+    const res = await apiFetch(`/estoque/movimentacoes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -443,7 +475,7 @@ export async function atualizarMovimentacao(id: number, dados: {
     consumoProprio?: number;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/estoque/movimentacoes/${id}`, {
+    const res = await apiFetch(`/estoque/movimentacoes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -456,7 +488,7 @@ export async function atualizarMovimentacao(id: number, dados: {
 }
 
 export async function excluirMovimentacao(id: number) {
-    const res = await fetch(`${BASE_URL}/estoque/movimentacoes/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/estoque/movimentacoes/${id}`, { method: "DELETE" });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
         throw new Error(erro.erro || "Erro ao excluir movimentação");
@@ -469,7 +501,7 @@ export async function excluirMovimentacao(id: number) {
 // ============================================
 
 export async function listarRacoes() {
-    const res = await fetch(`${BASE_URL}/estoque/racoes`);
+    const res = await apiFetch(`/estoque/racoes`);
     if (!res.ok) throw new Error("Erro ao listar racoes");
     const dados = await res.json();
     return dados.map((r: any) => ({
@@ -492,7 +524,7 @@ export async function criarRacao(dados: {
     validade?: string | null;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/estoque/racoes`, {
+    const res = await apiFetch(`/estoque/racoes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -516,7 +548,7 @@ export async function atualizarRacao(id: number, dados: {
     validade?: string | null;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/estoque/racoes/${id}`, {
+    const res = await apiFetch(`/estoque/racoes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -529,7 +561,7 @@ export async function atualizarRacao(id: number, dados: {
 }
 
 export async function excluirRacao(id: number) {
-    const res = await fetch(`${BASE_URL}/estoque/racoes/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/estoque/racoes/${id}`, { method: "DELETE" });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
         throw new Error(erro.erro || "Erro ao excluir racao");
@@ -538,7 +570,7 @@ export async function excluirRacao(id: number) {
 }
 
 export async function listarMovimentacoesRacao() {
-    const res = await fetch(`${BASE_URL}/estoque/racoes/movimentacoes`);
+    const res = await apiFetch(`/estoque/racoes/movimentacoes`);
     if (!res.ok) throw new Error("Erro ao listar movimentacoes de racao");
     const dados = await res.json();
     return dados.map((m: any) => ({
@@ -556,7 +588,7 @@ export async function criarMovimentacaoRacao(dados: {
     destino?: string | null;
     observacoes?: string | null;
 }) {
-    const res = await fetch(`${BASE_URL}/estoque/racoes/movimentacoes`, {
+    const res = await apiFetch(`/estoque/racoes/movimentacoes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
@@ -582,7 +614,9 @@ export async function login(email: string, senha: string) {
         const erro = await res.json().catch(() => ({}));
         throw new Error(erro.erro || "Erro ao realizar login");
     }
-    return res.json();
+    const dados = await res.json();
+    if (dados.usuario) await salvarUsuarioLogado(dados.usuario);
+    return dados;
 }
 
 export async function cadastrar(dados: {
@@ -602,5 +636,16 @@ export async function cadastrar(dados: {
         const erro = await res.json().catch(() => ({}));
         throw new Error(erro.erro || "Erro ao cadastrar");
     }
-    return res.json();
+    const resposta = await res.json();
+    if (resposta.id) {
+        await salvarUsuarioLogado({
+            id: resposta.id,
+            nome: resposta.nome,
+            email: resposta.email,
+            telefone: resposta.telefone || null,
+            nome_fazenda: resposta.nome_fazenda || null,
+        });
+    }
+    return resposta;
 }
+

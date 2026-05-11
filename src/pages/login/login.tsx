@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { styles } from "./styles";
 import { FloatingIconProps, InputFieldProps } from "../../interfaces/interfaces";
 import { useNavigation } from "@react-navigation/native";
+import { cadastrar, login } from "../../services/api";
 
 
 const colors = {
@@ -210,10 +211,14 @@ export default function LoginScreen() {
         }
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsLoading(true);
-        setTimeout(() => {
+        try {
+            await login(loginData.email.trim(), loginData.password);
             setIsLoading(false);
             navigation.replace("Dashboard");
-        }, 800);
+        } catch (err: any) {
+            setIsLoading(false);
+            Alert.alert("Erro", err.message || "Não foi possível entrar.");
+        }
     }
 
     async function handleRegisterSubmit() {
@@ -231,10 +236,22 @@ export default function LoginScreen() {
         }
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setIsLoading(true);
-        setTimeout(() => {
+        try {
+            await cadastrar({
+                nome: registerData.name.trim(),
+                email: registerData.email.trim(),
+                telefone: registerData.phone.trim() || undefined,
+                nome_fazenda: registerData.farmName.trim(),
+                senha: registerData.password,
+                confirmar_senha: registerData.confirmPassword,
+            });
             Alert.alert("Sucesso", "Conta criada com sucesso!");
             setIsLoading(false);
-        }, 800);
+            navigation.replace("Dashboard");
+        } catch (err: any) {
+            setIsLoading(false);
+            Alert.alert("Erro", err.message || "Não foi possível criar a conta.");
+        }
     }
 
     function switchTab(toLogin: boolean) {

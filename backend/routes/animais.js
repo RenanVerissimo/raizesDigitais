@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../database/conecction");
+const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
 
 async function ensureAnimaisSchema() {
+    await ensureUsuarioColumn("animais");
     const requiredColumns = [
         { name: "doente", sql: "ADD COLUMN doente TINYINT(1) NOT NULL DEFAULT 0 AFTER mastite" },
         { name: "doenca", sql: "ADD COLUMN doenca VARCHAR(40) NULL AFTER doente" },
@@ -29,7 +31,9 @@ async function ensureAnimaisSchema() {
 router.get("/", async (req, res) => {
     try {
         await ensureAnimaisSchema();
-        const [rows] = await pool.query("SELECT * FROM animais ORDER BY criado_em DESC");
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
+        const [rows] = await pool.query("SELECT * FROM animais WHERE usuario_id = ? ORDER BY criado_em DESC", [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -40,6 +44,8 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
     try {
         await ensureAnimaisSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const {
             nome,
             identificador,
@@ -75,6 +81,7 @@ router.post("/", async (req, res) => {
         const [result] = await pool.query(
             `INSERT INTO animais 
             (
+                usuario_id,
                 nome,
                 identificador,
                 producao_media_diaria,
@@ -96,8 +103,9 @@ router.post("/", async (req, res) => {
                 data_inseminacao,
                 data_confirmacao_prenhez
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                usuarioId,
                 nome,
                 identificador,
                 producao_media_diaria ?? null,
@@ -134,6 +142,8 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
     try {
         await ensureAnimaisSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const {
             nome,
             identificador,
@@ -186,7 +196,7 @@ router.put("/:id", async (req, res) => {
                 data_inseminacao = ?,
                 data_confirmacao_prenhez = ?
 
-            WHERE id = ?`,
+            WHERE id = ? AND usuario_id = ?`,
             [
                 nome,
                 identificador,
@@ -211,6 +221,7 @@ router.put("/:id", async (req, res) => {
                 data_confirmacao_prenhez || null,
 
                 req.params.id,
+                usuarioId,
             ]
         );
 
@@ -228,7 +239,10 @@ router.put("/:id", async (req, res) => {
 // EXCLUIR
 router.delete("/:id", async (req, res) => {
     try {
-        const [result] = await pool.query("DELETE FROM animais WHERE id = ?", [req.params.id]);
+        await ensureAnimaisSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
+        const [result] = await pool.query("DELETE FROM animais WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Animal não encontrado" });
         res.json({ mensagem: "Animal excluído" });
     } catch (err) {

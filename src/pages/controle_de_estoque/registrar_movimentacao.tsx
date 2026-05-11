@@ -24,7 +24,7 @@ export default function RegistrarMovimentacao() {
 
     const [formData, setFormData] = useState({
         tanqueId: tanques[0]?.id ? String(tanques[0].id) : "",
-        tipo: "entrada" as TipoMovimento,
+        tipo: "saida" as TipoMovimento,
         volume: "",
         data: `${dd}/${mm}/${yyyy}`,
         hora,
@@ -37,9 +37,8 @@ export default function RegistrarMovimentacao() {
     });
 
     const tanqueSelecionado = tanques.find((t) => String(t.id) === formData.tanqueId);
-    const ehSaida = formData.tipo === "saida";
-    const ehConsumoProprio = ehSaida && formData.destinoSaida === "consumo_proprio";
-    const ehEntrega = ehSaida && formData.destinoSaida === "entrega";
+    const ehConsumoProprio = formData.destinoSaida === "consumo_proprio";
+    const ehEntrega = formData.destinoSaida === "entrega";
 
     function handleCancelar() {
         navigation.goBack();
@@ -53,7 +52,7 @@ export default function RegistrarMovimentacao() {
         }
 
         const vol = parseFloat(formData.volume || "0");
-        const consumoProprio = ehSaida ? parseFloat(formData.consumoProprio || "0") : 0;
+        const consumoProprio = parseFloat(formData.consumoProprio || "0");
         if (isNaN(vol) || vol < 0) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Volume inválido.", position: "top", visibilityTime: 3000 });
             return;
@@ -62,7 +61,7 @@ export default function RegistrarMovimentacao() {
             Toast.show({ type: "error", text1: "Atenção", text2: "Consumo próprio inválido.", position: "top", visibilityTime: 3000 });
             return;
         }
-        if ((formData.tipo === "entrada" && vol <= 0) || (ehSaida && vol + consumoProprio <= 0)) {
+        if (vol + consumoProprio <= 0) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Informe pelo menos um volume maior que 0.", position: "top", visibilityTime: 3000 });
             return;
         }
@@ -89,14 +88,14 @@ export default function RegistrarMovimentacao() {
                 motivo,
                 comprador: ehEntrega ? formData.comprador.trim() || null : null,
                 temperatura: ehEntrega ? temperatura : null,
-                consumoProprio: ehSaida ? consumoProprio : 0,
+                consumoProprio,
                 observacoes: formData.observacoes.trim() || null,
             });
 
             Toast.show({
                 type: "success",
                 text1: "Movimentação registrada!",
-                text2: `${formData.tipo === "entrada" ? "Entrada" : "Saída"} de ${formData.tipo === "entrada" ? vol : vol + consumoProprio}L registrada com sucesso.`,
+                text2: `Saída de ${vol + consumoProprio}L registrada com sucesso.`,
                 position: "top",
                 visibilityTime: 3000,
             });
@@ -131,7 +130,7 @@ export default function RegistrarMovimentacao() {
                                 <Feather name="trending-up" size={20} color="#fff" />
                                 <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Movimentação</Text>
                             </View>
-                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>Entrada ou saída de leite</Text>
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>Saída de leite do estoque</Text>
                         </View>
                     </View>
                 </LinearGradient>
@@ -170,126 +169,85 @@ export default function RegistrarMovimentacao() {
                         )}
                     </View>
 
-                    {/* Tipo */}
+                    {/* Destino da saída */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="repeat" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Tipo *</Text>
+                            <Feather name="map-pin" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Destino da saída *</Text>
                         </View>
                         <View style={{ flexDirection: "row", gap: 8 }}>
-                            {(["entrada", "saida"] as TipoMovimento[]).map((tipo) => {
-                                const ativo = formData.tipo === tipo;
-                                const cor = tipo === "entrada" ? "#22c55e" : "#ef4444";
+                            {[
+                                { key: "entrega" as const, label: "Entrega/Venda", icon: "truck" as const },
+                                { key: "consumo_proprio" as const, label: "Consumo próprio", icon: "home" as const },
+                            ].map((destino) => {
+                                const ativo = formData.destinoSaida === destino.key;
                                 return (
                                     <TouchableOpacity
-                                        key={tipo}
+                                        key={destino.key}
+                                        activeOpacity={0.75}
                                         onPress={() => setFormData({
                                             ...formData,
-                                            tipo,
-                                            temperatura: tipo === "saida" ? formData.temperatura : "",
-                                            consumoProprio: tipo === "saida" ? formData.consumoProprio : "",
-                                            comprador: tipo === "saida" ? formData.comprador : "",
-                                            destinoSaida: tipo === "saida" ? formData.destinoSaida : "entrega",
+                                            destinoSaida: destino.key,
+                                            volume: destino.key === "consumo_proprio" ? "" : formData.volume,
+                                            temperatura: destino.key === "consumo_proprio" ? "" : formData.temperatura,
+                                            comprador: destino.key === "consumo_proprio" ? "" : formData.comprador,
+                                            motivo: destino.key === "consumo_proprio" && !formData.motivo.trim() ? "Consumo próprio" : formData.motivo,
                                         })}
-                                        activeOpacity={0.7}
-                                        style={{ flex: 1, backgroundColor: ativo ? cor : "#f9fafb", borderWidth: 1, borderColor: ativo ? cor : "#e5e7eb", borderRadius: 10, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
+                                        style={{ flex: 1, backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
                                     >
-                                        <Feather name={tipo === "entrada" ? "trending-up" : "trending-down"} size={16} color={ativo ? "#fff" : "#6b7280"} />
-                                        <Text style={{ fontSize: 14, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>
-                                            {tipo === "entrada" ? "Entrada" : "Saída"}
-                                        </Text>
+                                        <Feather name={destino.icon} size={16} color={ativo ? "#fff" : "#6b7280"} />
+                                        <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>{destino.label}</Text>
                                     </TouchableOpacity>
                                 );
                             })}
                         </View>
                     </View>
 
-                    {/* Destino da saída */}
-                    {ehSaida && (
-                        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                <Feather name="map-pin" size={16} color="#4a90e2" />
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Destino da saída *</Text>
-                            </View>
-                            <View style={{ flexDirection: "row", gap: 8 }}>
-                                {[
-                                    { key: "entrega" as const, label: "Entrega/Venda", icon: "truck" as const },
-                                    { key: "consumo_proprio" as const, label: "Consumo próprio", icon: "home" as const },
-                                ].map((destino) => {
-                                    const ativo = formData.destinoSaida === destino.key;
-                                    return (
-                                        <TouchableOpacity
-                                            key={destino.key}
-                                            activeOpacity={0.75}
-                                            onPress={() => setFormData({
-                                                ...formData,
-                                                destinoSaida: destino.key,
-                                                volume: destino.key === "consumo_proprio" ? "" : formData.volume,
-                                                temperatura: destino.key === "consumo_proprio" ? "" : formData.temperatura,
-                                                comprador: destino.key === "consumo_proprio" ? "" : formData.comprador,
-                                                motivo: destino.key === "consumo_proprio" && !formData.motivo.trim() ? "Consumo próprio" : formData.motivo,
-                                            })}
-                                            style={{ flex: 1, backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
-                                        >
-                                            <Feather name={destino.icon} size={16} color={ativo ? "#fff" : "#6b7280"} />
-                                            <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>{destino.label}</Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </View>
-                    )}
-
                     {/* Volume */}
-                    {!ehConsumoProprio && (
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="droplet" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Volume (L) *</Text>
-                        </View>
-                        <TextInput
-                            value={formData.volume}
-                            onChangeText={(v) => setFormData({ ...formData, volume: v })}
-                            placeholder="0"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="decimal-pad"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                        />
-                        {tanqueSelecionado && (formData.volume || formData.consumoProprio) && !isNaN(parseFloat(formData.volume || "0")) && !isNaN(parseFloat(formData.consumoProprio || "0")) && (
-                            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-                                Após movimentação: {(formData.tipo === "entrada"
-                                    ? tanqueSelecionado.volumeAtual + parseFloat(formData.volume || "0")
-                                    : tanqueSelecionado.volumeAtual - parseFloat(formData.volume || "0") - parseFloat(formData.consumoProprio || "0")
-                                ).toFixed(1)} L
-                            </Text>
-                        )}
-                    </View>
-                    )}
-
-                    {/* Consumo próprio */}
-                    {ehSaida && (
+                    {!ehConsumoProprio ? (
                         <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                                <Feather name="home" size={16} color="#4a90e2" />
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                    Consumo próprio (L) {ehEntrega ? <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text> : null}
-                                </Text>
+                                <Feather name="droplet" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Volume (L) *</Text>
                             </View>
                             <TextInput
-                                value={formData.consumoProprio}
-                                onChangeText={(v) => setFormData({ ...formData, consumoProprio: v })}
+                                value={formData.volume}
+                                onChangeText={(v) => setFormData({ ...formData, volume: v })}
                                 placeholder="0"
                                 placeholderTextColor="#9ca3af"
                                 keyboardType="decimal-pad"
                                 style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                             />
-                            {ehConsumoProprio && tanqueSelecionado && formData.consumoProprio && !isNaN(parseFloat(formData.consumoProprio || "0")) && (
+                            {tanqueSelecionado && (formData.volume || formData.consumoProprio) && !isNaN(parseFloat(formData.volume || "0")) && !isNaN(parseFloat(formData.consumoProprio || "0")) ? (
                                 <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-                                    Após movimentação: {(tanqueSelecionado.volumeAtual - parseFloat(formData.consumoProprio || "0")).toFixed(1)} L
+                                    Após movimentação: {(tanqueSelecionado.volumeAtual - parseFloat(formData.volume || "0") - parseFloat(formData.consumoProprio || "0")).toFixed(1)} L
                                 </Text>
-                            )}
+                            ) : null}
                         </View>
-                    )}
+                    ) : null}
+
+                    {/* Consumo próprio */}
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="home" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Consumo próprio (L) {ehEntrega ? <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text> : null}
+                            </Text>
+                        </View>
+                        <TextInput
+                            value={formData.consumoProprio}
+                            onChangeText={(v) => setFormData({ ...formData, consumoProprio: v })}
+                            placeholder="0"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="decimal-pad"
+                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                        />
+                        {ehConsumoProprio && tanqueSelecionado && formData.consumoProprio && !isNaN(parseFloat(formData.consumoProprio || "0")) && (
+                            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                                Após movimentação: {(tanqueSelecionado.volumeAtual - parseFloat(formData.consumoProprio || "0")).toFixed(1)} L
+                            </Text>
+                        )}
+                    </View>
 
                     {/* Data */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>

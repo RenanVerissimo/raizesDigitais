@@ -12,7 +12,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
+import { limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 
 function formatarDataLocal(data: Date) {
@@ -53,7 +53,8 @@ export default function Dashboard() {
 
     
 
-    function handleLogout() {
+    async function handleLogout() {
+        await limparUsuarioLogado();
         navigation.replace("Login");
     }
 

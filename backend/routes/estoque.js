@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../database/conecction");
+const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
 
 // ============================================
 // TANQUES
@@ -9,6 +10,8 @@ const pool = require("../database/conecction");
 // LISTAR TODOS OS TANQUES
 router.get("/tanques", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT
                 id,
@@ -21,8 +24,9 @@ router.get("/tanques", async (req, res) => {
                 observacoes,
                 criado_em AS atualizadoEm
             FROM tanques
+            WHERE usuario_id = ?
             ORDER BY nome ASC
-        `);
+        `, [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -33,6 +37,8 @@ router.get("/tanques", async (req, res) => {
 // CRIAR TANQUE
 router.post("/tanques", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
         const { nome, capacidade, volumeAtual, temperatura, qualidade, localizacao, observacoes } = req.body;
 
         if (!nome || !capacidade) {
@@ -40,9 +46,10 @@ router.post("/tanques", async (req, res) => {
         }
 
         const [result] = await pool.query(
-            `INSERT INTO tanques (nome, capacidade, quantidade_atual, temperatura, qualidade, localizacao, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO tanques (usuario_id, nome, capacidade, quantidade_atual, temperatura, qualidade, localizacao, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                usuarioId,
                 nome,
                 Number(capacidade),
                 Number(volumeAtual || 0),
@@ -55,8 +62,8 @@ router.post("/tanques", async (req, res) => {
 
         const [rows] = await pool.query(
             `SELECT id, nome, capacidade, quantidade_atual AS volumeAtual, temperatura, qualidade, localizacao, observacoes, criado_em AS atualizadoEm
-             FROM tanques WHERE id = ?`,
-            [result.insertId]
+             FROM tanques WHERE id = ? AND usuario_id = ?`,
+            [result.insertId, usuarioId]
         );
 
         res.status(201).json(rows[0]);
@@ -69,11 +76,13 @@ router.post("/tanques", async (req, res) => {
 // ATUALIZAR TANQUE
 router.put("/tanques/:id", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
         const { nome, capacidade, volumeAtual, temperatura, qualidade, localizacao, observacoes } = req.body;
 
         const [result] = await pool.query(
             `UPDATE tanques SET nome=?, capacidade=?, quantidade_atual=?, temperatura=?, qualidade=?, localizacao=?, observacoes=?
-             WHERE id=?`,
+             WHERE id=? AND usuario_id=?`,
             [
                 nome,
                 Number(capacidade),
@@ -83,6 +92,7 @@ router.put("/tanques/:id", async (req, res) => {
                 localizacao || null,
                 observacoes || null,
                 req.params.id,
+                usuarioId,
             ]
         );
 
@@ -98,7 +108,9 @@ router.put("/tanques/:id", async (req, res) => {
 // EXCLUIR TANQUE
 router.delete("/tanques/:id", async (req, res) => {
     try {
-        const [result] = await pool.query("DELETE FROM tanques WHERE id=?", [req.params.id]);
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
+        const [result] = await pool.query("DELETE FROM tanques WHERE id=? AND usuario_id=?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Tanque não encontrado" });
         res.json({ mensagem: "Tanque excluído" });
     } catch (err) {
@@ -114,6 +126,8 @@ router.delete("/tanques/:id", async (req, res) => {
 // LISTAR MOVIMENTAÇÕES
 router.get("/movimentacoes", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT
                 m.id,
@@ -130,8 +144,9 @@ router.get("/movimentacoes", async (req, res) => {
                 m.observacoes
             FROM movimentacoes_estoque m
             INNER JOIN tanques t ON t.id = m.tanque_id
+            WHERE t.usuario_id = ?
             ORDER BY m.data DESC, m.hora DESC, m.id DESC
-        `);
+        `, [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -142,6 +157,8 @@ router.get("/movimentacoes", async (req, res) => {
 // CRIAR MOVIMENTAÇÃO
 router.post("/movimentacoes", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
         const { tanqueId, tipo, volume, data, hora, motivo, comprador, temperatura, consumoProprio, observacoes } = req.body;
 
         if (!tanqueId || !tipo || !data || !motivo) {
@@ -149,7 +166,7 @@ router.post("/movimentacoes", async (req, res) => {
         }
 
         // Busca tanque e valida volume
-        const [tanques] = await pool.query("SELECT * FROM tanques WHERE id=?", [tanqueId]);
+        const [tanques] = await pool.query("SELECT * FROM tanques WHERE id=? AND usuario_id=?", [tanqueId, usuarioId]);
         if (tanques.length === 0) return res.status(404).json({ erro: "Tanque não encontrado" });
 
         const tanque = tanques[0];
@@ -217,21 +234,31 @@ router.post("/movimentacoes", async (req, res) => {
 router.delete("/movimentacoes/:id", async (req, res, next) => {
     const conn = await pool.getConnection();
     try {
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
         await conn.beginTransaction();
 
-        const [movs] = await conn.query("SELECT * FROM movimentacoes_estoque WHERE id=?", [req.params.id]);
+        const [movs] = await conn.query(`
+            SELECT m.*
+            FROM movimentacoes_estoque m
+            INNER JOIN tanques t ON t.id = m.tanque_id
+            WHERE m.id=? AND t.usuario_id=?
+        `, [req.params.id, usuarioId]);
         if (movs.length === 0) {
             await conn.rollback();
             return res.status(404).json({ erro: "Movimentação não encontrada" });
         }
 
         const mov = movs[0];
-        const tanque = await buscarTanquePorId(conn, mov.tanque_id);
+        const tanque = await buscarTanquePorId(conn, mov.tanque_id, usuarioId);
         const novoVolume = Number(tanque.quantidade_atual) - efeitoMovimentacao(mov);
         const erroVolume = validarVolumeTanque(tanque, novoVolume);
         if (erroVolume) {
             await conn.rollback();
-            return res.status(400).json({ erro: erroVolume });
+            const mensagem = mov.tipo === "entrada" && novoVolume < 0
+                ? "Não é possível excluir esta entrada porque parte desse leite já saiu do tanque."
+                : erroVolume;
+            return res.status(400).json({ erro: mensagem });
         }
 
         await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [novoVolume, tanque.id]);
@@ -250,7 +277,13 @@ router.delete("/movimentacoes/:id", async (req, res, next) => {
 
 router.delete("/movimentacoes/:id/legado", async (req, res) => {
     try {
-        const [result] = await pool.query("DELETE FROM movimentacoes_estoque WHERE id=?", [req.params.id]);
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
+        const [result] = await pool.query(`
+            DELETE m FROM movimentacoes_estoque m
+            INNER JOIN tanques t ON t.id = m.tanque_id
+            WHERE m.id=? AND t.usuario_id=?
+        `, [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Movimentação não encontrada" });
         res.json({ mensagem: "Movimentação excluída" });
     } catch (err) {
@@ -265,8 +298,8 @@ function efeitoMovimentacao(mov) {
     return mov.tipo === "entrada" ? volume : -volume - consumoProprio;
 }
 
-async function buscarTanquePorId(conn, id) {
-    const [tanques] = await conn.query("SELECT * FROM tanques WHERE id=?", [id]);
+async function buscarTanquePorId(conn, id, usuarioId) {
+    const [tanques] = await conn.query("SELECT * FROM tanques WHERE id=? AND usuario_id=?", [id, usuarioId]);
     return tanques[0];
 }
 
@@ -279,6 +312,8 @@ function validarVolumeTanque(tanque, novoVolume) {
 router.put("/movimentacoes/:id", async (req, res) => {
     const conn = await pool.getConnection();
     try {
+        const usuarioId = await requireUsuario(req, res, ["tanques"]);
+        if (!usuarioId) return;
         const { tanqueId, tipo, volume, data, hora, motivo, comprador, temperatura, consumoProprio, observacoes } = req.body;
 
         if (!tanqueId || !tipo || !data || !motivo) {
@@ -296,15 +331,20 @@ router.put("/movimentacoes/:id", async (req, res) => {
 
         await conn.beginTransaction();
 
-        const [movs] = await conn.query("SELECT * FROM movimentacoes_estoque WHERE id=?", [req.params.id]);
+        const [movs] = await conn.query(`
+            SELECT m.*
+            FROM movimentacoes_estoque m
+            INNER JOIN tanques t ON t.id = m.tanque_id
+            WHERE m.id=? AND t.usuario_id=?
+        `, [req.params.id, usuarioId]);
         if (movs.length === 0) {
             await conn.rollback();
             return res.status(404).json({ erro: "Movimentação não encontrada" });
         }
 
         const movAntiga = movs[0];
-        const tanqueAntigo = await buscarTanquePorId(conn, movAntiga.tanque_id);
-        const tanqueNovo = await buscarTanquePorId(conn, tanqueId);
+        const tanqueAntigo = await buscarTanquePorId(conn, movAntiga.tanque_id, usuarioId);
+        const tanqueNovo = await buscarTanquePorId(conn, tanqueId, usuarioId);
         if (!tanqueNovo) {
             await conn.rollback();
             return res.status(404).json({ erro: "Tanque não encontrado" });
@@ -425,9 +465,11 @@ async function ensureRacaoSchema() {
                 ON DELETE CASCADE
         )
     `);
+    await ensureUsuarioColumn("estoque_racao");
 }
 
 async function ensureComprasRacaoSchema() {
+    await ensureUsuarioColumn("compras");
     const [columns] = await pool.query(`
         SELECT COLUMN_NAME
         FROM INFORMATION_SCHEMA.COLUMNS
@@ -450,7 +492,7 @@ async function ensureComprasRacaoSchema() {
     }
 }
 
-async function sincronizarRacoesCompradas() {
+async function sincronizarRacoesCompradas(usuarioId) {
     await ensureRacaoSchema();
     await ensureComprasRacaoSchema();
 
@@ -465,7 +507,8 @@ async function sincronizarRacoesCompradas() {
         FROM compras
         WHERE categoria = 'racao'
           AND status = 'concluido'
-    `);
+          AND usuario_id = ?
+    `, [usuarioId]);
 
     const agregadas = new Map();
     compras.forEach((compra) => {
@@ -485,13 +528,13 @@ async function sincronizarRacoesCompradas() {
 
     for (const [tipo, dados] of agregadas.entries()) {
         const custoUnitario = dados.quantidade > 0 ? dados.valor / dados.quantidade : null;
-        const [racoes] = await pool.query("SELECT id, quantidade_atual, custo_unitario, fornecedor FROM estoque_racao WHERE tipo = ? ORDER BY id ASC LIMIT 1", [tipo]);
+        const [racoes] = await pool.query("SELECT id, quantidade_atual, custo_unitario, fornecedor FROM estoque_racao WHERE tipo = ? AND usuario_id = ? ORDER BY id ASC LIMIT 1", [tipo, usuarioId]);
 
         if (racoes.length === 0) {
             await pool.query(
-                `INSERT INTO estoque_racao (nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor)
-                 VALUES (?, ?, 'kg', ?, 0, ?, ?)`,
-                [TIPOS_RACAO_LABEL[tipo], tipo, dados.quantidade, custoUnitario, dados.fornecedor]
+                `INSERT INTO estoque_racao (usuario_id, nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor)
+                 VALUES (?, ?, ?, 'kg', ?, 0, ?, ?)`,
+                [usuarioId, TIPOS_RACAO_LABEL[tipo], tipo, dados.quantidade, custoUnitario, dados.fornecedor]
             );
             continue;
         }
@@ -517,7 +560,9 @@ async function sincronizarRacoesCompradas() {
 
 router.get("/racoes", async (req, res) => {
     try {
-        await sincronizarRacoesCompradas();
+        const usuarioId = await requireUsuario(req, res, ["estoque_racao", "compras"]);
+        if (!usuarioId) return;
+        await sincronizarRacoesCompradas(usuarioId);
         const [rows] = await pool.query(`
             SELECT
                 id,
@@ -533,8 +578,9 @@ router.get("/racoes", async (req, res) => {
                 observacoes,
                 atualizado_em AS atualizadoEm
             FROM estoque_racao
+            WHERE usuario_id = ?
             ORDER BY nome ASC
-        `);
+        `, [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -545,6 +591,8 @@ router.get("/racoes", async (req, res) => {
 router.post("/racoes", async (req, res) => {
     try {
         await ensureRacaoSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const { nome, tipo, unidade, quantidadeAtual, estoqueMinimo, custoUnitario, fornecedor, localizacao, validade, observacoes } = req.body;
 
         if (!nome || !tipo || !unidade) {
@@ -561,9 +609,10 @@ router.post("/racoes", async (req, res) => {
 
         const [result] = await pool.query(
             `INSERT INTO estoque_racao
-             (nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor, localizacao, validade, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (usuario_id, nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor, localizacao, validade, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                usuarioId,
                 nome,
                 tipo,
                 unidade,
@@ -587,6 +636,8 @@ router.post("/racoes", async (req, res) => {
 router.put("/racoes/:id", async (req, res) => {
     try {
         await ensureRacaoSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const { nome, tipo, unidade, quantidadeAtual, estoqueMinimo, custoUnitario, fornecedor, localizacao, validade, observacoes } = req.body;
         const quantidade = Number(quantidadeAtual || 0);
         const minimo = Number(estoqueMinimo || 0);
@@ -600,7 +651,7 @@ router.put("/racoes/:id", async (req, res) => {
         const [result] = await pool.query(
             `UPDATE estoque_racao
              SET nome=?, tipo=?, unidade=?, quantidade_atual=?, estoque_minimo=?, custo_unitario=?, fornecedor=?, localizacao=?, validade=?, observacoes=?
-             WHERE id=?`,
+             WHERE id=? AND usuario_id=?`,
             [
                 nome,
                 tipo,
@@ -613,6 +664,7 @@ router.put("/racoes/:id", async (req, res) => {
                 validade || null,
                 observacoes || null,
                 req.params.id,
+                usuarioId,
             ]
         );
 
@@ -627,7 +679,9 @@ router.put("/racoes/:id", async (req, res) => {
 router.delete("/racoes/:id", async (req, res) => {
     try {
         await ensureRacaoSchema();
-        const [result] = await pool.query("DELETE FROM estoque_racao WHERE id=?", [req.params.id]);
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
+        const [result] = await pool.query("DELETE FROM estoque_racao WHERE id=? AND usuario_id=?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Racao nao encontrada" });
         res.json({ mensagem: "Racao excluida" });
     } catch (err) {
@@ -639,6 +693,8 @@ router.delete("/racoes/:id", async (req, res) => {
 router.get("/racoes/movimentacoes", async (req, res) => {
     try {
         await ensureRacaoSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT
                 m.id,
@@ -653,9 +709,10 @@ router.get("/racoes/movimentacoes", async (req, res) => {
                 m.observacoes
             FROM movimentacoes_racao m
             INNER JOIN estoque_racao r ON r.id = m.racao_id
+            WHERE r.usuario_id = ?
             ORDER BY m.data DESC, m.id DESC
             LIMIT 20
-        `);
+        `, [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -667,6 +724,8 @@ router.post("/racoes/movimentacoes", async (req, res) => {
     const conn = await pool.getConnection();
     try {
         await ensureRacaoSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const { racaoId, tipo, quantidade, data, motivo, destino, observacoes } = req.body;
         const qtd = Number(quantidade || 0);
 
@@ -677,7 +736,7 @@ router.post("/racoes/movimentacoes", async (req, res) => {
 
         await conn.beginTransaction();
 
-        const [racoes] = await conn.query("SELECT * FROM estoque_racao WHERE id=?", [racaoId]);
+        const [racoes] = await conn.query("SELECT * FROM estoque_racao WHERE id=? AND usuario_id=?", [racaoId, usuarioId]);
         if (racoes.length === 0) {
             await conn.rollback();
             return res.status(404).json({ erro: "Racao nao encontrada" });

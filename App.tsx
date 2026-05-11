@@ -24,6 +24,7 @@ import TodasMovimentacoes from "./src/pages/controle_de_estoque/todas_movimentac
 import EditarMovimentacao from "./src/pages/controle_de_estoque/editar_movimentacao";
 import Financeiro from "./src/pages/financeiro/financeiro";
 import CadastrarReceita from "./src/pages/financeiro/cadastrar_receita";
+import PrevisaoReceita from "./src/pages/financeiro/previsao_receita";
 import VerTodasReceitas from "./src/pages/financeiro/ver_todas_receitas";
 import Graficos from "./src/pages/graficos/graficos";
 import EditarAnimais from "./src/pages/animais/editar_animais";
@@ -58,6 +59,7 @@ export default function App() {
                     <Stack.Screen name="editar_movimentacao" component={EditarMovimentacao} />
                     <Stack.Screen name="financeiro" component={Financeiro} />
                     <Stack.Screen name="cadastrar_receita" component={CadastrarReceita} />
+                    <Stack.Screen name="previsao_receita" component={PrevisaoReceita} />
                     <Stack.Screen name="ver_todas_receitas" component={VerTodasReceitas} />
                     <Stack.Screen name="graficos" component={Graficos} />
                     <Stack.Screen name="editar_animais" component={EditarAnimais} />

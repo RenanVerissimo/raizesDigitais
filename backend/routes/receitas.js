@@ -1,10 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../database/conecction");
+const { requireUsuario } = require("../utils/tenant");
 
 // LISTAR TODAS AS RECEITAS
 router.get("/", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["receitas"]);
+        if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT
                 id,
@@ -15,8 +18,9 @@ router.get("/", async (req, res) => {
                 comprador,
                 observacoes
             FROM receitas
+            WHERE usuario_id = ?
             ORDER BY data DESC, id DESC
-        `);
+        `, [usuarioId]);
 
         res.json(rows);
     } catch (err) {
@@ -28,6 +32,8 @@ router.get("/", async (req, res) => {
 // CRIAR RECEITA
 router.post("/", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["receitas"]);
+        if (!usuarioId) return;
         const {
             data,
             litros,
@@ -55,9 +61,10 @@ router.post("/", async (req, res) => {
 
         const [result] = await pool.query(
             `INSERT INTO receitas
-             (data, litros, preco_por_litro, valor_total, comprador, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?)`,
+             (usuario_id, data, litros, preco_por_litro, valor_total, comprador, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
+                usuarioId,
                 data,
                 litrosNumero,
                 precoNumero,
@@ -86,6 +93,8 @@ router.post("/", async (req, res) => {
 // ATUALIZAR RECEITA
 router.put("/:id", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["receitas"]);
+        if (!usuarioId) return;
         const {
             data,
             litros,
@@ -114,7 +123,7 @@ router.put("/:id", async (req, res) => {
         const [result] = await pool.query(
             `UPDATE receitas
              SET data = ?, litros = ?, preco_por_litro = ?, valor_total = ?, comprador = ?, observacoes = ?
-             WHERE id = ?`,
+             WHERE id = ? AND usuario_id = ?`,
             [
                 data,
                 litrosNumero,
@@ -122,7 +131,8 @@ router.put("/:id", async (req, res) => {
                 valorTotal,
                 comprador,
                 observacoes || null,
-                req.params.id
+                req.params.id,
+                usuarioId
             ]
         );
 
@@ -149,9 +159,11 @@ router.put("/:id", async (req, res) => {
 // EXCLUIR RECEITA
 router.delete("/:id", async (req, res) => {
     try {
+        const usuarioId = await requireUsuario(req, res, ["receitas"]);
+        if (!usuarioId) return;
         const [result] = await pool.query(
-            "DELETE FROM receitas WHERE id = ?",
-            [req.params.id]
+            "DELETE FROM receitas WHERE id = ? AND usuario_id = ?",
+            [req.params.id, usuarioId]
         );
 
         if (result.affectedRows === 0) {

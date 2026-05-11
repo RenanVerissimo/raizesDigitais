@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../database/conecction");
+const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
 
 const TIPOS_RACAO_LABEL = {
     milho: "Milho",
@@ -52,6 +53,7 @@ async function ensureEstoqueRacaoSchema() {
             atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )
     `);
+    await ensureUsuarioColumn("estoque_racao");
 }
 
 async function aplicarDeltaEstoqueRacao(compra, deltaQuantidade) {
@@ -59,29 +61,33 @@ async function aplicarDeltaEstoqueRacao(compra, deltaQuantidade) {
 
     const tipoRacao = normalizarTipoRacao(compra.tipo_racao || compra.tipoRacao, compra.item);
     if (!tipoRacao) return;
+    const usuarioId = compra.usuario_id || compra.usuarioId;
+    if (!usuarioId) return;
 
     await ensureEstoqueRacaoSchema();
 
-    const [racoes] = await pool.query("SELECT id, quantidade_atual FROM estoque_racao WHERE tipo = ? ORDER BY id ASC LIMIT 1", [tipoRacao]);
+    const [racoes] = await pool.query("SELECT id, quantidade_atual FROM estoque_racao WHERE tipo = ? AND usuario_id = ? ORDER BY id ASC LIMIT 1", [tipoRacao, usuarioId]);
     const novaQuantidade = Math.max(0, (racoes[0] ? Number(racoes[0].quantidade_atual) : 0) + Number(deltaQuantidade));
 
     if (racoes.length > 0) {
         await pool.query(
-            "UPDATE estoque_racao SET quantidade_atual=?, custo_unitario=?, fornecedor=? WHERE id=?",
+            "UPDATE estoque_racao SET quantidade_atual=?, custo_unitario=?, fornecedor=? WHERE id=? AND usuario_id=?",
             [
                 novaQuantidade,
                 compra.preco_unitario ?? compra.precoUnitario ?? null,
                 compra.fornecedor || null,
                 racoes[0].id,
+                usuarioId,
             ]
         );
         return;
     }
 
     await pool.query(
-        `INSERT INTO estoque_racao (nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor)
-         VALUES (?, ?, 'kg', ?, 0, ?, ?)`,
+        `INSERT INTO estoque_racao (usuario_id, nome, tipo, unidade, quantidade_atual, estoque_minimo, custo_unitario, fornecedor)
+         VALUES (?, ?, ?, 'kg', ?, 0, ?, ?)`,
         [
+            usuarioId,
             TIPOS_RACAO_LABEL[tipoRacao],
             tipoRacao,
             novaQuantidade,
@@ -92,6 +98,7 @@ async function aplicarDeltaEstoqueRacao(compra, deltaQuantidade) {
 }
 
 async function ensureComprasSchema() {
+    await ensureUsuarioColumn("compras");
     const [columns] = await pool.query(`
         SELECT COLUMN_NAME
         FROM INFORMATION_SCHEMA.COLUMNS
@@ -147,6 +154,8 @@ async function ensureComprasSchema() {
 router.get("/", async (req, res) => {
     try {
         await ensureComprasSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT 
                 id,
@@ -166,8 +175,9 @@ router.get("/", async (req, res) => {
                 finalidade_descricao AS finalidadeDescricao,
                 observacoes
             FROM compras
+            WHERE usuario_id = ?
             ORDER BY data DESC, id DESC
-        `);
+        `, [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -179,6 +189,8 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
     try {
         await ensureComprasSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const {
             categoria, item, quantidade, precoUnitario,
             fornecedor, data, status, tipoRacao, unidadeCompra, pesoPorUnidadeKg, finalidadeTratamento, finalidadeDescricao, observacoes
@@ -199,9 +211,10 @@ router.post("/", async (req, res) => {
 
         const [result] = await pool.query(
             `INSERT INTO compras
-             (categoria, tipo_racao, unidade_compra, peso_unidade_kg, quantidade_estoque_kg, item, quantidade, preco_unitario, preco_total, fornecedor, data, status, finalidade_tratamento, finalidade_descricao, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (usuario_id, categoria, tipo_racao, unidade_compra, peso_unidade_kg, quantidade_estoque_kg, item, quantidade, preco_unitario, preco_total, fornecedor, data, status, finalidade_tratamento, finalidade_descricao, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                usuarioId,
                 categoria,
                 tipoRacaoNormalizado,
                 unidadeCompraNormalizada,
@@ -221,6 +234,7 @@ router.post("/", async (req, res) => {
         );
 
         await aplicarDeltaEstoqueRacao({
+            usuario_id: usuarioId,
             categoria,
             tipo_racao: tipoRacaoNormalizado,
             unidade_compra: unidadeCompraNormalizada,
@@ -244,13 +258,15 @@ router.post("/", async (req, res) => {
 router.patch("/:id/status", async (req, res) => {
     try {
         await ensureComprasSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const { status } = req.body;
-        const [compras] = await pool.query("SELECT * FROM compras WHERE id = ?", [req.params.id]);
+        const [compras] = await pool.query("SELECT * FROM compras WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (compras.length === 0) return res.status(404).json({ erro: "Compra nao encontrada" });
         const compraAntes = compras[0];
         const [result] = await pool.query(
-            "UPDATE compras SET status = ? WHERE id = ?",
-            [status, req.params.id]
+            "UPDATE compras SET status = ? WHERE id = ? AND usuario_id = ?",
+            [status, req.params.id, usuarioId]
         );
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Compra não encontrada" });
         const compraDepois = { ...compraAntes, status };
@@ -268,10 +284,12 @@ router.patch("/:id/status", async (req, res) => {
 router.delete("/:id", async (req, res) => {
     try {
         await ensureComprasSchema();
-        const [compras] = await pool.query("SELECT * FROM compras WHERE id = ?", [req.params.id]);
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
+        const [compras] = await pool.query("SELECT * FROM compras WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (compras.length === 0) return res.status(404).json({ erro: "Compra nao encontrada" });
         const compraAntes = compras[0];
-        const [result] = await pool.query("DELETE FROM compras WHERE id = ?", [req.params.id]);
+        const [result] = await pool.query("DELETE FROM compras WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Compra não encontrada" });
         const qtdAntes = compraAntes.categoria === "racao" && compraAntes.status === "concluido" ? Number(compraAntes.quantidade_estoque_kg || compraAntes.quantidade) : 0;
         await aplicarDeltaEstoqueRacao(compraAntes, -qtdAntes);
@@ -285,6 +303,8 @@ router.delete("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
     try {
         await ensureComprasSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
         const { id } = req.params;
         const {
             categoria,
@@ -309,7 +329,7 @@ router.put("/:id", async (req, res) => {
         if (categoria === "racao" && quantidadeEstoqueKg === null) {
             return res.status(400).json({ erro: "Informe a unidade e o peso por unidade da racao" });
         }
-        const [comprasAntes] = await pool.query("SELECT * FROM compras WHERE id = ?", [id]);
+        const [comprasAntes] = await pool.query("SELECT * FROM compras WHERE id = ? AND usuario_id = ?", [id, usuarioId]);
         if (comprasAntes.length === 0) return res.status(404).json({ erro: "Compra nao encontrada" });
         const compraAntes = comprasAntes[0];
 
@@ -330,7 +350,7 @@ router.put("/:id", async (req, res) => {
                 finalidade_tratamento = ?,
                 finalidade_descricao = ?,
                 observacoes = ?
-             WHERE id = ?`,
+             WHERE id = ? AND usuario_id = ?`,
             [
                 categoria,
                 tipoRacaoNormalizado,
@@ -347,11 +367,13 @@ router.put("/:id", async (req, res) => {
                 categoria === "medicamento" ? finalidadeTratamento || "uso_geral" : null,
                 categoria === "medicamento" && finalidadeTratamento === "outro_tratamento" ? finalidadeDescricao || null : null,
                 observacoes || null,
-                id
+                id,
+                usuarioId
             ]
         );
 
         const compraDepois = {
+            usuario_id: usuarioId,
             categoria,
             tipo_racao: tipoRacaoNormalizado,
             unidade_compra: unidadeCompraNormalizada,

@@ -7,6 +7,7 @@ const animaisRoutes = require("./routes/animais");
 const comprasRouter = require("./routes/compras");
 const receitasRouter = require("./routes/receitas");
 const estoqueRoutes = require("./routes/estoque");
+const authRoutes = require("./routes/auth");
 
 
 const app = express();
@@ -20,6 +21,7 @@ app.use("/api/animais", animaisRoutes);
 app.use("/api/compras", comprasRouter);
 app.use("/api/receitas", receitasRouter);
 app.use("/api/estoque", estoqueRoutes);
+app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {
     res.json({ message: "API Raízes Digitais funcionando!" });
