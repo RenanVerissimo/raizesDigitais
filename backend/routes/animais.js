@@ -9,6 +9,7 @@ async function ensureAnimaisSchema() {
         { name: "doente", sql: "ADD COLUMN doente TINYINT(1) NOT NULL DEFAULT 0 AFTER mastite" },
         { name: "doenca", sql: "ADD COLUMN doenca VARCHAR(40) NULL AFTER doente" },
         { name: "descricao_doenca", sql: "ADD COLUMN descricao_doenca VARCHAR(255) NULL AFTER doenca" },
+        { name: "tratamento_mastite", sql: "ADD COLUMN tratamento_mastite VARCHAR(255) NULL AFTER descricao_doenca" },
     ];
 
     const [columns] = await pool.query(`
@@ -62,6 +63,7 @@ router.post("/", async (req, res) => {
             abortou,
             nao_emprenha,
             mastite,
+            tratamento_mastite,
             doente,
             doenca,
             descricao_doenca,
@@ -77,6 +79,8 @@ router.post("/", async (req, res) => {
         if (!data_nascimento) {
             return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
         }
+
+        const tratamentoMastite = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
 
         const [result] = await pool.query(
             `INSERT INTO animais 
@@ -96,6 +100,7 @@ router.post("/", async (req, res) => {
                 abortou,
                 nao_emprenha,
                 mastite,
+                tratamento_mastite,
                 doente,
                 doenca,
                 descricao_doenca,
@@ -103,7 +108,7 @@ router.post("/", async (req, res) => {
                 data_inseminacao,
                 data_confirmacao_prenhez
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 usuarioId,
                 nome,
@@ -121,9 +126,10 @@ router.post("/", async (req, res) => {
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
                 mastite ? 1 : 0,
-                doente ? 1 : 0,
-                doente ? doenca || null : null,
-                doente && doenca === "outra" ? descricao_doenca || null : null,
+                mastite ? tratamentoMastite || null : null,
+                mastite ? 1 : 0,
+                mastite ? "mastite" : null,
+                null,
 
                 data_cobertura || null,
                 data_inseminacao || null,
@@ -160,6 +166,7 @@ router.put("/:id", async (req, res) => {
             abortou,
             nao_emprenha,
             mastite,
+            tratamento_mastite,
             doente,
             doenca,
             descricao_doenca,
@@ -171,6 +178,8 @@ router.put("/:id", async (req, res) => {
         if (!data_nascimento) {
             return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
         }
+
+        const tratamentoMastite = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
 
         const [result] = await pool.query(
             `UPDATE animais 
@@ -189,6 +198,7 @@ router.put("/:id", async (req, res) => {
                 abortou = ?,
                 nao_emprenha = ?,
                 mastite = ?,
+                tratamento_mastite = ?,
                 doente = ?,
                 doenca = ?,
                 descricao_doenca = ?,
@@ -213,9 +223,10 @@ router.put("/:id", async (req, res) => {
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
                 mastite ? 1 : 0,
-                doente ? 1 : 0,
-                doente ? doenca || null : null,
-                doente && doenca === "outra" ? descricao_doenca || null : null,
+                mastite ? tratamentoMastite || null : null,
+                mastite ? 1 : 0,
+                mastite ? "mastite" : null,
+                null,
                 data_cobertura || null,
                 data_inseminacao || null,
                 data_confirmacao_prenhez || null,

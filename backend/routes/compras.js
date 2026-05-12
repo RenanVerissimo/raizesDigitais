@@ -7,7 +7,6 @@ const TIPOS_RACAO_LABEL = {
     milho: "Milho",
     farelo_soja: "Farelo de soja",
     nucleo_mineral: "Núcleo mineral",
-    vitaminas: "Vitaminas",
 };
 
 const UNIDADES_RACAO = new Set(["kg", "saco", "saca", "fardo", "unidade"]);

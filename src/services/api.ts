@@ -131,6 +131,7 @@ export async function criarAnimal(dados: {
     abortou: boolean;
     nao_emprenha: boolean;
     mastite: boolean;
+    tratamento_mastite?: string | null;
     doente?: boolean;
     doenca?: "mastite" | "outra" | null;
     descricao_doenca?: string | null;
@@ -176,6 +177,7 @@ export async function atualizarAnimal(id: number, dados: {
     abortou: boolean;
     nao_emprenha: boolean;
     mastite: boolean;
+    tratamento_mastite?: string | null;
     doente?: boolean;
     doenca?: "mastite" | "outra" | null;
     descricao_doenca?: string | null;

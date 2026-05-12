@@ -9,7 +9,7 @@ import { Compra } from "../../interfaces/interfaces";
 import { criarRacao, listarCompras, listarMovimentacoesRacao, listarRacoes } from "../../services/api";
 import { toBr } from "../../utils/formatters";
 
-export type TipoRacao = "milho" | "farelo_soja" | "nucleo_mineral" | "vitaminas";
+export type TipoRacao = "milho" | "farelo_soja" | "nucleo_mineral";
 export type UnidadeRacao = "kg" | "sacos" | "fardos" | "ton";
 export type TipoMovRacao = "entrada" | "saida" | "ajuste";
 
@@ -44,7 +44,6 @@ export const TIPOS_RACAO: { key: TipoRacao; label: string; color: string; bg: st
     { key: "milho", label: "Milho", color: "#a16207", bg: "#fef9c3" },
     { key: "farelo_soja", label: "Farelo de soja", color: "#15803d", bg: "#dcfce7" },
     { key: "nucleo_mineral", label: "Núcleo mineral", color: "#7c3aed", bg: "#ede9fe" },
-    { key: "vitaminas", label: "Vitaminas", color: "#1d4ed8", bg: "#dbeafe" },
 ];
 
 const UNIDADES_COMPRA_RACAO: Record<string, string> = {

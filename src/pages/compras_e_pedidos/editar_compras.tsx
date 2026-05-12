@@ -31,7 +31,6 @@ const TIPOS_RACAO_COMPRA: { key: TipoRacaoCompra; label: string; cor: string }[]
     { key: "milho", label: "Milho", cor: "#ca8a04" },
     { key: "farelo_soja", label: "Farelo de soja", cor: "#16a34a" },
     { key: "nucleo_mineral", label: "Núcleo mineral", cor: "#7c3aed" },
-    { key: "vitaminas", label: "Vitaminas", cor: "#2563eb" },
 ];
 
 const UNIDADES_RACAO_COMPRA: { key: UnidadeCompraRacao; label: string }[] = [

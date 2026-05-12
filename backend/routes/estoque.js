@@ -412,7 +412,6 @@ const TIPOS_RACAO_LABEL = {
     milho: "Milho",
     farelo_soja: "Farelo de soja",
     nucleo_mineral: "Núcleo mineral",
-    vitaminas: "Vitaminas",
 };
 
 function normalizarTexto(valor) {

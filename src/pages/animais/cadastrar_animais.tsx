@@ -20,8 +20,6 @@ import DateInput from "../../components/DateInput";
 import { toIso } from "../../utils/formatters";
 import { normalizarId } from "../../utils/normalizarId";
 
-type TipoDoenca = "mastite" | "outra";
-
 export default function CadastrarAnimais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -41,9 +39,8 @@ export default function CadastrarAnimais() {
         emCio: false,
         abortou: false,
         naoEmprenha: false,
-        doente: false,
-        tipoDoenca: "mastite" as TipoDoenca,
-        descricaoDoenca: "",
+        mastite: false,
+        tratamentoMastite: "",
         dataCobertura: "",
         dataInseminacao: "",
         dataConfirmacaoPrenhez: "",
@@ -91,8 +88,8 @@ export default function CadastrarAnimais() {
             }
         }
 
-        if (formData.doente && formData.tipoDoenca === "outra" && !formData.descricaoDoenca.trim()) {
-            Alert.alert("AtenÃ§Ã£o", "Informe qual doenÃ§a o animal possui.");
+        if (formData.mastite && !formData.tratamentoMastite.trim()) {
+            Alert.alert("Atenção", "Informe qual tratamento foi realizado para mastite.");
             return;
         }
 
@@ -124,10 +121,11 @@ export default function CadastrarAnimais() {
                 em_cio: formData.emCio,
                 abortou: formData.abortou,
                 nao_emprenha: formData.naoEmprenha,
-                mastite: formData.doente && formData.tipoDoenca === "mastite",
-                doente: formData.doente,
-                doenca: formData.doente ? formData.tipoDoenca : null,
-                descricao_doenca: formData.doente && formData.tipoDoenca === "outra" ? formData.descricaoDoenca.trim() : null,
+                mastite: formData.mastite,
+                tratamento_mastite: formData.mastite ? formData.tratamentoMastite.trim() : null,
+                doente: formData.mastite,
+                doenca: formData.mastite ? "mastite" : null,
+                descricao_doenca: null,
                 data_cobertura: toIso(formData.dataInseminacao || formData.dataCobertura),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
@@ -428,75 +426,54 @@ export default function CadastrarAnimais() {
                         </View>
                         <View style={{ gap: 12 }}>
                             <TouchableOpacity
-                                onPress={() => setFormData({ ...formData, doente: !formData.doente })}
+                                onPress={() => setFormData({
+                                    ...formData,
+                                    mastite: !formData.mastite,
+                                    tratamentoMastite: formData.mastite ? "" : formData.tratamentoMastite,
+                                })}
                                 activeOpacity={0.7}
                                 style={{
                                     flexDirection: "row",
                                     alignItems: "center",
                                     justifyContent: "space-between",
                                     padding: 12,
-                                    backgroundColor: formData.doente ? "#fee2e2" : "#f9fafb",
+                                    backgroundColor: formData.mastite ? "#fee2e2" : "#f9fafb",
                                     borderWidth: 1,
-                                    borderColor: formData.doente ? "#dc2626" : "#e5e7eb",
+                                    borderColor: formData.mastite ? "#dc2626" : "#e5e7eb",
                                     borderRadius: 10,
                                 }}
                             >
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                    <Feather name="alert-triangle" size={16} color={formData.doente ? "#dc2626" : "#9ca3af"} />
-                                    <Text style={{ fontSize: 14, fontWeight: "500", color: formData.doente ? "#dc2626" : "#6b7280" }}>
-                                        Está doente?
+                                    <Feather name="alert-triangle" size={16} color={formData.mastite ? "#dc2626" : "#9ca3af"} />
+                                    <Text style={{ fontSize: 14, fontWeight: "500", color: formData.mastite ? "#dc2626" : "#6b7280" }}>
+                                        Controle de mastite
                                     </Text>
                                 </View>
                                 <View style={{
                                     width: 22, height: 22, borderRadius: 11,
-                                    backgroundColor: formData.doente ? "#dc2626" : "#e5e7eb",
+                                    backgroundColor: formData.mastite ? "#dc2626" : "#e5e7eb",
                                     alignItems: "center", justifyContent: "center",
                                 }}>
-                                    {formData.doente ? <Feather name="check" size={13} color="#fff" /> : null}
+                                    {formData.mastite ? <Feather name="check" size={13} color="#fff" /> : null}
                                 </View>
                             </TouchableOpacity>
 
-                            {formData.doente && (
-                                <>
-                                    <View style={{ flexDirection: "row", gap: 8 }}>
-                                        {([
-                                            { key: "mastite" as TipoDoenca, label: "Mastite", cor: "#dc2626" },
-                                            { key: "outra" as TipoDoenca, label: "Outra", cor: "#4a90e2" },
-                                        ]).map((item) => {
-                                            const ativo = formData.tipoDoenca === item.key;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={item.key}
-                                                    activeOpacity={0.75}
-                                                    onPress={() => setFormData({ ...formData, tipoDoenca: item.key })}
-                                                    style={{
-                                                        flex: 1,
-                                                        backgroundColor: ativo ? item.cor : "#f9fafb",
-                                                        borderWidth: 1,
-                                                        borderColor: ativo ? item.cor : "#e5e7eb",
-                                                        borderRadius: 10,
-                                                        paddingVertical: 12,
-                                                        alignItems: "center",
-                                                    }}
-                                                >
-                                                    <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>
-                                                        {item.label}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-
-                                    {formData.tipoDoenca === "outra" && (
-                                        <TextInput
-                                            value={formData.descricaoDoenca}
-                                            onChangeText={(v) => setFormData({ ...formData, descricaoDoenca: v })}
-                                            placeholder="Qual doença?"
-                                            placeholderTextColor="#9ca3af"
-                                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                                        />
-                                    )}
-                                </>
+                            {formData.mastite && (
+                                <View style={{ gap: 8 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "500", color: "#374151" }}>
+                                        Qual tratamento foi realizado?
+                                    </Text>
+                                    <TextInput
+                                        value={formData.tratamentoMastite}
+                                        onChangeText={(v) => setFormData({ ...formData, tratamentoMastite: v })}
+                                        placeholder="Ex: antibiótico, ordenha separada, acompanhamento veterinário..."
+                                        placeholderTextColor="#9ca3af"
+                                        multiline
+                                        numberOfLines={3}
+                                        textAlignVertical="top"
+                                        style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 82 }}
+                                    />
+                                </View>
                             )}
                         </View>
                     </View>

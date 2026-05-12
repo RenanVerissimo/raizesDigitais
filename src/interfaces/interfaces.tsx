@@ -54,6 +54,7 @@ export interface Animal {
     abortou: boolean;
     nao_emprenha: boolean;
     mastite: boolean;
+    tratamento_mastite?: string | null;
     doente?: boolean | number | null;
     doenca?: "mastite" | "outra" | null;
     descricao_doenca?: string | null;
@@ -69,7 +70,7 @@ export interface Animal {
 export type CategoriaCompra = "racao" | "medicamento" | "equipamento" | "manutencao" | "outros";
 export type FinalidadeTratamento = "mastite" | "outro_tratamento" | "uso_geral";
 export type StatusCompra = "pendente" | "concluido" | "cancelado";
-export type TipoRacaoCompra = "milho" | "farelo_soja" | "nucleo_mineral" | "vitaminas";
+export type TipoRacaoCompra = "milho" | "farelo_soja" | "nucleo_mineral";
 export type UnidadeCompraRacao = "kg" | "saco" | "saca" | "fardo" | "unidade";
 
 export interface Compra {
