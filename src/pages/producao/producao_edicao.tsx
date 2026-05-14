@@ -42,20 +42,16 @@ export default function ProducaoEdicao() {
 
     const producao: Producao = route.params.producao;
     const dataProducao = normalizarData(producao.data);
+    const totalOriginal = Number(producao.producao_total);
 
     const [formData, setFormData] = useState({
         date: dataProducao,
-        morningProduction: producao.producao_manha.toString(),
-        afternoonProduction: producao.producao_tarde.toString(),
+        dailyProduction: producao.producao_total.toString(),
         quality: producao.qualidade as "excellent" | "good" | "regular",
         notes: producao.observacoes ?? "",
     });
 
-    const total =
-        (parseFloat(formData.morningProduction) || 0) +
-        (parseFloat(formData.afternoonProduction) || 0);
-
-    const totalOriginal = Number(producao.producao_total);
+    const total = parseFloat(formData.dailyProduction) || 0;
     const diferenca = total - totalOriginal;
 
     function getQualityStyle(q: string, selected: boolean) {
@@ -71,24 +67,29 @@ export default function ProducaoEdicao() {
     }
 
     async function handleSubmit() {
-        if (!formData.morningProduction || !formData.afternoonProduction) {
-            Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
+        if (!formData.dailyProduction.trim()) {
+            Alert.alert("Atencao", "Preencha a Producao Diaria.");
+            return;
+        }
+
+        const dailyProduction = Number(formData.dailyProduction);
+        if (isNaN(dailyProduction) || dailyProduction <= 0) {
+            Alert.alert("Atencao", "A Producao Diaria deve ser maior que 0.");
             return;
         }
 
         try {
             await atualizarProducao(producao.id, {
                 date: formData.date,
-                morningProduction: Number(formData.morningProduction),
-                afternoonProduction: Number(formData.afternoonProduction),
+                dailyProduction,
                 quality: formData.quality,
                 notes: formData.notes.trim() || null,
             });
 
             Toast.show({
                 type: "success",
-                text1: "Produção atualizada!",
-                text2: "As alterações foram salvas.",
+                text1: "Producao atualizada!",
+                text2: "As alteracoes foram salvas.",
                 position: "top",
                 visibilityTime: 3000,
             });
@@ -96,7 +97,7 @@ export default function ProducaoEdicao() {
             setTimeout(() => navigation.replace("ProducaoHistorico"), 500);
         } catch (error) {
             console.error(error);
-            Alert.alert("Erro", "Não foi possível atualizar a produção. Tente novamente.");
+            Alert.alert("Erro", "Nao foi possivel atualizar a producao. Tente novamente.");
         }
     }
 
@@ -142,7 +143,7 @@ export default function ProducaoEdicao() {
                     <View style={{ backgroundColor: "#fffbeb", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#fde68a", flexDirection: "row", alignItems: "center", gap: 10 }}>
                         <Feather name="info" size={18} color="#d97706" />
                         <Text style={{ flex: 1, fontSize: 13, color: "#92400e" }}>
-                            Você está editando um registro existente. As alterações serão salvas no banco de dados.
+                            Voce esta editando um registro existente. As alteracoes serao salvas no banco de dados.
                         </Text>
                     </View>
 
@@ -160,37 +161,19 @@ export default function ProducaoEdicao() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="sunrise" size={16} color="#f97316" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Produção da Manhã (Litros)</Text>
+                            <Feather name="droplet" size={16} color="#f59e0b" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Producao Diaria (Litros)</Text>
                         </View>
                         <TextInput
-                            value={formData.morningProduction}
-                            onChangeText={(v) => setFormData({ ...formData, morningProduction: v })}
-                            placeholder="Ex: 25.5"
+                            value={formData.dailyProduction}
+                            onChangeText={(v) => setFormData({ ...formData, dailyProduction: v })}
+                            placeholder="Ex: 45.5"
                             placeholderTextColor="#9ca3af"
                             keyboardType="decimal-pad"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
                         <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-                            Valor anterior: {producao.producao_manha}L
-                        </Text>
-                    </View>
-
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="sunset" size={16} color="#6366f1" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Produção da Tarde (Litros)</Text>
-                        </View>
-                        <TextInput
-                            value={formData.afternoonProduction}
-                            onChangeText={(v) => setFormData({ ...formData, afternoonProduction: v })}
-                            placeholder="Ex: 20.0"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="decimal-pad"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                        />
-                        <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-                            Valor anterior: {producao.producao_tarde}L
+                            Valor anterior: {totalOriginal.toFixed(1)}L
                         </Text>
                     </View>
 
@@ -253,12 +236,12 @@ export default function ProducaoEdicao() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="edit-3" size={16} color="#f59e0b" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observações</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observacoes</Text>
                         </View>
                         <TextInput
                             value={formData.notes}
                             onChangeText={(v) => setFormData({ ...formData, notes: v })}
-                            placeholder="Anotações sobre a coleta..."
+                            placeholder="Anotacoes sobre a coleta..."
                             placeholderTextColor="#9ca3af"
                             multiline
                             numberOfLines={3}
@@ -292,7 +275,7 @@ export default function ProducaoEdicao() {
                                 style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                             >
                                 <Feather name="save" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar Alterações</Text>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar Alteracoes</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

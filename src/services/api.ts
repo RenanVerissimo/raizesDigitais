@@ -46,8 +46,7 @@ export async function listarProducoesRecentes() {
 
 export async function criarProducao(dados: {
     date: string;
-    morningProduction: number;
-    afternoonProduction: number;
+    dailyProduction: number;
     quality: string;
     notes: string | null;
 }) {
@@ -75,8 +74,7 @@ export async function excluirProducao(id: number) {
 
 export async function atualizarProducao(id: number, dados: {
     date: string;
-    morningProduction: number;
-    afternoonProduction: number;
+    dailyProduction: number;
     quality: string;
     notes: string | null;
 }) {

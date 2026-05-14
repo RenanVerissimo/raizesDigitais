@@ -32,12 +32,16 @@ router.post("/", async (req, res) => {
     try {
         const usuarioId = await requireUsuario(req, res, ["producao"]);
         if (!usuarioId) return;
-        const { date, morningProduction, afternoonProduction, quality, notes } = req.body;
-        const total = Number(morningProduction) + Number(afternoonProduction);
+        const { date, dailyProduction, morningProduction, afternoonProduction, quality, notes } = req.body;
+        const total = dailyProduction !== undefined && dailyProduction !== null
+            ? Number(dailyProduction)
+            : Number(morningProduction) + Number(afternoonProduction);
+        const producaoManha = dailyProduction !== undefined && dailyProduction !== null ? 0 : morningProduction;
+        const producaoTarde = dailyProduction !== undefined && dailyProduction !== null ? 0 : afternoonProduction;
 
         const [result] = await pool.query(
             "INSERT INTO producao (usuario_id, data, producao_manha, producao_tarde, producao_total, qualidade, observacoes) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [usuarioId, date, morningProduction, afternoonProduction, total, quality, notes]
+            [usuarioId, date, producaoManha, producaoTarde, total, quality, notes]
         );
 
         res.status(201).json({ id: result.insertId, message: "Produção registrada!" });
@@ -64,11 +68,15 @@ router.put("/:id", async (req, res) => {
         const usuarioId = await requireUsuario(req, res, ["producao"]);
         if (!usuarioId) return;
         const { id } = req.params;
-        const { date, morningProduction, afternoonProduction, quality, notes } = req.body;
-        const total = Number(morningProduction) + Number(afternoonProduction);
+        const { date, dailyProduction, morningProduction, afternoonProduction, quality, notes } = req.body;
+        const total = dailyProduction !== undefined && dailyProduction !== null
+            ? Number(dailyProduction)
+            : Number(morningProduction) + Number(afternoonProduction);
+        const producaoManha = dailyProduction !== undefined && dailyProduction !== null ? 0 : morningProduction;
+        const producaoTarde = dailyProduction !== undefined && dailyProduction !== null ? 0 : afternoonProduction;
         await pool.query(
             "UPDATE producao SET data=?, producao_manha=?, producao_tarde=?, producao_total=?, qualidade=?, observacoes=? WHERE id=? AND usuario_id=?",
-            [date, morningProduction, afternoonProduction, total, quality, notes, id, usuarioId]
+            [date, producaoManha, producaoTarde, total, quality, notes, id, usuarioId]
         );
         res.json({ message: "Produção atualizada!" });
     } catch (error) {

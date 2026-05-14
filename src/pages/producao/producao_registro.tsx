@@ -25,15 +25,12 @@ export default function ProducaoRegistro() {
     const isEditando = !!producaoEditando;
     const [formData, setFormData] = useState({
         date: producaoEditando?.data?.split("T")[0] ?? new Date().toISOString().split("T")[0],
-        morningProduction: producaoEditando?.producao_manha?.toString() ?? "",
-        afternoonProduction: producaoEditando?.producao_tarde?.toString() ?? "",
+        dailyProduction: producaoEditando?.producao_total?.toString() ?? "",
         quality: (producaoEditando?.qualidade as "excellent" | "good" | "regular") ?? "good",
         notes: producaoEditando?.observacoes ?? "",
     });
 
-    const total =
-        (parseFloat(formData.morningProduction) || 0) +
-        (parseFloat(formData.afternoonProduction) || 0);
+    const total = parseFloat(formData.dailyProduction) || 0;
 
     function getQualityStyle(q: string, selected: boolean) {
         if (q === "excellent") return selected
@@ -48,15 +45,21 @@ export default function ProducaoRegistro() {
     }
 
     async function handleSubmit() {
-        if (!formData.morningProduction || !formData.afternoonProduction) {
-            Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
+        if (!formData.dailyProduction.trim()) {
+            Alert.alert("Atencao", "Preencha a Producao Diaria.");
             return;
         }
+
+        const dailyProduction = Number(formData.dailyProduction);
+        if (isNaN(dailyProduction) || dailyProduction <= 0) {
+            Alert.alert("Atencao", "A Producao Diaria deve ser maior que 0.");
+            return;
+        }
+
         try {
             const dados = {
                 date: formData.date,
-                morningProduction: Number(formData.morningProduction),
-                afternoonProduction: Number(formData.afternoonProduction),
+                dailyProduction,
                 quality: formData.quality,
                 notes: formData.notes.trim() || null,
             };
@@ -69,9 +72,9 @@ export default function ProducaoRegistro() {
 
             Toast.show({
                 type: "success",
-                text1: isEditando ? "Produção atualizada!" : "Produção registrada!",
+                text1: isEditando ? "Producao atualizada!" : "Producao registrada!",
                 text2: isEditando
-                    ? "As alterações foram salvas."
+                    ? "As alteracoes foram salvas."
                     : "Sua coleta foi salva com sucesso.",
                 position: "top",
                 visibilityTime: 3500,
@@ -80,8 +83,7 @@ export default function ProducaoRegistro() {
             if (!isEditando) {
                 setFormData({
                     date: new Date().toISOString().split("T")[0],
-                    morningProduction: "",
-                    afternoonProduction: "",
+                    dailyProduction: "",
                     quality: "good",
                     notes: "",
                 });
@@ -90,7 +92,7 @@ export default function ProducaoRegistro() {
             setTimeout(() => navigation.goBack(), 500);
         } catch (error: any) {
             console.error(error);
-            Alert.alert("Erro", error.message || "Não foi possível salvar a produção. Tente novamente.");
+            Alert.alert("Erro", error.message || "Nao foi possivel salvar a producao. Tente novamente.");
         }
     }
 
@@ -115,12 +117,10 @@ export default function ProducaoRegistro() {
                                 {isEditando ? "Editar Coleta" : "Nova Coleta"}
                             </Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                {isEditando ? "Atualize os dados da produção" : "Registre a produção diária"}
+                                {isEditando ? "Atualize os dados da producao" : "Registre a producao diaria"}
                             </Text>
                         </View>
                     </View>
-
-
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
@@ -136,32 +136,15 @@ export default function ProducaoRegistro() {
                         </View>
                     </View>
 
-
-
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="sunrise" size={16} color="#f97316" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Produção da Manhã (Litros)</Text>
+                            <Feather name="droplet" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Producao Diaria (Litros)</Text>
                         </View>
                         <TextInput
-                            value={formData.morningProduction}
-                            onChangeText={(v) => setFormData({ ...formData, morningProduction: v })}
-                            placeholder="Ex: 25.5"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="decimal-pad"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                        />
-                    </View>
-
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="sunset" size={16} color="#6366f1" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Produção da Tarde (Litros)</Text>
-                        </View>
-                        <TextInput
-                            value={formData.afternoonProduction}
-                            onChangeText={(v) => setFormData({ ...formData, afternoonProduction: v })}
-                            placeholder="Ex: 20.0"
+                            value={formData.dailyProduction}
+                            onChangeText={(v) => setFormData({ ...formData, dailyProduction: v })}
+                            placeholder="Ex: 45.5"
                             placeholderTextColor="#9ca3af"
                             keyboardType="decimal-pad"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -170,7 +153,7 @@ export default function ProducaoRegistro() {
 
                     {total > 0 && (
                         <View style={{ backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "rgba(74,144,226,0.2)" }}>
-                            <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Produção Total</Text>
+                            <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Producao Diaria</Text>
                             <Text style={{ fontSize: 28, fontWeight: "700", color: "#4a90e2" }}>{total.toFixed(1)} L</Text>
                         </View>
                     )}
@@ -210,12 +193,12 @@ export default function ProducaoRegistro() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="edit-3" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observações</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observacoes</Text>
                         </View>
                         <TextInput
                             value={formData.notes}
                             onChangeText={(v) => setFormData({ ...formData, notes: v })}
-                            placeholder="Anotações sobre a coleta..."
+                            placeholder="Anotacoes sobre a coleta..."
                             placeholderTextColor="#9ca3af"
                             multiline
                             numberOfLines={3}
