@@ -168,7 +168,7 @@ function calcularMediaProducao(producoes: Producao[], dias: number) {
     const totaisPorDia = producoes.reduce((acc, producao) => {
         const data = normalizarData(producao.data);
         if (datasPeriodo.has(data)) {
-            acc[data] = (acc[data] || 0) + Number(producao.producao_total || 0);
+            acc[data] = (acc[data] || 0) + Number(producao.producao_diaria || 0);
         }
         return acc;
     }, {} as Record<string, number>);

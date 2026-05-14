@@ -27,9 +27,7 @@ export interface InputFieldProps {
 export interface Producao {
     id: number;
     data: string;
-    producao_manha: number;
-    producao_tarde: number;
-    producao_total: number;
+    producao_diaria: number | string;
     qualidade: string;
     observacoes: string | null;
     criado_em: string;

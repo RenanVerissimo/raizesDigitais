@@ -42,11 +42,11 @@ export default function ProducaoEdicao() {
 
     const producao: Producao = route.params.producao;
     const dataProducao = normalizarData(producao.data);
-    const totalOriginal = Number(producao.producao_total);
+    const totalOriginal = Number(producao.producao_diaria);
 
     const [formData, setFormData] = useState({
         date: dataProducao,
-        dailyProduction: producao.producao_total.toString(),
+        dailyProduction: producao.producao_diaria.toString(),
         quality: producao.qualidade as "excellent" | "good" | "regular",
         notes: producao.observacoes ?? "",
     });

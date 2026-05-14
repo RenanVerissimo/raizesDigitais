@@ -27,6 +27,11 @@ function normalizarDataProducao(data?: string | null) {
     return data.slice(0, 10);
 }
 
+function obterProducaoDiaria(producao: Producao) {
+    const numero = Number(producao.producao_diaria);
+    return Number.isFinite(numero) ? numero : 0;
+}
+
 export default function Dashboard() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -81,7 +86,7 @@ export default function Dashboard() {
                     const dataP = normalizarDataProducao(p.data);
                     return dataP === hojeStr;
                 })
-                .reduce((sum: number, p: any) => sum + Number(p.producao_total), 0);
+                .reduce((sum: number, p: Producao) => sum + obterProducaoDiaria(p), 0);
 
             // Media diaria dos ultimos 7 dias, incluindo hoje.
             const ultimos7 = new Set(Array.from({ length: 7 }, (_, i) => {
@@ -92,7 +97,7 @@ export default function Dashboard() {
             const totaisPorDia = producoes.reduce((acc: Record<string, number>, p: any) => {
                 const dataP = normalizarDataProducao(p.data);
                 if (ultimos7.has(dataP)) {
-                    acc[dataP] = (acc[dataP] ?? 0) + Number(p.producao_total);
+                    acc[dataP] = (acc[dataP] ?? 0) + obterProducaoDiaria(p);
                 }
                 return acc;
             }, {});
@@ -107,7 +112,7 @@ export default function Dashboard() {
                     const [ano, mes] = normalizarDataProducao(p.data).split("-").map(Number);
                     return ano === anoAtual && mes === mesAtual + 1;
                 })
-                .reduce((sum: number, p: any) => sum + Number(p.producao_total), 0);
+                .reduce((sum: number, p: Producao) => sum + obterProducaoDiaria(p), 0);
 
             setTodayProduction(producaoHoje);
             setAverage7Days(Math.round(media7 * 10) / 10);
@@ -319,11 +324,11 @@ export default function Dashboard() {
                                             {new Date(prod.data).toLocaleDateString("pt-BR")}
                                         </Text>
                                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-                                            Manhã: {prod.producao_manha}L | Tarde: {prod.producao_tarde}L
+                                            Producao diaria
                                         </Text>
                                     </View>
                                     <View style={{ alignItems: "flex-end" }}>
-                                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_total}L</Text>
+                                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{obterProducaoDiaria(prod)}L</Text>
                                         <View style={{ backgroundColor: q.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 4 }}>
                                             <Text style={{ fontSize: 11, color: q.text, fontWeight: "500" }}>{q.label}</Text>
                                         </View>

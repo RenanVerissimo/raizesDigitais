@@ -25,7 +25,7 @@ export default function ProducaoRegistro() {
     const isEditando = !!producaoEditando;
     const [formData, setFormData] = useState({
         date: producaoEditando?.data?.split("T")[0] ?? new Date().toISOString().split("T")[0],
-        dailyProduction: producaoEditando?.producao_total?.toString() ?? "",
+        dailyProduction: producaoEditando?.producao_diaria?.toString() ?? "",
         quality: (producaoEditando?.qualidade as "excellent" | "good" | "regular") ?? "good",
         notes: producaoEditando?.observacoes ?? "",
     });

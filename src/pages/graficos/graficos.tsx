@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import {
     VictoryChart, VictoryArea, VictoryScatter, VictoryBar,
-    VictoryGroup, VictoryPie, VictoryAxis, VictoryTheme,
+    VictoryPie, VictoryAxis, VictoryTheme,
 } from "victory-native";
 import { Producao } from "../../interfaces/interfaces";
 import { listarProducoes } from "../../services/api";
@@ -30,11 +30,9 @@ export default function Graficos() {
             listarProducoes()
                 .then((dados) => {
                     // MySQL devolve DECIMAL como string — converter para número
-                    const normalizados = dados.map((p: { producao_manha: any; producao_tarde: any; producao_total: any; }) => ({
+                    const normalizados = dados.map((p: { producao_diaria: any; }) => ({
                         ...p,
-                        producao_manha: Number(p.producao_manha),
-                        producao_tarde: Number(p.producao_tarde),
-                        producao_total: Number(p.producao_total),
+                        producao_diaria: Number(p.producao_diaria),
                     }));
                     setProducoes(normalizados);
                 })
@@ -51,11 +49,11 @@ export default function Graficos() {
     const ultimos10 = ordenadas.slice(-10);
 
     const mediaProducao = producoes.length > 0
-        ? Math.round(producoes.reduce((s, p) => s + p.producao_total, 0) / producoes.length)
+        ? Math.round(producoes.reduce((s, p) => s + Number(p.producao_diaria), 0) / producoes.length)
         : 0;
-    const totalProducao = producoes.reduce((s, p) => s + p.producao_total, 0);
-    const maxProducao = producoes.length ? Math.max(...producoes.map((p) => p.producao_total)) : 0;
-    const minProducao = producoes.length ? Math.min(...producoes.map((p) => p.producao_total)) : 0;
+    const totalProducao = producoes.reduce((s, p) => s + Number(p.producao_diaria), 0);
+    const maxProducao = producoes.length ? Math.max(...producoes.map((p) => Number(p.producao_diaria))) : 0;
+    const minProducao = producoes.length ? Math.min(...producoes.map((p) => Number(p.producao_diaria))) : 0;
     function formatarData(d: string) {
         if (!d) return "";
         const dataStr = d.substring(0, 10); // pega só "AAAA-MM-DD" (ignora hora se vier)
@@ -67,7 +65,7 @@ export default function Graficos() {
     // ── Dados linha (Evolução) ──────────────────────────────────────────────
     const dadosLinha = ultimos15.map((p, i) => ({
         x: i,
-        y: p.producao_total,
+        y: Number(p.producao_diaria),
         _label: formatarData(p.data),
     }));
 
@@ -77,12 +75,11 @@ export default function Graficos() {
         .filter((_, i) => i % stepLinha === 0 || i === ultimos15.length - 1)
         .map((d) => d.x);
 
-    // ── Dados barras agrupadas (Manhã vs Tarde) ─────────────────────────────
-    const dadosManha = ultimos10.map((p, i) => ({ x: i, y: p.producao_manha }));
-    const dadosTarde = ultimos10.map((p, i) => ({ x: i, y: p.producao_tarde }));
+    // Dados barras de producao diaria
+    const dadosDiaria = ultimos10.map((p, i) => ({ x: i, y: Number(p.producao_diaria) }));
 
     const stepBarras = Math.max(1, Math.floor((ultimos10.length - 1) / 4));
-    const ticksBarras = dadosManha
+    const ticksBarras = dadosDiaria
         .filter((_, i) => i % stepBarras === 0 || i === ultimos10.length - 1)
         .map((d) => d.x);
 
@@ -250,19 +247,18 @@ export default function Graficos() {
                                 </View>
                             </View>
 
-                            {/* ── GRÁFICO 2: Manhã vs Tarde ── */}
+                            {/* GRAFICO 2: Producao diaria */}
                             <View style={{
                                 backgroundColor: "#fff", borderRadius: 14,
                                 paddingTop: 18, paddingHorizontal: 10, paddingBottom: 8,
                                 borderWidth: 1, borderColor: "#f1f5f9",
                             }}>
                                 <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 12, paddingHorizontal: 8 }}>
-                                    Produção Manhã vs Tarde
+                                    Producao Diaria
                                 </Text>
 
                                 <View style={{ flexDirection: "row", gap: 16, marginBottom: 4, paddingHorizontal: 8 }}>
-                                    <LegendItem cor="#f97316" label="Manhã" />
-                                    <LegendItem cor="#6366f1" label="Tarde" />
+                                    <LegendItem cor="#4a90e2" label="Producao diaria" />
                                 </View>
 
                                 <VictoryChart
@@ -281,22 +277,13 @@ export default function Graficos() {
                                         dependentAxis
                                         style={dependentAxisStyle}
                                     />
-                                    <VictoryGroup offset={14}>
-                                        <VictoryBar
-                                            data={dadosManha}
-                                            x="x" y="y"
-                                            barWidth={12}
-                                            cornerRadius={{ top: 4 }}
-                                            style={{ data: { fill: "#f97316" } }}
-                                        />
-                                        <VictoryBar
-                                            data={dadosTarde}
-                                            x="x" y="y"
-                                            barWidth={12}
-                                            cornerRadius={{ top: 4 }}
-                                            style={{ data: { fill: "#6366f1" } }}
-                                        />
-                                    </VictoryGroup>
+                                    <VictoryBar
+                                        data={dadosDiaria}
+                                        x="x" y="y"
+                                        barWidth={18}
+                                        cornerRadius={{ top: 4 }}
+                                        style={{ data: { fill: "#4a90e2" } }}
+                                    />
                                 </VictoryChart>
                             </View>
 

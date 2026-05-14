@@ -53,7 +53,7 @@ export default function ProducaoHistorico() {
         return matchesSearch && matchesQuality;
     });
 
-    const totalLiters = filteredProductions.reduce((sum, p) => sum + Number(p.producao_total), 0);
+    const totalLiters = filteredProductions.reduce((sum, p) => sum + Number(p.producao_diaria), 0);
 
     const totalPaginas = Math.ceil(filteredProductions.length / ITENS_POR_PAGINA);
     const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
@@ -206,24 +206,13 @@ export default function ProducaoHistorico() {
                                         </View>
                                     </View>
 
-                                    <View style={{ flexDirection: "row", gap: 8, marginBottom: prod.observacoes ? 12 : 0 }}>
-                                        <View style={{ flex: 1, backgroundColor: "#fff7ed", borderRadius: 10, padding: 12 }}>
+                                    <View style={{ marginBottom: prod.observacoes ? 12 : 0 }}>
+                                        <View style={{ backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 10, padding: 12 }}>
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
-                                                <Feather name="sunrise" size={12} color="#ea580c" />
-                                                <Text style={{ fontSize: 11, color: "#ea580c" }}>Manhã</Text>
+                                                <Feather name="droplet" size={12} color="#4a90e2" />
+                                                <Text style={{ fontSize: 11, color: "#4a90e2" }}>Producao diaria</Text>
                                             </View>
-                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_manha}L</Text>
-                                        </View>
-                                        <View style={{ flex: 1, backgroundColor: "#eef2ff", borderRadius: 10, padding: 12 }}>
-                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
-                                                <Feather name="sunset" size={12} color="#4f46e5" />
-                                                <Text style={{ fontSize: 11, color: "#4f46e5" }}>Tarde</Text>
-                                            </View>
-                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_tarde}L</Text>
-                                        </View>
-                                        <View style={{ flex: 1, backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 10, padding: 12 }}>
-                                            <Text style={{ fontSize: 11, color: "#4a90e2", marginBottom: 4 }}>Total</Text>
-                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_total}L</Text>
+                                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_diaria}L</Text>
                                         </View>
                                     </View>
 
