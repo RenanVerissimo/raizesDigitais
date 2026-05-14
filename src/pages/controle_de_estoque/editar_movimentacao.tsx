@@ -22,7 +22,6 @@ export default function EditarMovimentacao() {
         tipo: (movimentacao?.tipo || "entrada") as TipoMovimento,
         volume: movimentacao ? String(movimentacao.volume || "") : "",
         data: movimentacao ? toBr(movimentacao.data) : "",
-        hora: movimentacao?.hora || "",
         motivo: movimentacao?.motivo || "",
         comprador: movimentacao?.comprador || "",
         temperatura: movimentacao?.temperatura !== null && movimentacao?.temperatura !== undefined ? String(movimentacao.temperatura) : "",
@@ -56,8 +55,8 @@ export default function EditarMovimentacao() {
         const consumoProprio = formData.tipo === "saida" ? parseFloat(formData.consumoProprio || "0") : 0;
         const temperatura = formData.temperatura.trim() ? parseFloat(formData.temperatura) : null;
 
-        if (!formData.tanqueId || !formData.motivo.trim() || !dataIso || !formData.hora.trim()) {
-            Toast.show({ type: "error", text1: "Atenção", text2: "Preencha tanque, data, hora e motivo.", position: "top" });
+        if (!formData.tanqueId || !formData.motivo.trim() || !dataIso) {
+            Toast.show({ type: "error", text1: "Atenção", text2: "Preencha tanque, data e motivo.", position: "top" });
             return;
         }
 
@@ -82,7 +81,6 @@ export default function EditarMovimentacao() {
                 tipo: formData.tipo,
                 volume,
                 data: dataIso,
-                hora: formData.hora.trim(),
                 motivo: formData.motivo.trim(),
                 comprador: formData.tipo === "saida" ? formData.comprador.trim() || null : null,
                 temperatura: formData.tipo === "saida" ? temperatura : null,
@@ -177,10 +175,6 @@ export default function EditarMovimentacao() {
 
                     <Campo label="Data">
                         <DateInput value={formData.data} onChange={(v) => setFormData({ ...formData, data: v })} />
-                    </Campo>
-
-                    <Campo label="Hora">
-                        <Input value={formData.hora} onChangeText={(v) => setFormData({ ...formData, hora: v })} placeholder="HH:MM" maxLength={5} keyboardType="numbers-and-punctuation" />
                     </Campo>
 
                     {formData.tipo === "saida" && (

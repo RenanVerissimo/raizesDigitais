@@ -446,7 +446,6 @@ export async function criarMovimentacao(dados: {
     tipo: "entrada" | "saida";
     volume: number;
     data: string;
-    hora: string;
     motivo: string;
     comprador?: string | null;
     temperatura?: number | null;
@@ -470,7 +469,6 @@ export async function atualizarMovimentacao(id: number, dados: {
     tipo: "entrada" | "saida";
     volume: number;
     data: string;
-    hora: string;
     motivo: string;
     comprador?: string | null;
     temperatura?: number | null;

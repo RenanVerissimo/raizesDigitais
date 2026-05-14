@@ -30,7 +30,6 @@ export interface Movimentacao {
     tipo: TipoMovimento;
     volume: number;
     data: string;
-    hora: string;
     motivo: string;
     comprador?: string;
     temperatura?: number | null;
@@ -355,7 +354,7 @@ export default function Estoque() {
                                                 </View>
                                             )}
                                             <Text style={{ fontSize: 10, color: "#9ca3af" }}>
-                                                {new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR")} às {m.hora}
+                                                {new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR")}
                                             </Text>
                                         </View>
                                         <View style={{ alignItems: "flex-end" }}>

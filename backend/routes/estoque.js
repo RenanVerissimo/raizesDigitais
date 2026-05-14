@@ -136,7 +136,6 @@ router.get("/movimentacoes", async (req, res) => {
                 m.tipo,
                 m.quantidade AS volume,
                 DATE_FORMAT(m.data, '%Y-%m-%d') AS data,
-                m.hora,
                 m.motivo,
                 m.comprador,
                 m.temperatura,
@@ -145,7 +144,7 @@ router.get("/movimentacoes", async (req, res) => {
             FROM movimentacoes_estoque m
             INNER JOIN tanques t ON t.id = m.tanque_id
             WHERE t.usuario_id = ?
-            ORDER BY m.data DESC, m.hora DESC, m.id DESC
+            ORDER BY m.data DESC, m.id DESC
         `, [usuarioId]);
         res.json(rows);
     } catch (err) {
@@ -159,7 +158,7 @@ router.post("/movimentacoes", async (req, res) => {
     try {
         const usuarioId = await requireUsuario(req, res, ["tanques"]);
         if (!usuarioId) return;
-        const { tanqueId, tipo, volume, data, hora, motivo, comprador, temperatura, consumoProprio, observacoes } = req.body;
+        const { tanqueId, tipo, volume, data, motivo, comprador, temperatura, consumoProprio, observacoes } = req.body;
 
         if (!tanqueId || !tipo || !data || !motivo) {
             return res.status(400).json({ erro: "Preencha os campos obrigatórios" });
@@ -186,14 +185,13 @@ router.post("/movimentacoes", async (req, res) => {
 
         // Insere movimentação
         const [result] = await pool.query(
-            `INSERT INTO movimentacoes_estoque (tanque_id, tipo, quantidade, data, hora, motivo, comprador, temperatura, consumo_proprio, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO movimentacoes_estoque (tanque_id, tipo, quantidade, data, motivo, comprador, temperatura, consumo_proprio, observacoes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 tanqueId,
                 tipo,
                 vol,
                 data,
-                hora || "00:00",
                 motivo,
                 comprador || null,
                 tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "" ? Number(temperatura) : null,
@@ -216,7 +214,6 @@ router.post("/movimentacoes", async (req, res) => {
             tipo,
             volume: vol,
             data,
-            hora: hora || "00:00",
             motivo,
             comprador: comprador || null,
             temperatura: tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "" ? Number(temperatura) : null,
@@ -314,7 +311,7 @@ router.put("/movimentacoes/:id", async (req, res) => {
     try {
         const usuarioId = await requireUsuario(req, res, ["tanques"]);
         if (!usuarioId) return;
-        const { tanqueId, tipo, volume, data, hora, motivo, comprador, temperatura, consumoProprio, observacoes } = req.body;
+        const { tanqueId, tipo, volume, data, motivo, comprador, temperatura, consumoProprio, observacoes } = req.body;
 
         if (!tanqueId || !tipo || !data || !motivo) {
             return res.status(400).json({ erro: "Preencha os campos obrigatórios" });
@@ -365,14 +362,13 @@ router.put("/movimentacoes/:id", async (req, res) => {
 
         await conn.query(
             `UPDATE movimentacoes_estoque
-             SET tanque_id=?, tipo=?, quantidade=?, data=?, hora=?, motivo=?, comprador=?, temperatura=?, consumo_proprio=?, observacoes=?
+             SET tanque_id=?, tipo=?, quantidade=?, data=?, motivo=?, comprador=?, temperatura=?, consumo_proprio=?, observacoes=?
              WHERE id=?`,
             [
                 tanqueId,
                 tipo,
                 vol,
                 data,
-                hora || "00:00",
                 motivo,
                 comprador || null,
                 tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "" ? Number(temperatura) : null,

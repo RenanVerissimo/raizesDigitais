@@ -124,7 +124,7 @@ export default function TodasMovimentacoes() {
                                                 </View>
                                             )}
                                             <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 6 }}>
-                                                {new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR")} às {m.hora}
+                                                {new Date(m.data + "T12:00:00").toLocaleDateString("pt-BR")}
                                             </Text>
                                         </View>
 

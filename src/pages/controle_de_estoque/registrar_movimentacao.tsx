@@ -17,7 +17,6 @@ export default function RegistrarMovimentacao() {
 
     const tanques: Tanque[] = route.params?.tanques || [];
     const agora = new Date();
-    const hora = `${String(agora.getHours()).padStart(2, "0")}:${String(agora.getMinutes()).padStart(2, "0")}`;
     const dd = String(agora.getDate()).padStart(2, "0");
     const mm = String(agora.getMonth() + 1).padStart(2, "0");
     const yyyy = agora.getFullYear();
@@ -27,7 +26,6 @@ export default function RegistrarMovimentacao() {
         tipo: "saida" as TipoMovimento,
         volume: "",
         data: `${dd}/${mm}/${yyyy}`,
-        hora,
         motivo: "",
         comprador: "",
         temperatura: "",
@@ -39,6 +37,10 @@ export default function RegistrarMovimentacao() {
     const tanqueSelecionado = tanques.find((t) => String(t.id) === formData.tanqueId);
     const ehConsumoProprio = formData.destinoSaida === "consumo_proprio";
     const ehEntrega = formData.destinoSaida === "entrega";
+    const volumePreview = parseFloat(formData.volume || "0");
+    const consumoPreview = parseFloat(formData.consumoProprio || "0");
+    const mostrarPreviewEntrega = !!tanqueSelecionado && (!!formData.volume || !!formData.consumoProprio) && !isNaN(volumePreview) && !isNaN(consumoPreview);
+    const mostrarPreviewConsumo = !!tanqueSelecionado && !!formData.consumoProprio && !isNaN(consumoPreview);
 
     function handleCancelar() {
         navigation.goBack();
@@ -72,9 +74,9 @@ export default function RegistrarMovimentacao() {
             return;
         }
 
-        const temperatura = parseFloat(formData.temperatura);
-        if (ehEntrega && (isNaN(temperatura) || temperatura < 0)) {
-            Toast.show({ type: "error", text1: "Atenção", text2: "Informe uma temperatura válida para a entrega.", position: "top", visibilityTime: 3000 });
+        const temperatura = formData.temperatura.trim() ? parseFloat(formData.temperatura) : null;
+        if (temperatura !== null && (isNaN(temperatura) || temperatura < 0)) {
+            Toast.show({ type: "error", text1: "Atenção", text2: "Informe uma temperatura válida.", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -84,7 +86,6 @@ export default function RegistrarMovimentacao() {
                 tipo: formData.tipo,
                 volume: vol,
                 data: dataIso,
-                hora: formData.hora,
                 motivo,
                 comprador: ehEntrega ? formData.comprador.trim() || null : null,
                 temperatura: ehEntrega ? temperatura : null,
@@ -189,6 +190,7 @@ export default function RegistrarMovimentacao() {
                                             ...formData,
                                             destinoSaida: destino.key,
                                             volume: destino.key === "consumo_proprio" ? "" : formData.volume,
+                                            consumoProprio: destino.key === "entrega" ? "" : formData.consumoProprio,
                                             temperatura: destino.key === "consumo_proprio" ? "" : formData.temperatura,
                                             comprador: destino.key === "consumo_proprio" ? "" : formData.comprador,
                                             motivo: destino.key === "consumo_proprio" && !formData.motivo.trim() ? "Consumo próprio" : formData.motivo,
@@ -218,36 +220,38 @@ export default function RegistrarMovimentacao() {
                                 keyboardType="decimal-pad"
                                 style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                             />
-                            {tanqueSelecionado && (formData.volume || formData.consumoProprio) && !isNaN(parseFloat(formData.volume || "0")) && !isNaN(parseFloat(formData.consumoProprio || "0")) ? (
+                            {mostrarPreviewEntrega ? (
                                 <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-                                    Após movimentação: {(tanqueSelecionado.volumeAtual - parseFloat(formData.volume || "0") - parseFloat(formData.consumoProprio || "0")).toFixed(1)} L
+                                    Após movimentação: {(tanqueSelecionado!.volumeAtual - volumePreview - consumoPreview).toFixed(1)} L
                                 </Text>
                             ) : null}
                         </View>
                     ) : null}
 
                     {/* Consumo próprio */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="home" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Consumo próprio (L) {ehEntrega ? <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text> : null}
-                            </Text>
+                    {ehConsumoProprio && (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="home" size={16} color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                    Consumo próprio (L)
+                                </Text>
+                            </View>
+                            <TextInput
+                                value={formData.consumoProprio}
+                                onChangeText={(v) => setFormData({ ...formData, consumoProprio: v })}
+                                placeholder="0"
+                                placeholderTextColor="#9ca3af"
+                                keyboardType="decimal-pad"
+                                style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            />
+                            {mostrarPreviewConsumo ? (
+                                <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
+                                    Após movimentação: {(tanqueSelecionado!.volumeAtual - consumoPreview).toFixed(1)} L
+                                </Text>
+                            ) : null}
                         </View>
-                        <TextInput
-                            value={formData.consumoProprio}
-                            onChangeText={(v) => setFormData({ ...formData, consumoProprio: v })}
-                            placeholder="0"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="decimal-pad"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                        />
-                        {ehConsumoProprio && tanqueSelecionado && formData.consumoProprio && !isNaN(parseFloat(formData.consumoProprio || "0")) && (
-                            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
-                                Após movimentação: {(tanqueSelecionado.volumeAtual - parseFloat(formData.consumoProprio || "0")).toFixed(1)} L
-                            </Text>
-                        )}
-                    </View>
+                    )}
 
                     {/* Data */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
@@ -261,29 +265,14 @@ export default function RegistrarMovimentacao() {
                         />
                     </View>
 
-                    {/* Hora */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="clock" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Hora *</Text>
-                        </View>
-                        <TextInput
-                            value={formData.hora}
-                            onChangeText={(v) => setFormData({ ...formData, hora: v })}
-                            placeholder="HH:MM"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="numbers-and-punctuation"
-                            maxLength={5}
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                        />
-                    </View>
-
                     {/* Temperatura (só em entrega/saída) */}
                     {ehEntrega && (
                         <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                 <Feather name="thermometer" size={16} color="#4a90e2" />
-                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Temperatura na entrega (°C) *</Text>
+                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                    Temperatura na entrega (°C) <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                </Text>
                             </View>
                             <TextInput
                                 value={formData.temperatura}
