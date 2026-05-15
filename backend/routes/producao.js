@@ -44,7 +44,7 @@ router.post("/", async (req, res) => {
     try {
         const usuarioId = await requireUsuario(req, res, ["producao"]);
         if (!usuarioId) return;
-        const { date, dailyProduction, quality, notes } = req.body;
+        const { date, dailyProduction, quality = "good", notes } = req.body;
         const total = Number(dailyProduction);
 
         const [result] = await pool.query(
@@ -76,7 +76,7 @@ router.put("/:id", async (req, res) => {
         const usuarioId = await requireUsuario(req, res, ["producao"]);
         if (!usuarioId) return;
         const { id } = req.params;
-        const { date, dailyProduction, quality, notes } = req.body;
+        const { date, dailyProduction, quality = "good", notes } = req.body;
         const total = Number(dailyProduction);
         await pool.query(
             "UPDATE producao SET data=?, producao_diaria=?, qualidade=?, observacoes=? WHERE id=? AND usuario_id=?",

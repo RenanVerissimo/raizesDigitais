@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Qualidade, Tanque } from "./estoque";
+import { Tanque } from "./estoque";
 import { criarTanque, atualizarTanque } from "../../services/api";
 import Toast from "react-native-toast-message";
 
@@ -19,7 +19,6 @@ export default function CadastrarTanque() {
         capacidade: "",
         volumeAtual: "",
         temperatura: "",
-        qualidade: "boa" as Qualidade,
         localizacao: "",
         observacoes: "",
     });
@@ -31,7 +30,6 @@ export default function CadastrarTanque() {
                 capacidade: String(tanqueEdicao.capacidade),
                 volumeAtual: String(tanqueEdicao.volumeAtual),
                 temperatura: String(tanqueEdicao.temperatura),
-                qualidade: tanqueEdicao.qualidade,
                 localizacao: tanqueEdicao.localizacao || "",
                 observacoes: tanqueEdicao.observacoes || "",
             });
@@ -46,7 +44,7 @@ export default function CadastrarTanque() {
 
     async function handleSubmit() {
         if (!formData.nome.trim() || !formData.capacidade || !formData.volumeAtual) {
-            Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
+            Alert.alert("Atencao", "Preencha os campos obrigatorios marcados com *");
             return;
         }
 
@@ -54,9 +52,18 @@ export default function CadastrarTanque() {
         const vol = parseFloat(formData.volumeAtual);
         const temp = parseFloat(formData.temperatura);
 
-        if (isNaN(cap) || cap <= 0) { Alert.alert("Atenção", "Capacidade inválida."); return; }
-        if (isNaN(vol) || vol < 0) { Alert.alert("Atenção", "Volume atual inválido."); return; }
-        if (vol > cap) { Alert.alert("Atenção", "Volume atual não pode exceder a capacidade."); return; }
+        if (isNaN(cap) || cap <= 0) {
+            Alert.alert("Atencao", "Capacidade invalida.");
+            return;
+        }
+        if (isNaN(vol) || vol < 0) {
+            Alert.alert("Atencao", "Volume atual invalido.");
+            return;
+        }
+        if (vol > cap) {
+            Alert.alert("Atencao", "Volume atual nao pode exceder a capacidade.");
+            return;
+        }
 
         try {
             const dados = {
@@ -64,7 +71,6 @@ export default function CadastrarTanque() {
                 capacidade: cap,
                 volumeAtual: vol,
                 temperatura: isNaN(temp) ? 0 : temp,
-                qualidade: formData.qualidade,
                 localizacao: formData.localizacao.trim() || null,
                 observacoes: formData.observacoes.trim() || null,
             };
@@ -88,18 +94,12 @@ export default function CadastrarTanque() {
             Toast.show({
                 type: "error",
                 text1: "Erro",
-                text2: err.message || "Não foi possível salvar o tanque.",
+                text2: err.message || "Nao foi possivel salvar o tanque.",
                 position: "top",
                 visibilityTime: 3000,
             });
         }
     }
-
-    const qualidades: { key: Qualidade; label: string; cor: string }[] = [
-        { key: "excelente", label: "Excelente", cor: "#22c55e" },
-        { key: "boa", label: "Boa", cor: "#3b82f6" },
-        { key: "regular", label: "Regular", cor: "#eab308" },
-    ];
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -107,7 +107,8 @@ export default function CadastrarTanque() {
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
                 <LinearGradient
                     colors={modoEdicao ? ["#f59e0b", "#d97706"] : ["#4a90e2", "#357abd"]}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
@@ -129,41 +130,20 @@ export default function CadastrarTanque() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
-                    <Campo icone="tag" label="Nome do Tanque *" valor={formData.nome} onChange={(v: any) => setFormData({ ...formData, nome: v })} placeholder="Ex: Tanque 1, Resfriador Principal" />
+                    <Campo icone="tag" label="Nome do Tanque *" valor={formData.nome} onChange={(v: string) => setFormData({ ...formData, nome: v })} placeholder="Ex: Tanque 1, Resfriador Principal" />
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
                         <View style={{ flex: 1 }}>
-                            <Campo icone="layers" label="Capacidade (L) *" valor={formData.capacidade} onChange={(v: any) => setFormData({ ...formData, capacidade: v })} placeholder="1000" keyboard="decimal-pad" />
+                            <Campo icone="layers" label="Capacidade (L) *" valor={formData.capacidade} onChange={(v: string) => setFormData({ ...formData, capacidade: v })} placeholder="1000" keyboard="decimal-pad" />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Campo icone="droplet" label="Volume Atual (L) *" valor={formData.volumeAtual} onChange={(v: any) => setFormData({ ...formData, volumeAtual: v })} placeholder="0" keyboard="decimal-pad" />
+                            <Campo icone="droplet" label="Volume Atual (L) *" valor={formData.volumeAtual} onChange={(v: string) => setFormData({ ...formData, volumeAtual: v })} placeholder="0" keyboard="decimal-pad" />
                         </View>
                     </View>
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="award" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Qualidade *</Text>
-                        </View>
-                        <View style={{ flexDirection: "row", gap: 8 }}>
-                            {qualidades.map((q) => {
-                                const ativo = formData.qualidade === q.key;
-                                return (
-                                    <TouchableOpacity
-                                        key={q.key}
-                                        onPress={() => setFormData({ ...formData, qualidade: q.key })}
-                                        activeOpacity={0.7}
-                                        style={{ flex: 1, backgroundColor: ativo ? q.cor : "#f9fafb", borderWidth: 1, borderColor: ativo ? q.cor : "#e5e7eb", borderRadius: 10, paddingVertical: 10, alignItems: "center" }}
-                                    >
-                                        <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>{q.label}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </View>
-
-                    <Campo icone="map-pin" label="Localização (Opcional)" valor={formData.localizacao} onChange={(v: any) => setFormData({ ...formData, localizacao: v })} placeholder="Ex: Sala de Ordenha, Depósito" />
-                    <Campo icone="file-text" label="Observações (Opcional)" valor={formData.observacoes} onChange={(v: any) => setFormData({ ...formData, observacoes: v })} placeholder="Observações adicionais..." />
+                    <Campo icone="thermometer" label="Temperatura (C)" valor={formData.temperatura} onChange={(v: string) => setFormData({ ...formData, temperatura: v })} placeholder="3.5" keyboard="decimal-pad" />
+                    <Campo icone="map-pin" label="Localizacao (Opcional)" valor={formData.localizacao} onChange={(v: string) => setFormData({ ...formData, localizacao: v })} placeholder="Ex: Sala de Ordenha, Deposito" />
+                    <Campo icone="file-text" label="Observacoes (Opcional)" valor={formData.observacoes} onChange={(v: string) => setFormData({ ...formData, observacoes: v })} placeholder="Observacoes adicionais..." />
 
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
                         <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>
@@ -172,12 +152,13 @@ export default function CadastrarTanque() {
                         <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
                             <LinearGradient
                                 colors={modoEdicao ? ["#f59e0b", "#d97706"] : ["#4a90e2", "#357abd"]}
-                                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
                                 style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                             >
                                 <Feather name="check" size={18} color="#fff" />
                                 <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>
-                                    {modoEdicao ? "Salvar Alterações" : "Cadastrar"}
+                                    {modoEdicao ? "Salvar Alteracoes" : "Cadastrar"}
                                 </Text>
                             </LinearGradient>
                         </TouchableOpacity>

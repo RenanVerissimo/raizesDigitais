@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
+import { calcularDataParto, calcularDias } from "../../utils/alerts";
 
 function formatarDataLocal(data: Date) {
     const ano = data.getFullYear();
@@ -32,6 +33,38 @@ function obterProducaoDiaria(producao: Producao) {
     return Number.isFinite(numero) ? numero : 0;
 }
 
+function contarAlertas(animais: any[]) {
+    const emCio = animais.filter((a) => Number(a.em_cio) === 1);
+    const vacasPrenhas = animais.filter((a) => Number(a.prenha) === 1);
+    const abortos = animais.filter((a) => Number(a.abortou) === 1);
+    const mastite = animais.filter((a) => Number(a.mastite) === 1);
+    const outrasDoencas = animais.filter((a) => Number(a.doente) === 1 && a.doenca === "outra");
+
+    const proximosPartos = vacasPrenhas.filter((a) => {
+        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        if (!dataBaseGestacao) return false;
+
+        const parto = calcularDataParto(dataBaseGestacao);
+        if (!parto) return false;
+
+        const dias = calcularDias(parto.toISOString());
+        return dias >= 0 && dias <= 15;
+    });
+
+    const secagem = vacasPrenhas.filter((a) => {
+        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        if (!dataBaseGestacao) return false;
+
+        const parto = calcularDataParto(dataBaseGestacao);
+        if (!parto) return false;
+
+        const dias = calcularDias(parto.toISOString());
+        return dias >= 0 && dias <= 60;
+    });
+
+    return emCio.length + vacasPrenhas.length + proximosPartos.length + secagem.length + abortos.length + mastite.length + outrasDoencas.length;
+}
+
 export default function Dashboard() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -43,20 +76,12 @@ export default function Dashboard() {
     const [average7Days, setAverage7Days] = useState(0);
     const [totalAnimals, setTotalAnimals] = useState(0);
     const [monthlyProduction, setMonthlyProduction] = useState(0);
+    const [alertCount, setAlertCount] = useState(0);
 
     const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 
 
 
-
-    function getQualidadeStyle(qualidade: string) {
-        if (qualidade === "excellent") return { bg: "#dcfce7", text: "#15803d", label: "Excelente" };
-        if (qualidade === "good") return { bg: "#dbeafe", text: "#1d4ed8", label: "Boa" };
-        return { bg: "#fef9c3", text: "#a16207", label: "Regular" };
-    }
-
-
-    
 
     async function handleLogout() {
         await limparUsuarioLogado();
@@ -119,6 +144,7 @@ export default function Dashboard() {
             setTotalAnimals(animais.length);
             setMonthlyProduction(totalMes);
             setProducoesRecentes(recentes);
+            setAlertCount(contarAlertas(animais));
         } catch (err) {
             console.error("Erro:", err);
         }
@@ -250,13 +276,46 @@ export default function Dashboard() {
                                 borderWidth: 1,
                                 borderColor: "#e5e7eb",
                                 borderRadius: 14,
-                                padding: 16,
+                                paddingVertical: 16,
+                                paddingLeft: 16,
+                                paddingRight: 16,
                                 alignItems: "center",
                                 gap: 8,
+                                position: "relative",
+                                overflow: "hidden",
                             }}
                             activeOpacity={0.7}
                             onPress={() => navigation.navigate("Alertas")}
                         >
+                            {alertCount > 0 ? (
+                                <>
+                                    <View style={{
+                                        position: "absolute",
+                                        top: 0,
+                                        right: 0,
+                                        width: 0,
+                                        height: 0,
+                                        borderTopWidth: 42,
+                                        borderLeftWidth: 42,
+                                        borderTopColor: "#ef4444",
+                                        borderLeftColor: "transparent",
+                                    }} />
+                                    <Text style={{
+                                        position: "absolute",
+                                        top: 5,
+                                        right: 0,
+                                        width: 28,
+                                        height: 20,
+                                        color: "#fff",
+                                        fontSize: 13,
+                                        fontWeight: "900",
+                                        textAlign: "center",
+                                        lineHeight: 18,
+                                    }}>
+                                        {alertCount > 99 ? "99+" : alertCount}
+                                    </Text>
+                                </>
+                            ) : null}
                             <Feather name="alert-triangle" size={24} color="#4a90e2" />
                             <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>
                                 Alertas
@@ -306,7 +365,6 @@ export default function Dashboard() {
                             </TouchableOpacity>
                         </View>
                         {producoesRecentes.map((prod, index) => {
-                            const q = getQualidadeStyle(prod.qualidade);
                             return (
                                 <View
                                     key={prod.id}
@@ -329,9 +387,6 @@ export default function Dashboard() {
                                     </View>
                                     <View style={{ alignItems: "flex-end" }}>
                                         <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{obterProducaoDiaria(prod)}L</Text>
-                                        <View style={{ backgroundColor: q.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 4 }}>
-                                            <Text style={{ fontSize: 11, color: q.text, fontWeight: "500" }}>{q.label}</Text>
-                                        </View>
                                     </View>
                                 </View>
                             );

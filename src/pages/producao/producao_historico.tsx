@@ -25,7 +25,6 @@ export default function ProducaoHistorico() {
     const navigation = useNavigation<any>();
 
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterQuality, setFilterQuality] = useState<"all" | "excellent" | "good" | "regular">("all");
     const [allProducoes, setAllProducoes] = useState<Producao[]>([]);
     const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
     const [producaoSelecionada, setProducaoSelecionada] = useState<Producao | null>(null);
@@ -49,8 +48,7 @@ export default function ProducaoHistorico() {
 
     const filteredProductions = allProducoes.filter((prod) => {
         const matchesSearch = prod.data.includes(searchTerm) || prod.observacoes?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesQuality = filterQuality === "all" || prod.qualidade === filterQuality;
-        return matchesSearch && matchesQuality;
+        return matchesSearch;
     });
 
     const totalLiters = filteredProductions.reduce((sum, p) => sum + Number(p.producao_diaria), 0);
@@ -58,12 +56,6 @@ export default function ProducaoHistorico() {
     const totalPaginas = Math.ceil(filteredProductions.length / ITENS_POR_PAGINA);
     const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
     const producoesPaginadas = filteredProductions.slice(inicio, inicio + ITENS_POR_PAGINA);
-
-    function getQualidadeStyle(qualidade: string) {
-        if (qualidade === "excellent") return { bg: "#dcfce7", text: "#15803d", label: "Excelente" };
-        if (qualidade === "good") return { bg: "#dbeafe", text: "#1d4ed8", label: "Boa" };
-        return { bg: "#fef9c3", text: "#a16207", label: "Regular" };
-    }
 
     function abrirModalExclusao(producao: Producao) {
         setProducaoSelecionada(producao);
@@ -99,16 +91,9 @@ export default function ProducaoHistorico() {
         navigation.navigate("ProducaoEdicao", { producao: prod });
     }
 
-    const filterButtons: { key: "all" | "excellent" | "good" | "regular"; label: string; activeColor: string }[] = [
-        { key: "all", label: "Todas", activeColor: "#4a90e2" },
-        { key: "excellent", label: "Excelente", activeColor: "#22c55e" },
-        { key: "good", label: "Boa", activeColor: "#3b82f6" },
-        { key: "regular", label: "Regular", activeColor: "#eab308" },
-    ];
-
     useEffect(() => {
         setPaginaAtual(1);
-    }, [searchTerm, filterQuality]);
+    }, [searchTerm]);
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -149,30 +134,6 @@ export default function ProducaoHistorico() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 14 }}>
-                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                            <Feather name="filter" size={14} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Filtrar por Qualidade</Text>
-                        </View>
-                        <View style={{ flexDirection: "row", gap: 6 }}>
-                            {filterButtons.map((f) => (
-                                <TouchableOpacity
-                                    key={f.key}
-                                    onPress={() => setFilterQuality(f.key)}
-                                    style={{
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 7,
-                                        borderRadius: 8,
-                                        backgroundColor: filterQuality === f.key ? f.activeColor : "#f3f4f6",
-                                    }}
-                                    activeOpacity={0.7}
-                                >
-                                    <Text style={{ fontSize: 12, fontWeight: "500", color: filterQuality === f.key ? "#fff" : "#374151" }}>{f.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
                     <View style={{ backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "rgba(74,144,226,0.2)" }}>
                         <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Total do Período Filtrado</Text>
                         <Text style={{ fontSize: 22, fontWeight: "700", color: "#4a90e2" }}>{totalLiters.toLocaleString("pt-BR")} litros</Text>
@@ -184,7 +145,6 @@ export default function ProducaoHistorico() {
                         </View>
                     ) : (
                         producoesPaginadas.map((prod) => {
-                            const q = getQualidadeStyle(prod.qualidade);
                             return (
                                 <View key={prod.id} style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
                                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -192,9 +152,6 @@ export default function ProducaoHistorico() {
                                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a", marginBottom: 6 }}>
                                                 {formatarData(prod.data)}
                                             </Text>
-                                            <View style={{ backgroundColor: q.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, alignSelf: "flex-start" }}>
-                                                <Text style={{ fontSize: 11, color: q.text, fontWeight: "500" }}>{q.label}</Text>
-                                            </View>
                                         </View>
                                         <View style={{ flexDirection: "row", gap: 4 }}>
                                             <TouchableOpacity onPress={() => handleEdit(prod)} style={{ padding: 8 }}>

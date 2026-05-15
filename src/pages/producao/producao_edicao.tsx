@@ -47,24 +47,11 @@ export default function ProducaoEdicao() {
     const [formData, setFormData] = useState({
         date: dataProducao,
         dailyProduction: producao.producao_diaria.toString(),
-        quality: producao.qualidade as "excellent" | "good" | "regular",
         notes: producao.observacoes ?? "",
     });
 
     const total = parseFloat(formData.dailyProduction) || 0;
     const diferenca = total - totalOriginal;
-
-    function getQualityStyle(q: string, selected: boolean) {
-        if (q === "excellent") return selected
-            ? { bg: "#22c55e", text: "#fff", border: "#22c55e" }
-            : { bg: "#fff", text: "#6b7280", border: "#e5e7eb" };
-        if (q === "good") return selected
-            ? { bg: "#facc15", text: "#fff", border: "#facc15" }
-            : { bg: "#fff", text: "#6b7280", border: "#e5e7eb" };
-        return selected
-            ? { bg: "#fb923c", text: "#fff", border: "#fb923c" }
-            : { bg: "#fff", text: "#6b7280", border: "#e5e7eb" };
-    }
 
     async function handleSubmit() {
         if (!formData.dailyProduction.trim()) {
@@ -82,7 +69,6 @@ export default function ProducaoEdicao() {
             await atualizarProducao(producao.id, {
                 date: formData.date,
                 dailyProduction,
-                quality: formData.quality,
                 notes: formData.notes.trim() || null,
             });
 
@@ -200,38 +186,6 @@ export default function ProducaoEdicao() {
                             </Text>
                         </View>
                     )}
-
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="star" size={16} color="#eab308" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Qualidade do Leite</Text>
-                        </View>
-                        <View style={{ flexDirection: "row", gap: 8 }}>
-                            {(["excellent", "good", "regular"] as const).map((q) => {
-                                const selected = formData.quality === q;
-                                const s = getQualityStyle(q, selected);
-                                const label = q === "excellent" ? "Excelente" : q === "good" ? "Boa" : "Regular";
-                                return (
-                                    <TouchableOpacity
-                                        key={q}
-                                        onPress={() => setFormData({ ...formData, quality: q })}
-                                        style={{
-                                            flex: 1,
-                                            backgroundColor: s.bg,
-                                            borderWidth: 1,
-                                            borderColor: s.border,
-                                            borderRadius: 12,
-                                            paddingVertical: 10,
-                                            alignItems: "center",
-                                        }}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={{ fontSize: 13, fontWeight: "600", color: s.text }}>{label}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>

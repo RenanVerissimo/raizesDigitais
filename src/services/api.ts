@@ -47,7 +47,6 @@ export async function listarProducoesRecentes() {
 export async function criarProducao(dados: {
     date: string;
     dailyProduction: number;
-    quality: string;
     notes: string | null;
 }) {
     const response = await apiFetch(`/producao`, {
@@ -75,7 +74,6 @@ export async function excluirProducao(id: number) {
 export async function atualizarProducao(id: number, dados: {
     date: string;
     dailyProduction: number;
-    quality: string;
     notes: string | null;
 }) {
     const response = await apiFetch(`/producao/${id}`, {
@@ -383,7 +381,6 @@ export async function criarTanque(dados: {
     capacidade: number;
     volumeAtual: number;
     temperatura: number;
-    qualidade: string;
     localizacao?: string | null;
     observacoes?: string | null;
 }) {
@@ -404,7 +401,6 @@ export async function atualizarTanque(id: number, dados: {
     capacidade: number;
     volumeAtual: number;
     temperatura: number;
-    qualidade: string;
     localizacao?: string | null;
     observacoes?: string | null;
 }) {

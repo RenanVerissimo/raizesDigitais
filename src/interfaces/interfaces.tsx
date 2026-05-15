@@ -28,7 +28,6 @@ export interface Producao {
     id: number;
     data: string;
     producao_diaria: number | string;
-    qualidade: string;
     observacoes: string | null;
     criado_em: string;
 }

@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import {
     VictoryChart, VictoryArea, VictoryScatter, VictoryBar,
-    VictoryPie, VictoryAxis, VictoryTheme,
+    VictoryAxis, VictoryTheme,
 } from "victory-native";
 import { Producao } from "../../interfaces/interfaces";
 import { listarProducoes } from "../../services/api";
@@ -82,33 +82,6 @@ export default function Graficos() {
     const ticksBarras = dadosDiaria
         .filter((_, i) => i % stepBarras === 0 || i === ultimos10.length - 1)
         .map((d) => d.x);
-
-    // ── Dados pizza de qualidade ────────────────────────────────────────────
-    const qualidadeConfig = [
-        { chave: "excellent" as const, label: "Excelente", cor: "#10b981" },
-        { chave: "good" as const, label: "Boa", cor: "#3b82f6" },
-        { chave: "regular" as const, label: "Regular", cor: "#eab308" },
-    ];
-
-    const dadosQualidade = qualidadeConfig
-        .map((q) => ({
-            ...q,
-            qtd: producoes.filter((p) => p.qualidade === q.chave).length,
-        }))
-        .filter((q) => q.qtd > 0);
-
-    const totalQualidade = dadosQualidade.reduce((s, q) => s + q.qtd, 0);
-
-    const dadosPizza = dadosQualidade.map((q) => ({
-        x: q.label,
-        y: q.qtd,
-        label: `${((q.qtd / totalQualidade) * 100).toFixed(0)}%`,
-    }));
-    const coresPizza = dadosQualidade.map((q) => q.cor);
-
-    const qualidadePredominante = dadosQualidade.length > 0
-        ? [...dadosQualidade].sort((a, b) => b.qtd - a.qtd)[0].label
-        : null;
 
     // ── Estilos de eixo compartilhados ─────────────────────────────────────
     const axisStyle = {
@@ -287,64 +260,6 @@ export default function Graficos() {
                                 </VictoryChart>
                             </View>
 
-                            {/* ── GRÁFICO 3: Distribuição de Qualidade ── */}
-                            {dadosPizza.length > 0 && (
-                                <View style={{
-                                    backgroundColor: "#fff", borderRadius: 14, padding: 18,
-                                    borderWidth: 1, borderColor: "#f1f5f9",
-                                }}>
-                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a", marginBottom: 16 }}>
-                                        Distribuição de Qualidade
-                                    </Text>
-
-                                    <View style={{ alignItems: "center" }}>
-                                        <VictoryPie
-                                            data={dadosPizza}
-                                            x="x" y="y"
-                                            colorScale={coresPizza}
-                                            width={220}
-                                            height={220}
-                                            innerRadius={0}
-                                            padding={24}
-                                            labels={({ datum }: any) =>
-                                                `${((datum.y / totalQualidade) * 100).toFixed(0)}%`
-                                            }
-                                            style={{
-                                                labels: {
-                                                    fill: "#fff",
-                                                    fontSize: 13,
-                                                    fontWeight: "700",
-                                                },
-                                            }}
-                                        />
-                                    </View>
-
-                                    <View style={{ gap: 8, marginTop: 8 }}>
-                                        {dadosQualidade.map((q, i) => (
-                                            <View key={i} style={{
-                                                flexDirection: "row", justifyContent: "space-between",
-                                                alignItems: "center", paddingVertical: 8,
-                                                paddingHorizontal: 12, backgroundColor: "#f9fafb",
-                                                borderRadius: 10,
-                                            }}>
-                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                                                    <View style={{ width: 14, height: 14, borderRadius: 4, backgroundColor: q.cor }} />
-                                                    <Text style={{ fontSize: 13, color: "#374151", fontWeight: "500" }}>
-                                                        {q.label}
-                                                    </Text>
-                                                </View>
-                                                <Text style={{ fontSize: 13, fontWeight: "700", color: q.cor }}>
-                                                    {((q.qtd / totalQualidade) * 100).toFixed(0)}%
-                                                    <Text style={{ fontWeight: "400", color: "#9ca3af", fontSize: 12 }}>
-                                                        {" "}({q.qtd} {q.qtd === 1 ? "reg." : "regs."})
-                                                    </Text>
-                                                </Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                </View>
-                            )}
-
                             {/* ── INSIGHTS ── */}
                             <View style={{
                                 backgroundColor: "rgba(74,144,226,0.08)",
@@ -369,9 +284,6 @@ export default function Graficos() {
                                     <View style={{ gap: 8, marginTop: 12 }}>
                                     <Insight texto={`Média de produção diária: ${mediaProducao} litros`} />
                                     <Insight texto={`Variação: ${maxProducao - minProducao} litros entre máximo e mínimo`} />
-                                    {qualidadePredominante && (
-                                        <Insight texto={`Qualidade predominante: ${qualidadePredominante}`} />
-                                    )}
                                     <Insight texto={`Total de ${producoes.length} ${producoes.length === 1 ? "registro" : "registros"} analisado${producoes.length === 1 ? "" : "s"}`} />
                                     </View>
                                 )}
