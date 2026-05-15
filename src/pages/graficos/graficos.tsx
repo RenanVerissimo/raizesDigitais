@@ -16,7 +16,6 @@ import { listarProducoes } from "../../services/api";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CHART_WIDTH = SCREEN_WIDTH - 40;
 
-
 export default function Graficos() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -132,6 +131,7 @@ export default function Graficos() {
                             <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 12 }}>Carregando produções...</Text>
                         </View>
                     ) : producoes.length === 0 ? (
+                        <>
                         <View style={{
                             backgroundColor: "#fff", borderRadius: 14, padding: 40,
                             alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9",
@@ -141,6 +141,7 @@ export default function Graficos() {
                                 Nenhuma produção registrada ainda.{"\n"}Cadastre produções para ver as análises.
                             </Text>
                         </View>
+                        </>
                     ) : (
                         <>
                             {/* ── MÉTRICAS ── */}

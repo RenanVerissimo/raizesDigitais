@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal, Dimensions } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { VictoryPie } from "victory-native";
 import { excluirReceita, listarCompras, listarReceitas } from "../../services/api";
 import { Compra } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
@@ -34,6 +35,7 @@ const CATEGORIA_LABEL: Record<DespesaResumo["categoria"], { label: string; cor: 
 };
 
 const NOMES_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const CHART_WIDTH = Dimensions.get("window").width - 40;
 const PERIODOS_GRAFICO = ["7D", "15D", "30D", "6M", "1A"] as const;
 type PeriodoGrafico = typeof PERIODOS_GRAFICO[number];
 type GrupoMedicamento = { chave: string; label: string; cor: string };
@@ -51,6 +53,10 @@ function normalizarTexto(texto: string) {
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .trim();
+}
+
+function formatarMoeda(valor: number) {
+    return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function classificarMedicamento(compra: Compra): GrupoMedicamento {
@@ -595,27 +601,48 @@ export default function Financeiro() {
                     {dadosCategorias.length > 0 && (
                         <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14 }}>
-                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
-                                    Despesas por Categoria
-                                </Text>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                    <Feather name="pie-chart" size={17} color="#dc2626" />
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
+                                        Despesas por Categoria
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={{ gap: 10 }}>
-                                {dadosCategorias.map((d, i) => {
+                            <Text style={{ fontSize: 11, color: "#9ca3af", marginBottom: 10 }}>
+                                Compras concluídas - total {formatarMoeda(totalDespesasCategorias)}
+                            </Text>
+
+                            {renderSeletorPeriodo(periodoCategorias, setPeriodoCategorias)}
+
+                            <VictoryPie
+                                width={CHART_WIDTH - 36}
+                                height={220}
+                                data={dadosCategorias.map((d) => ({
+                                    x: CATEGORIA_LABEL[d.categoria].label,
+                                    y: d.valor,
+                                }))}
+                                colorScale={dadosCategorias.map((d) => CATEGORIA_LABEL[d.categoria].cor)}
+                                innerRadius={48}
+                                padAngle={2}
+                                labels={() => ""}
+                                style={{ data: { stroke: "#fff", strokeWidth: 2 } }}
+                            />
+
+                            <View style={{ gap: 9 }}>
+                                {dadosCategorias.map((d) => {
                                     const cfg = CATEGORIA_LABEL[d.categoria];
                                     return (
-                                        <View key={i}>
-                                            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-                                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                                    <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: cfg.cor }} />
-                                                    <Text style={{ fontSize: 13, color: "#0a0a0a" }}>{cfg.label}</Text>
-                                                </View>
-                                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#0a0a0a" }}>
-                                                    R$ {d.valor.toFixed(2)} ({d.percentual.toFixed(0)}%)
-                                                </Text>
-                                            </View>
-                                            <View style={{ width: "100%", height: 8, backgroundColor: "#f3f4f6", borderRadius: 4, overflow: "hidden" }}>
-                                                <View style={{ width: `${d.percentual}%`, height: "100%", backgroundColor: cfg.cor }} />
-                                            </View>
+                                        <View key={d.categoria} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: cfg.cor }} />
+                                            <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: "600", color: "#374151" }}>
+                                                {cfg.label}
+                                            </Text>
+                                            <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                                {d.percentual.toFixed(1)}%
+                                            </Text>
+                                            <Text style={{ minWidth: 86, textAlign: "right", fontSize: 12, fontWeight: "800", color: "#0a0a0a" }}>
+                                                {formatarMoeda(d.valor)}
+                                            </Text>
                                         </View>
                                     );
                                 })}
