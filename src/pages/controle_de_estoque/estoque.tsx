@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -139,15 +139,6 @@ export default function Estoque() {
                                 {tanques.length} {tanques.length === 1 ? "tanque" : "tanques"}
                             </Text>
                         </View>
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => navigation.navigate("estoque_racao")}
-                            style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Abrir estoque de ração"
-                        >
-                            <MaterialCommunityIcons name="swap-vertical" size={22} color="#fff" />
-                        </TouchableOpacity>
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>

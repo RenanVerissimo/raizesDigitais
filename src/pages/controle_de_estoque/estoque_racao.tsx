@@ -183,15 +183,6 @@ export default function EstoqueRacao() {
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Estoque de Ração</Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>Controle opcional de alimentação</Text>
                         </View>
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => navigation.navigate("estoque")}
-                            style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", alignItems: "center", justifyContent: "center" }}
-                            accessibilityRole="button"
-                            accessibilityLabel="Abrir estoque de leite"
-                        >
-                            <MaterialCommunityIcons name="cup-water" size={22} color="#fff" />
-                        </TouchableOpacity>
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>

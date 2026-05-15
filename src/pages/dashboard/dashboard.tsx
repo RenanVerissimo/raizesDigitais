@@ -266,8 +266,13 @@ export default function Dashboard() {
                     <View style={{ flexDirection: "row", gap: 10 }}>
                         <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
                             onPress={() => navigation.navigate("estoque")}>
-                            <Feather name="package" size={24} color="#4a90e2" />
-                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Estoque</Text>
+                            <Feather name="droplet" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Leite</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, padding: 16, alignItems: "center", gap: 8 }} activeOpacity={0.7}
+                            onPress={() => navigation.navigate("estoque_racao")}>
+                            <MaterialCommunityIcons name="barley" size={24} color="#4a90e2" />
+                            <Text style={{ fontSize: 13, fontWeight: "500", color: "#0a0a0a" }}>Ração</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={{
