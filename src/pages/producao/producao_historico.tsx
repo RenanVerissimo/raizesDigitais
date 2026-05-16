@@ -167,7 +167,7 @@ export default function ProducaoHistorico() {
                                         <View style={{ backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 10, padding: 12 }}>
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
                                                 <Feather name="droplet" size={12} color="#4a90e2" />
-                                                <Text style={{ fontSize: 11, color: "#4a90e2" }}>Producao diaria</Text>
+                                                <Text style={{ fontSize: 11, color: "#4a90e2" }}>Produção diária</Text>
                                             </View>
                                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{prod.producao_diaria}L</Text>
                                         </View>

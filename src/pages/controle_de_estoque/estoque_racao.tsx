@@ -219,8 +219,8 @@ export default function EstoqueRacao() {
                                     const dias = diasAteValidade(racao.validade);
                                     const validadeRuim = dias !== null && dias <= 30;
                                     return (
-                                        <TouchableOpacity key={racao.id} activeOpacity={0.78} onPress={() => abrirMovimentacao(racao)} style={{ backgroundColor: baixo || validadeRuim ? "#fff7ed" : "#fff", paddingHorizontal: 14, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
-                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                        <TouchableOpacity key={racao.id} activeOpacity={0.78} onPress={() => abrirMovimentacao(racao)} style={{ backgroundColor: baixo || validadeRuim ? "#fff7ed" : "#fff", paddingHorizontal: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                                                 <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: tipo.bg, alignItems: "center", justifyContent: "center" }}>
                                                     {racao.tipo === "milho" ? (
                                                         <MaterialCommunityIcons name="corn" size={21} color={tipo.color} />
@@ -228,15 +228,15 @@ export default function EstoqueRacao() {
                                                         <Feather name="package" size={16} color={tipo.color} />
                                                     )}
                                                 </View>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: "800", color: "#0a0a0a" }}>{tipo.label}</Text>
+                                                <View style={{ flex: 1, minWidth: 0 }}>
+                                                    <Text numberOfLines={2} style={{ fontSize: 14, fontWeight: "800", color: "#0a0a0a", lineHeight: 18 }}>{tipo.label}</Text>
                                                     <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
                                                         {baixo && <Tag label="Baixo" bg="#fee2e2" text="#b91c1c" />}
                                                         {validadeRuim && <Tag label={dias! < 0 ? "Vencida" : `Vence ${dias}d`} bg="#fef9c3" text="#a16207" />}
                                                     </View>
                                                 </View>
-                                                <View style={{ alignItems: "flex-end", minWidth: 92 }}>
-                                                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 17, fontWeight: "900", color: tipo.color }}>{formatarNumero(racao.quantidadeAtual)} kg</Text>
+                                                <View style={{ alignItems: "flex-end", width: 76 }}>
+                                                    <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 15, fontWeight: "900", color: tipo.color }}>{formatarNumero(racao.quantidadeAtual)} kg</Text>
                                                 </View>
                                                 <Feather name="chevron-right" size={18} color="#9ca3af" />
                                             </View>

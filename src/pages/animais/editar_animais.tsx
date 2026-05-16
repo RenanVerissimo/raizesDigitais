@@ -24,6 +24,7 @@ export default function EditarAnimais() {
     const [formData, setFormData] = useState({
         nome: animal?.nome ?? "",
         identificador: animal?.identificador ?? "",
+        status: animal?.status === "inativo" ? "inativo" : "ativo",
         producaoMediaDiaria: animal?.producao_media_diaria != null ? String(animal.producao_media_diaria) : "",
         raca: animal?.raca ?? "",
         peso: animal?.peso != null ? String(animal.peso) : "",
@@ -55,6 +56,7 @@ export default function EditarAnimais() {
             setFormData({
                 nome: animal.nome ?? "",
                 identificador: animal.identificador ?? "",
+                status: animal.status === "inativo" ? "inativo" : "ativo",
                 producaoMediaDiaria: animal.producao_media_diaria != null ? String(animal.producao_media_diaria) : "",
                 raca: animal.raca ?? "",
                 peso: animal.peso != null ? String(animal.peso) : "",
@@ -119,6 +121,7 @@ export default function EditarAnimais() {
             await atualizarAnimal(animal.id, {
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
+                status: formData.status as "ativo" | "inativo",
                 producao_media_diaria: producao,
                 raca: formData.raca.trim() || null,
                 peso: pesoNum,

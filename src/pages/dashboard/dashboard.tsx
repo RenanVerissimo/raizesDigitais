@@ -375,23 +375,36 @@ export default function Dashboard() {
                                     key={prod.id}
                                     style={{
                                         flexDirection: "row",
-                                        justifyContent: "space-between",
                                         alignItems: "center",
+                                        justifyContent: "space-between",
+                                        gap: 12,
                                         paddingVertical: 12,
                                         borderBottomWidth: index < producoesRecentes.length - 1 ? 1 : 0,
                                         borderBottomColor: "#f1f5f9",
                                     }}
                                 >
-                                    <View>
-                                        <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                            {new Date(prod.data).toLocaleDateString("pt-BR")}
-                                        </Text>
-                                        <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-                                            Producao diaria
-                                        </Text>
+                                    <View style={{ flex: 1, justifyContent: "center" }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                            <Feather name="calendar" size={14} color="#4a90e2" />
+                                            <Text style={{ fontSize: 17, fontWeight: "800", color: "#0a0a0a" }}>
+                                                {new Date(prod.data).toLocaleDateString("pt-BR")}
+                                            </Text>
+                                        </View>
                                     </View>
-                                    <View style={{ alignItems: "flex-end" }}>
-                                        <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{obterProducaoDiaria(prod)}L</Text>
+                                    <View style={{
+                                        width: "48%",
+                                        backgroundColor: "rgba(74,144,226,0.1)",
+                                        borderRadius: 10,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 9,
+                                    }}>
+                                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 3 }}>
+                                            <Feather name="droplet" size={12} color="#4a90e2" />
+                                            <Text style={{ fontSize: 11, color: "#4a90e2" }}>Produção diária</Text>
+                                        </View>
+                                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", textAlign: "center" }}>
+                                            {obterProducaoDiaria(prod)}L
+                                        </Text>
                                     </View>
                                 </View>
                             );

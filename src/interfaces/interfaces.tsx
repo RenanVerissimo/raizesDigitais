@@ -36,6 +36,7 @@ export interface Animal {
     id: number;
     nome: string;
     identificador: string;
+    status?: "ativo" | "inativo" | null;
 
     producao_media_diaria?: number | null;
     raca?: string | null;

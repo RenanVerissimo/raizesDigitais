@@ -112,6 +112,7 @@ export async function listarAnimais(): Promise<Animal[]> {
 export async function criarAnimal(dados: {
     nome: string;
     identificador: string;
+    status?: "ativo" | "inativo";
 
     producao_media_diaria: number | null;
     raca?: string | null;
@@ -158,6 +159,7 @@ export async function criarAnimal(dados: {
 export async function atualizarAnimal(id: number, dados: {
     nome: string;
     identificador: string;
+    status?: "ativo" | "inativo";
 
     producao_media_diaria: number | null;
     raca?: string | null;
@@ -216,6 +218,25 @@ export async function excluirAnimal(id: number) {
     } catch (err) {
         console.error("Falha em excluirAnimal:", err);
         throw new Error("Não foi possível excluir o animal. Verifique a conexão.");
+    }
+}
+
+export async function atualizarStatusAnimal(id: number, status: "ativo" | "inativo") {
+    try {
+        const response = await apiFetch(`/animais/${id}/status`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Erro ao atualizar status (status ${response.status})`);
+        }
+
+        return await response.json();
+    } catch (err) {
+        console.error("Falha em atualizarStatusAnimal:", err);
+        throw new Error("Não foi possível atualizar o status do animal. Verifique a conexão.");
     }
 }
 

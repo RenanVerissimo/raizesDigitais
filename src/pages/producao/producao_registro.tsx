@@ -33,13 +33,13 @@ export default function ProducaoRegistro() {
 
     async function handleSubmit() {
         if (!formData.dailyProduction.trim()) {
-            Alert.alert("Atencao", "Preencha a Producao Diaria.");
+            Alert.alert("Atenção", "Preencha a produção diária.");
             return;
         }
 
         const dailyProduction = Number(formData.dailyProduction);
         if (isNaN(dailyProduction) || dailyProduction <= 0) {
-            Alert.alert("Atencao", "A Producao Diaria deve ser maior que 0.");
+            Alert.alert("Atenção", "A produção diária deve ser maior que 0.");
             return;
         }
 
@@ -58,7 +58,7 @@ export default function ProducaoRegistro() {
 
             Toast.show({
                 type: "success",
-                text1: isEditando ? "Producao atualizada!" : "Producao registrada!",
+                text1: isEditando ? "Produção atualizada!" : "Produção registrada!",
                 text2: isEditando
                     ? "As alteracoes foram salvas."
                     : "Sua coleta foi salva com sucesso.",
@@ -77,7 +77,7 @@ export default function ProducaoRegistro() {
             setTimeout(() => navigation.goBack(), 500);
         } catch (error: any) {
             console.error(error);
-            Alert.alert("Erro", error.message || "Nao foi possivel salvar a producao. Tente novamente.");
+            Alert.alert("Erro", error.message || "Não foi possível salvar a produção. Tente novamente.");
         }
     }
 
@@ -102,7 +102,7 @@ export default function ProducaoRegistro() {
                                 {isEditando ? "Editar Coleta" : "Nova Coleta"}
                             </Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                {isEditando ? "Atualize os dados da producao" : "Registre a producao diaria"}
+                                {isEditando ? "Atualize os dados da produção" : "Registre a produção diária"}
                             </Text>
                         </View>
                     </View>
@@ -124,7 +124,7 @@ export default function ProducaoRegistro() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="droplet" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Producao Diaria (Litros)</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Produção diária (litros)</Text>
                         </View>
                         <TextInput
                             value={formData.dailyProduction}
@@ -138,7 +138,7 @@ export default function ProducaoRegistro() {
 
                     {total > 0 && (
                         <View style={{ backgroundColor: "rgba(74,144,226,0.1)", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "rgba(74,144,226,0.2)" }}>
-                            <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Producao Diaria</Text>
+                            <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Produção diária</Text>
                             <Text style={{ fontSize: 28, fontWeight: "700", color: "#4a90e2" }}>{total.toFixed(1)} L</Text>
                         </View>
                     )}
@@ -146,12 +146,12 @@ export default function ProducaoRegistro() {
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="edit-3" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observacoes</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observações</Text>
                         </View>
                         <TextInput
                             value={formData.notes}
                             onChangeText={(v) => setFormData({ ...formData, notes: v })}
-                            placeholder="Anotacoes sobre a coleta..."
+                            placeholder="Anotações sobre a coleta..."
                             placeholderTextColor="#9ca3af"
                             multiline
                             numberOfLines={3}

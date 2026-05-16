@@ -10,6 +10,7 @@ async function ensureAnimaisSchema() {
         { name: "doenca", sql: "ADD COLUMN doenca VARCHAR(40) NULL AFTER doente" },
         { name: "descricao_doenca", sql: "ADD COLUMN descricao_doenca VARCHAR(255) NULL AFTER doenca" },
         { name: "tratamento_mastite", sql: "ADD COLUMN tratamento_mastite VARCHAR(255) NULL AFTER descricao_doenca" },
+        { name: "status", sql: "ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ativo' AFTER identificador" },
     ];
 
     const [columns] = await pool.query(`
@@ -50,6 +51,7 @@ router.post("/", async (req, res) => {
         const {
             nome,
             identificador,
+            status = "ativo",
             producao_media_diaria,
             raca,
             peso,
@@ -88,6 +90,7 @@ router.post("/", async (req, res) => {
                 usuario_id,
                 nome,
                 identificador,
+                status,
                 producao_media_diaria,
                 raca,
                 peso,
@@ -108,11 +111,12 @@ router.post("/", async (req, res) => {
                 data_inseminacao,
                 data_confirmacao_prenhez
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 usuarioId,
                 nome,
                 identificador,
+                status === "inativo" ? "inativo" : "ativo",
                 producao_media_diaria ?? null,
                 raca || null,
                 peso ?? null,
@@ -153,6 +157,7 @@ router.put("/:id", async (req, res) => {
         const {
             nome,
             identificador,
+            status,
             producao_media_diaria,
             raca,
             peso,
@@ -186,6 +191,7 @@ router.put("/:id", async (req, res) => {
             SET 
                 nome = ?,
                 identificador = ?,
+                status = ?,
                 producao_media_diaria = ?,
                 raca = ?,
                 peso = ?,
@@ -210,6 +216,7 @@ router.put("/:id", async (req, res) => {
             [
                 nome,
                 identificador,
+                status === "inativo" ? "inativo" : "ativo",
                 producao_media_diaria ?? null,
                 raca || null,
                 peso ?? null,
@@ -245,6 +252,29 @@ router.put("/:id", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ erro: "Erro ao atualizar animal" });
+    }
+});
+
+router.patch("/:id/status", async (req, res) => {
+    try {
+        await ensureAnimaisSchema();
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
+
+        const status = req.body.status === "inativo" ? "inativo" : "ativo";
+        const [result] = await pool.query(
+            "UPDATE animais SET status = ? WHERE id = ? AND usuario_id = ?",
+            [status, req.params.id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ erro: "Animal não encontrado" });
+        }
+
+        res.json({ mensagem: "Status do animal atualizado", status });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao atualizar status do animal" });
     }
 });
 // EXCLUIR

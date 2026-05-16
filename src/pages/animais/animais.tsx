@@ -20,12 +20,13 @@ export default function Animais() {
     const [carregando, setCarregando] = useState(true);
     const [dicasAberto, setDicasAberto] = useState(true);
 
-    const totalAnimais = animais.length;
+    const animaisAtivos = animais.filter((a) => a.status !== "inativo");
+    const totalAnimais = animaisAtivos.length;
     /*     const producaoDiariaEstimada = animais.reduce((s, a) => s + Number(a.producao_media_diaria), 0);
         const producaoMensalEstimada = producaoDiariaEstimada * 30;
         const mediaPorAnimal = totalAnimais > 0 ? producaoDiariaEstimada / totalAnimais : 0; */
 
-    const animaisComProducao = animais.filter(a => a.producao_media_diaria != null);
+    const animaisComProducao = animaisAtivos.filter(a => a.producao_media_diaria != null);
     const producaoDiariaEstimada = animaisComProducao.reduce(
         (s, a) => s + Number(a.producao_media_diaria), 0
     );
@@ -183,10 +184,12 @@ export default function Animais() {
                             </View>
                         ) : (
                             <View style={{ gap: 10 }}>
-                                {animaisVisiveis.map((animal) => (
+                                {animaisVisiveis.map((animal) => {
+                                    const inativo = animal.status === "inativo";
+                                    return (
                                     <View
                                         key={animal.id}
-                                        style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, padding: 14 }}
+                                        style={{ backgroundColor: inativo ? "#f3f4f6" : "#fff", borderWidth: 1, borderColor: inativo ? "#d1d5db" : "#e5e7eb", borderRadius: 12, padding: 14, opacity: inativo ? 0.82 : 1 }}
                                     >
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                                             <View style={{ flexDirection: "row", gap: 12, flex: 1 }}>
@@ -194,18 +197,25 @@ export default function Animais() {
                                                     style={{
                                                         width: 44,
                                                         height: 44,
-                                                        backgroundColor: "rgba(74,144,226,0.1)",
+                                                        backgroundColor: inativo ? "#e5e7eb" : "rgba(74,144,226,0.1)",
                                                         borderRadius: 12,
                                                         alignItems: "center",
                                                         justifyContent: "center",
                                                     }}
                                                 >
-                                                    <MaterialCommunityIcons name="cow" size={22} color="#4a90e2" />
+                                                    <MaterialCommunityIcons name="cow" size={22} color={inativo ? "#6b7280" : "#4a90e2"} />
                                                 </View>
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }} numberOfLines={1}>
-                                                        {animal.nome}
-                                                    </Text>
+                                                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                                                        <Text style={{ flexShrink: 1, minWidth: 0, fontSize: 15, fontWeight: "600", color: inativo ? "#6b7280" : "#0a0a0a", lineHeight: 20 }} numberOfLines={2}>
+                                                            {animal.nome}
+                                                        </Text>
+                                                        {inativo && (
+                                                            <View style={{ backgroundColor: "#e5e7eb", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                                                                <Text style={{ fontSize: 10, fontWeight: "800", color: "#4b5563" }}>Inativa</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
                                                     <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
                                                         ID: {animal.identificador}
                                                     </Text>
@@ -262,7 +272,8 @@ export default function Animais() {
                                             </Text>
                                         </View>
                                     </View>
-                                ))}
+                                    );
+                                })}
                             </View>
                         )}
                     </View>
