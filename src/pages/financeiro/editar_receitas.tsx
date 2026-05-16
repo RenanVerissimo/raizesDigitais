@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import DateInput from "../../components/DateInput";
 import {
     View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -13,11 +13,17 @@ import Toast from "react-native-toast-message";
 import { toBr, toIso } from "../../utils/formatters";
 import { Receita } from "./financeiro";
 
+function parseDecimal(valor: string) {
+    return Number(valor.replace(/\./g, "").replace(",", "."));
+}
+
 export default function EditarReceita() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const receita: Receita = route.params?.receita;
+    const vendaAnimal = receita?.tipoReceita === "animal";
+    const animalCadastrado = vendaAnimal && receita?.animalId != null;
 
     const [formData, setFormData] = useState({
         comprador: receita?.comprador ?? "",
@@ -25,10 +31,14 @@ export default function EditarReceita() {
         precoPorLitro: receita?.precoPorLitro != null ? String(receita.precoPorLitro) : "",
         data: toBr(receita?.data),
         observacoes: receita?.observacoes ?? "",
+        animalNome: receita?.animalNome ?? "",
+        animalIdentificador: receita?.animalIdentificador ?? "",
+        animalPeso: receita?.animalPeso != null ? String(receita.animalPeso) : "",
+        valorAnimal: receita?.valorAnimal != null ? String(receita.valorAnimal) : "",
     });
 
     const valorTotal =
-        parseFloat(formData.litros || "0") * parseFloat(formData.precoPorLitro || "0");
+        parseDecimal(formData.litros || "0") * parseDecimal(formData.precoPorLitro || "0");
 
     useEffect(() => {
         if (receita) {
@@ -38,6 +48,10 @@ export default function EditarReceita() {
                 precoPorLitro: receita.precoPorLitro != null ? String(receita.precoPorLitro) : "",
                 data: toBr(receita.data),
                 observacoes: receita.observacoes ?? "",
+                animalNome: receita.animalNome ?? "",
+                animalIdentificador: receita.animalIdentificador ?? "",
+                animalPeso: receita.animalPeso != null ? String(receita.animalPeso) : "",
+                valorAnimal: receita.valorAnimal != null ? String(receita.valorAnimal) : "",
             });
         }
     }, [receita?.id]);
@@ -47,23 +61,6 @@ export default function EditarReceita() {
     }
 
     async function handleSubmit() {
-        if (!formData.comprador.trim()) {
-            Alert.alert("Atenção", "Informe o nome do comprador.");
-            return;
-        }
-
-        const litrosNum = parseFloat(formData.litros);
-        if (!formData.litros.trim() || isNaN(litrosNum) || litrosNum <= 0) {
-            Alert.alert("Atenção", "Informe a quantidade de litros corretamente.");
-            return;
-        }
-
-        const precoNum = parseFloat(formData.precoPorLitro);
-        if (!formData.precoPorLitro.trim() || isNaN(precoNum) || precoNum <= 0) {
-            Alert.alert("Atenção", "Informe o preço por litro corretamente.");
-            return;
-        }
-
         const dataIso = toIso(formData.data);
         if (!dataIso) {
             Alert.alert("Atenção", "Informe uma data válida (DD/MM/AAAA).");
@@ -71,14 +68,59 @@ export default function EditarReceita() {
         }
 
         try {
-            await atualizarReceita(receita.id, {
-                comprador: formData.comprador.trim(),
-                litros: litrosNum,
-                precoPorLitro: precoNum,
-                valorTotal: litrosNum * precoNum,
-                data: dataIso,
-                observacoes: formData.observacoes.trim() || null,
-            });
+            if (vendaAnimal) {
+                const valorAnimal = parseDecimal(formData.valorAnimal);
+                const animalPeso = !animalCadastrado && formData.animalPeso.trim() ? parseDecimal(formData.animalPeso) : null;
+
+                if (!valorAnimal || valorAnimal <= 0) {
+                    Alert.alert("Atenção", "Informe o valor da venda do animal.");
+                    return;
+                }
+
+                if (!animalCadastrado && !formData.animalNome.trim()) {
+                    Alert.alert("Atenção", "Informe o nome ou descrição do animal vendido.");
+                    return;
+                }
+
+                await atualizarReceita(receita.id, {
+                    tipoReceita: "animal",
+                    data: dataIso,
+                    animalId: animalCadastrado ? Number(receita.animalId) : null,
+                    animalNome: formData.animalNome.trim() || receita.animalNome || null,
+                    animalIdentificador: formData.animalIdentificador.trim() || receita.animalIdentificador || null,
+                    animalPeso,
+                    valorAnimal,
+                    comprador: formData.comprador.trim(),
+                    observacoes: formData.observacoes.trim() || null,
+                });
+            } else {
+                if (!formData.comprador.trim()) {
+                    Alert.alert("Atenção", "Informe o nome do comprador.");
+                    return;
+                }
+
+                const litrosNum = parseDecimal(formData.litros);
+                if (!formData.litros.trim() || isNaN(litrosNum) || litrosNum <= 0) {
+                    Alert.alert("Atenção", "Informe a quantidade de litros corretamente.");
+                    return;
+                }
+
+                const precoNum = parseDecimal(formData.precoPorLitro);
+                if (!formData.precoPorLitro.trim() || isNaN(precoNum) || precoNum <= 0) {
+                    Alert.alert("Atenção", "Informe o preço por litro corretamente.");
+                    return;
+                }
+
+                await atualizarReceita(receita.id, {
+                    tipoReceita: "leite",
+                    comprador: formData.comprador.trim(),
+                    litros: litrosNum,
+                    precoPorLitro: precoNum,
+                    valorTotal: litrosNum * precoNum,
+                    data: dataIso,
+                    observacoes: formData.observacoes.trim() || null,
+                });
+            }
 
             Toast.show({
                 type: "success",
@@ -126,6 +168,37 @@ export default function EditarReceita() {
         color: "#0a0a0a",
     };
 
+    const Campo = ({
+        icone,
+        label,
+        value,
+        onChangeText,
+        placeholder,
+        keyboardType,
+    }: {
+        icone: keyof typeof Feather.glyphMap;
+        label: string;
+        value: string;
+        onChangeText: (value: string) => void;
+        placeholder: string;
+        keyboardType?: "default" | "decimal-pad";
+    }) => (
+        <View style={cardStyle}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Feather name={icone} size={16} color="#f59e0b" />
+                <Text style={labelStyle}>{label}</Text>
+            </View>
+            <TextInput
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
+                placeholderTextColor="#9ca3af"
+                keyboardType={keyboardType}
+                style={inputStyle}
+            />
+        </View>
+    );
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -157,90 +230,114 @@ export default function EditarReceita() {
                                 </Text>
                             </View>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                Atualize os dados da venda
+                                {vendaAnimal ? "Atualize os dados da venda do animal" : "Atualize os dados da venda"}
                             </Text>
                         </View>
                     </View>
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
-
-                    {/* Comprador */}
-                    <View style={cardStyle}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="user" size={16} color="#f59e0b" />
-                            <Text style={labelStyle}>
-                                Comprador <Text style={{ color: "#ef4444" }}>*</Text>
-                            </Text>
-                        </View>
-                        <TextInput
-                            value={formData.comprador}
-                            onChangeText={(v) => setFormData({ ...formData, comprador: v })}
-                            placeholder="Ex: João Silva"
-                            placeholderTextColor="#9ca3af"
-                            style={inputStyle}
-                        />
-                    </View>
-
-                    {/* Litros */}
-                    <View style={cardStyle}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="droplet" size={16} color="#f59e0b" />
-                            <Text style={labelStyle}>
-                                Quantidade (Litros) <Text style={{ color: "#ef4444" }}>*</Text>
-                            </Text>
-                        </View>
-                        <TextInput
-                            value={formData.litros}
-                            onChangeText={(v) => setFormData({ ...formData, litros: v })}
-                            placeholder="Ex: 100"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="decimal-pad"
-                            style={inputStyle}
-                        />
-                    </View>
-
-                    {/* Preço por Litro */}
-                    <View style={cardStyle}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="dollar-sign" size={16} color="#f59e0b" />
-                            <Text style={labelStyle}>
-                                Preço por Litro (R$) <Text style={{ color: "#ef4444" }}>*</Text>
-                            </Text>
-                        </View>
-                        <TextInput
-                            value={formData.precoPorLitro}
-                            onChangeText={(v) => setFormData({ ...formData, precoPorLitro: v })}
-                            placeholder="Ex: 2.50"
-                            placeholderTextColor="#9ca3af"
-                            keyboardType="decimal-pad"
-                            style={inputStyle}
-                        />
-                    </View>
-
-                    {/* Preview Valor Total */}
-                    {valorTotal > 0 && (
-                        <View style={{
-                            backgroundColor: "#f0fdf4",
-                            borderWidth: 1,
-                            borderColor: "#bbf7d0",
-                            borderRadius: 14,
-                            padding: 16,
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                        }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <Feather name="trending-up" size={16} color="#16a34a" />
-                                <Text style={{ fontSize: 13, color: "#15803d" }}>Valor Total</Text>
+                    {vendaAnimal && (
+                        <View style={cardStyle}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <Feather name="tag" size={16} color="#f59e0b" />
+                                <Text style={labelStyle}>Animal vendido</Text>
                             </View>
-                            <Text style={{ fontSize: 20, fontWeight: "700", color: "#15803d" }}>
-                                R$ {valorTotal.toFixed(2)}
-                            </Text>
+                            {animalCadastrado ? (
+                                <View style={{ backgroundColor: "#f9fafb", borderRadius: 10, padding: 12, borderWidth: 1, borderColor: "#e5e7eb" }}>
+                                    <Text style={{ fontSize: 15, fontWeight: "800", color: "#111827" }}>
+                                        {receita.animalNome || "Animal cadastrado"}
+                                    </Text>
+                                    <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                                        ID: {receita.animalIdentificador || "-"} {receita.animalPeso != null ? `- ${Number(receita.animalPeso).toFixed(1)} kg` : ""}
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={{ gap: 12 }}>
+                                    <TextInput
+                                        value={formData.animalNome}
+                                        onChangeText={(v) => setFormData({ ...formData, animalNome: v })}
+                                        placeholder="Ex: Novilha Jersey"
+                                        placeholderTextColor="#9ca3af"
+                                        style={inputStyle}
+                                    />
+                                    <TextInput
+                                        value={formData.animalIdentificador}
+                                        onChangeText={(v) => setFormData({ ...formData, animalIdentificador: v })}
+                                        placeholder="Identificação, lote ou observação"
+                                        placeholderTextColor="#9ca3af"
+                                        style={inputStyle}
+                                    />
+                                </View>
+                            )}
                         </View>
                     )}
 
-                    {/* Data */}
+                    {vendaAnimal ? (
+                        <>
+                            {!animalCadastrado && (
+                                <Campo
+                                    icone="bar-chart-2"
+                                    label="Peso do animal (kg)"
+                                    value={formData.animalPeso}
+                                    onChangeText={(v) => setFormData({ ...formData, animalPeso: v })}
+                                    placeholder="Ex: 450"
+                                    keyboardType="decimal-pad"
+                                />
+                            )}
+
+                            <Campo
+                                icone="dollar-sign"
+                                label="Valor da venda *"
+                                value={formData.valorAnimal}
+                                onChangeText={(v) => setFormData({ ...formData, valorAnimal: v })}
+                                placeholder="Ex: 4500,00"
+                                keyboardType="decimal-pad"
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <Campo
+                                icone="droplet"
+                                label="Quantidade (Litros) *"
+                                value={formData.litros}
+                                onChangeText={(v) => setFormData({ ...formData, litros: v })}
+                                placeholder="Ex: 100"
+                                keyboardType="decimal-pad"
+                            />
+
+                            <Campo
+                                icone="dollar-sign"
+                                label="Preço por Litro (R$) *"
+                                value={formData.precoPorLitro}
+                                onChangeText={(v) => setFormData({ ...formData, precoPorLitro: v })}
+                                placeholder="Ex: 2,50"
+                                keyboardType="decimal-pad"
+                            />
+
+                            {valorTotal > 0 && (
+                                <View style={{
+                                    backgroundColor: "#f0fdf4",
+                                    borderWidth: 1,
+                                    borderColor: "#bbf7d0",
+                                    borderRadius: 14,
+                                    padding: 16,
+                                    flexDirection: "row",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                }}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                        <Feather name="trending-up" size={16} color="#16a34a" />
+                                        <Text style={{ fontSize: 13, color: "#15803d" }}>Valor Total</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 20, fontWeight: "700", color: "#15803d" }}>
+                                        R$ {valorTotal.toFixed(2)}
+                                    </Text>
+                                </View>
+                            )}
+                        </>
+                    )}
+
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="calendar" size={16} color="#f59e0b" />
@@ -254,7 +351,14 @@ export default function EditarReceita() {
                         />
                     </View>
 
-                    {/* Observações */}
+                    <Campo
+                        icone="user"
+                        label={vendaAnimal ? "Comprador" : "Comprador *"}
+                        value={formData.comprador}
+                        onChangeText={(v) => setFormData({ ...formData, comprador: v })}
+                        placeholder={vendaAnimal ? "Nome do comprador" : "Nome do comprador / laticínio"}
+                    />
+
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="file-text" size={16} color="#6b7280" />
@@ -275,7 +379,6 @@ export default function EditarReceita() {
                         />
                     </View>
 
-                    {/* Botões */}
                     <View style={{ flexDirection: "row", gap: 10, marginTop: 4, marginBottom: insets.bottom + 20 }}>
                         <TouchableOpacity
                             onPress={handleCancelar}

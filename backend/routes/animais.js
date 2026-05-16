@@ -1,5 +1,9 @@
 const express = require("express");
 const router = express.Router();
+
+function normalizarStatusAnimal(status) {
+    return ["ativo", "inativo", "vendido"].includes(status) ? status : "ativo";
+}
 const pool = require("../database/conecction");
 const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
 
@@ -116,7 +120,7 @@ router.post("/", async (req, res) => {
                 usuarioId,
                 nome,
                 identificador,
-                status === "inativo" ? "inativo" : "ativo",
+                normalizarStatusAnimal(status),
                 producao_media_diaria ?? null,
                 raca || null,
                 peso ?? null,
@@ -216,7 +220,7 @@ router.put("/:id", async (req, res) => {
             [
                 nome,
                 identificador,
-                status === "inativo" ? "inativo" : "ativo",
+                normalizarStatusAnimal(status),
                 producao_media_diaria ?? null,
                 raca || null,
                 peso ?? null,
@@ -261,7 +265,7 @@ router.patch("/:id/status", async (req, res) => {
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
 
-        const status = req.body.status === "inativo" ? "inativo" : "ativo";
+        const status = normalizarStatusAnimal(req.body.status);
         const [result] = await pool.query(
             "UPDATE animais SET status = ? WHERE id = ? AND usuario_id = ?",
             [status, req.params.id, usuarioId]

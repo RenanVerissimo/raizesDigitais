@@ -20,7 +20,7 @@ export default function Animais() {
     const [carregando, setCarregando] = useState(true);
     const [dicasAberto, setDicasAberto] = useState(true);
 
-    const animaisAtivos = animais.filter((a) => a.status !== "inativo");
+    const animaisAtivos = animais.filter((a) => a.status !== "inativo" && a.status !== "vendido");
     const totalAnimais = animaisAtivos.length;
     /*     const producaoDiariaEstimada = animais.reduce((s, a) => s + Number(a.producao_media_diaria), 0);
         const producaoMensalEstimada = producaoDiariaEstimada * 30;
@@ -186,10 +186,12 @@ export default function Animais() {
                             <View style={{ gap: 10 }}>
                                 {animaisVisiveis.map((animal) => {
                                     const inativo = animal.status === "inativo";
+                                    const vendido = animal.status === "vendido";
+                                    const destacado = inativo || vendido;
                                     return (
                                     <View
                                         key={animal.id}
-                                        style={{ backgroundColor: inativo ? "#f3f4f6" : "#fff", borderWidth: 1, borderColor: inativo ? "#d1d5db" : "#e5e7eb", borderRadius: 12, padding: 14, opacity: inativo ? 0.82 : 1 }}
+                                        style={{ backgroundColor: destacado ? "#f3f4f6" : "#fff", borderWidth: 1, borderColor: destacado ? "#d1d5db" : "#e5e7eb", borderRadius: 12, padding: 14, opacity: destacado ? 0.82 : 1 }}
                                     >
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                                             <View style={{ flexDirection: "row", gap: 12, flex: 1 }}>
@@ -197,22 +199,22 @@ export default function Animais() {
                                                     style={{
                                                         width: 44,
                                                         height: 44,
-                                                        backgroundColor: inativo ? "#e5e7eb" : "rgba(74,144,226,0.1)",
+                                                        backgroundColor: destacado ? "#e5e7eb" : "rgba(74,144,226,0.1)",
                                                         borderRadius: 12,
                                                         alignItems: "center",
                                                         justifyContent: "center",
                                                     }}
                                                 >
-                                                    <MaterialCommunityIcons name="cow" size={22} color={inativo ? "#6b7280" : "#4a90e2"} />
+                                                    <MaterialCommunityIcons name="cow" size={22} color={destacado ? "#6b7280" : "#4a90e2"} />
                                                 </View>
                                                 <View style={{ flex: 1 }}>
                                                     <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                                                        <Text style={{ flexShrink: 1, minWidth: 0, fontSize: 15, fontWeight: "600", color: inativo ? "#6b7280" : "#0a0a0a", lineHeight: 20 }} numberOfLines={2}>
+                                                        <Text style={{ flexShrink: 1, minWidth: 0, fontSize: 15, fontWeight: "600", color: destacado ? "#6b7280" : "#0a0a0a", lineHeight: 20 }} numberOfLines={2}>
                                                             {animal.nome}
                                                         </Text>
-                                                        {inativo && (
-                                                            <View style={{ backgroundColor: "#e5e7eb", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-                                                                <Text style={{ fontSize: 10, fontWeight: "800", color: "#4b5563" }}>Inativa</Text>
+                                                        {destacado && (
+                                                            <View style={{ backgroundColor: vendido ? "#fee2e2" : "#e5e7eb", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                                                                <Text style={{ fontSize: 10, fontWeight: "800", color: vendido ? "#b91c1c" : "#4b5563" }}>{vendido ? "Vendida" : "Inativa"}</Text>
                                                             </View>
                                                         )}
                                                     </View>

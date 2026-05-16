@@ -112,7 +112,7 @@ export async function listarAnimais(): Promise<Animal[]> {
 export async function criarAnimal(dados: {
     nome: string;
     identificador: string;
-    status?: "ativo" | "inativo";
+    status?: "ativo" | "inativo" | "vendido";
 
     producao_media_diaria: number | null;
     raca?: string | null;
@@ -159,7 +159,7 @@ export async function criarAnimal(dados: {
 export async function atualizarAnimal(id: number, dados: {
     nome: string;
     identificador: string;
-    status?: "ativo" | "inativo";
+    status?: "ativo" | "inativo" | "vendido";
 
     producao_media_diaria: number | null;
     raca?: string | null;
@@ -221,7 +221,7 @@ export async function excluirAnimal(id: number) {
     }
 }
 
-export async function atualizarStatusAnimal(id: number, status: "ativo" | "inativo") {
+export async function atualizarStatusAnimal(id: number, status: "ativo" | "inativo" | "vendido") {
     try {
         const response = await apiFetch(`/animais/${id}/status`, {
             method: "PATCH",
@@ -319,16 +319,26 @@ export async function listarReceitas(): Promise<Receita[]> {
 
     return dados.map((r: any) => ({
         ...r,
+        tipoReceita: r.tipoReceita || "leite",
         litros: Number(r.litros),
         precoPorLitro: Number(r.precoPorLitro),
         valorTotal: Number(r.valorTotal),
+        animalId: r.animalId === null || r.animalId === undefined ? null : Number(r.animalId),
+        animalPeso: r.animalPeso === null || r.animalPeso === undefined ? null : Number(r.animalPeso),
+        valorAnimal: r.valorAnimal === null || r.valorAnimal === undefined ? null : Number(r.valorAnimal),
     }));
 }
 
 export async function criarReceita(dados: {
+    tipoReceita?: "leite" | "animal";
     data: string;
-    litros: number;
-    precoPorLitro: number;
+    litros?: number;
+    precoPorLitro?: number;
+    animalId?: number | null;
+    animalNome?: string | null;
+    animalIdentificador?: string | null;
+    animalPeso?: number | null;
+    valorAnimal?: number | null;
     comprador: string;
     observacoes?: string | null;
 }) {
@@ -347,10 +357,16 @@ export async function criarReceita(dados: {
 }
 
 export async function atualizarReceita(id: number, dados: {
+    tipoReceita?: "leite" | "animal";
     data: string;
-    litros: number;
-    precoPorLitro: number;
-    valorTotal: number;
+    litros?: number;
+    precoPorLitro?: number;
+    valorTotal?: number;
+    animalId?: number | null;
+    animalNome?: string | null;
+    animalIdentificador?: string | null;
+    animalPeso?: number | null;
+    valorAnimal?: number | null;
     comprador: string;
     observacoes?: string | null;
 }) {

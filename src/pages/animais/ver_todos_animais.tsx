@@ -64,6 +64,16 @@ export default function VerTodosAnimais() {
     }
 
     async function alternarStatusAnimal(animal: Animal) {
+        if (animal.status === "vendido") {
+            Toast.show({
+                type: "info",
+                text1: "Animal vendido",
+                text2: "Esse animal foi marcado como vendido pela receita registrada.",
+                position: "top",
+                visibilityTime: 2500,
+            });
+            return;
+        }
         const statusAtual = animal.status === "inativo" ? "inativo" : "ativo";
         const novoStatus = statusAtual === "ativo" ? "inativo" : "ativo";
 
@@ -184,12 +194,17 @@ export default function VerTodosAnimais() {
 function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarStatus }: { animal: Animal; onAbrirDetalhes: () => void; onEditar: () => void; onExcluir: () => void; onAlternarStatus: () => void }) {
 
     const inativo = animal.status === "inativo";
+    const vendido = animal.status === "vendido";
+    const destacado = inativo || vendido;
+    const statusLabel = vendido ? "Vendida" : inativo ? "Inativa" : "Ativa";
+    const statusBg = vendido ? "#fee2e2" : inativo ? "#e5e7eb" : "#dcfce7";
+    const statusText = vendido ? "#b91c1c" : inativo ? "#4b5563" : "#15803d";
 
     return (
         <TouchableOpacity
             activeOpacity={0.86}
             onPress={onAbrirDetalhes}
-            style={{ backgroundColor: inativo ? "#f3f4f6" : "#fff", borderWidth: 1, borderColor: inativo ? "#d1d5db" : "#e5e7eb", borderRadius: 12, padding: 14, opacity: inativo ? 0.82 : 1 }}
+            style={{ backgroundColor: destacado ? "#f3f4f6" : "#fff", borderWidth: 1, borderColor: destacado ? "#d1d5db" : "#e5e7eb", borderRadius: 12, padding: 14, opacity: destacado ? 0.82 : 1 }}
         >
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <View style={{ flexDirection: "row", gap: 12, flex: 1 }}>
@@ -197,22 +212,22 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                         style={{
                             width: 44,
                             height: 44,
-                            backgroundColor: inativo ? "#e5e7eb" : "rgba(74,144,226,0.1)",
+                            backgroundColor: destacado ? "#e5e7eb" : "rgba(74,144,226,0.1)",
                             borderRadius: 12,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
-                        <MaterialCommunityIcons name="cow" size={22} color={inativo ? "#6b7280" : "#4a90e2"} />
+                        <MaterialCommunityIcons name="cow" size={22} color={destacado ? "#6b7280" : "#4a90e2"} />
                     </View>
                     <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                            <Text style={{ flexShrink: 1, minWidth: 0, fontSize: 15, fontWeight: "600", color: inativo ? "#6b7280" : "#0a0a0a", lineHeight: 20 }} numberOfLines={2}>
+                            <Text style={{ flexShrink: 1, minWidth: 0, fontSize: 15, fontWeight: "600", color: destacado ? "#6b7280" : "#0a0a0a", lineHeight: 20 }} numberOfLines={2}>
                                 {animal.nome}
                             </Text>
-                            <View style={{ backgroundColor: inativo ? "#e5e7eb" : "#dcfce7", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-                                <Text style={{ fontSize: 10, fontWeight: "800", color: inativo ? "#4b5563" : "#15803d" }}>
-                                    {inativo ? "Inativa" : "Ativa"}
+                            <View style={{ backgroundColor: statusBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                                <Text style={{ fontSize: 10, fontWeight: "800", color: statusText }}>
+                                    {statusLabel}
                                 </Text>
                             </View>
                         </View>
@@ -327,7 +342,7 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
             >
                 <MaterialCommunityIcons name={inativo ? "check-circle" : "pause-circle"} size={16} color={inativo ? "#15803d" : "#4b5563"} />
                 <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
-                    {inativo ? "Ativar animal" : "Inativar animal"}
+                    {vendido ? "Animal vendido" : inativo ? "Ativar animal" : "Inativar animal"}
                 </Text>
             </TouchableOpacity>
         </TouchableOpacity>
@@ -347,22 +362,24 @@ function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; a
     if (!animal) return null;
 
     const inativo = animal.status === "inativo";
+    const vendido = animal.status === "vendido";
+    const destacado = inativo || vendido;
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
             <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 }}>
                 <View style={{ maxHeight: "86%", backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" }}>
-                    <View style={{ padding: 18, backgroundColor: inativo ? "#f3f4f6" : "#eff6ff", borderBottomWidth: 1, borderBottomColor: "#e5e7eb" }}>
+                    <View style={{ padding: 18, backgroundColor: destacado ? "#f3f4f6" : "#eff6ff", borderBottomWidth: 1, borderBottomColor: "#e5e7eb" }}>
                         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
                             <View style={{ flex: 1 }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                    <MaterialCommunityIcons name="cow" size={22} color={inativo ? "#6b7280" : "#4a90e2"} />
+                                    <MaterialCommunityIcons name="cow" size={22} color={destacado ? "#6b7280" : "#4a90e2"} />
                                     <Text style={{ flexShrink: 1, fontSize: 20, fontWeight: "900", color: "#0a0a0a" }}>
                                         {animal.nome}
                                     </Text>
-                                    <View style={{ backgroundColor: inativo ? "#e5e7eb" : "#dcfce7", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-                                        <Text style={{ fontSize: 10, fontWeight: "800", color: inativo ? "#4b5563" : "#15803d" }}>
-                                            {inativo ? "Inativa" : "Ativa"}
+                                    <View style={{ backgroundColor: vendido ? "#fee2e2" : inativo ? "#e5e7eb" : "#dcfce7", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                                        <Text style={{ fontSize: 10, fontWeight: "800", color: vendido ? "#b91c1c" : inativo ? "#4b5563" : "#15803d" }}>
+                                            {vendido ? "Vendida" : inativo ? "Inativa" : "Ativa"}
                                         </Text>
                                     </View>
                                 </View>

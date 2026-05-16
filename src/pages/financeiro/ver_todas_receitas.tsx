@@ -216,7 +216,9 @@ async function confirmarExclusaoReceita() {
                                     </View>
                                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                                         <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                            {receita.litros}L x R$ {receita.precoPorLitro.toFixed(2)}
+                                            {receita.tipoReceita === "animal"
+                                                ? `Venda de animal${receita.animalNome ? `: ${receita.animalNome}` : ""}`
+                                                : `${receita.litros}L x R$ ${receita.precoPorLitro.toFixed(2)}`}
                                         </Text>
                                         <Text style={{ fontSize: 14, fontWeight: "700", color: "#16a34a" }}>
                                             R$ {receita.valorTotal.toFixed(2)}

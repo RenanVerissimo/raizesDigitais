@@ -36,7 +36,7 @@ export interface Animal {
     id: number;
     nome: string;
     identificador: string;
-    status?: "ativo" | "inativo" | null;
+    status?: "ativo" | "inativo" | "vendido" | null;
 
     producao_media_diaria?: number | null;
     raca?: string | null;
@@ -97,5 +97,11 @@ export interface Receita {
     precoPorLitro: number;
     valorTotal: number;
     comprador: string;
+    tipoReceita?: "leite" | "animal";
+    animalId?: number | null;
+    animalNome?: string | null;
+    animalIdentificador?: string | null;
+    animalPeso?: number | null;
+    valorAnimal?: number | null;
     observacoes?: string | null;
 }

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal, Dimensions } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -12,11 +12,17 @@ import Toast from "react-native-toast-message";
 
 export interface Receita {
     id: number;
+    tipoReceita?: "leite" | "animal";
     data: string;
     litros: number;
     precoPorLitro: number;
     valorTotal: number;
     comprador: string;
+    animalId?: number | null;
+    animalNome?: string | null;
+    animalIdentificador?: string | null;
+    animalPeso?: number | null;
+    valorAnimal?: number | null;
     observacoes?: string | null;
 }
 
@@ -676,11 +682,31 @@ export default function Financeiro() {
                                 {receitas.slice(0, 5).map((r) => (
                                     <View key={r.id} style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, padding: 12 }}>
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>{r.comprador}</Text>
-                                                <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
-                                                    {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
-                                                </Text>
+                                            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingRight: 8 }}>
+                                                <View
+                                                    style={{
+                                                        width: 38,
+                                                        height: 38,
+                                                        borderRadius: 10,
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        backgroundColor: r.tipoReceita === "animal" ? "#fff7ed" : "#eff6ff",
+                                                    }}
+                                                >
+                                                    {r.tipoReceita === "animal" ? (
+                                                        <MaterialCommunityIcons name="cow" size={22} color="#ea580c" />
+                                                    ) : (
+                                                        <Feather name="droplet" size={20} color="#2563eb" />
+                                                    )}
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                                        {r.comprador || "Comprador não informado"}
+                                                    </Text>
+                                                    <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                                                        {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
+                                                    </Text>
+                                                </View>
                                             </View>
                                             <View style={{ flexDirection: "row", gap: 6 }}>
                                                 <TouchableOpacity
@@ -706,10 +732,40 @@ export default function Financeiro() {
                                                 </TouchableOpacity>
                                             </View>
                                         </View>
-                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                                            <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                {r.litros}L × R$ {r.precoPorLitro.toFixed(2)}
-                                            </Text>
+                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                                            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                                <View
+                                                    style={{
+                                                        flexDirection: "row",
+                                                        alignItems: "center",
+                                                        gap: 5,
+                                                        paddingHorizontal: 9,
+                                                        paddingVertical: 5,
+                                                        borderRadius: 999,
+                                                        backgroundColor: r.tipoReceita === "animal" ? "#fff7ed" : "#eff6ff",
+                                                    }}
+                                                >
+                                                    {r.tipoReceita === "animal" ? (
+                                                        <MaterialCommunityIcons name="cow" size={14} color="#ea580c" />
+                                                    ) : (
+                                                        <Feather name="droplet" size={13} color="#2563eb" />
+                                                    )}
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 11,
+                                                            fontWeight: "800",
+                                                            color: r.tipoReceita === "animal" ? "#c2410c" : "#1d4ed8",
+                                                        }}
+                                                    >
+                                                        {r.tipoReceita === "animal" ? "Venda de animal" : "Venda de leite"}
+                                                    </Text>
+                                                </View>
+                                                {r.tipoReceita !== "animal" && (
+                                                    <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                                        {r.litros}L x R$ {r.precoPorLitro.toFixed(2)}
+                                                    </Text>
+                                                )}
+                                            </View>
                                             <Text style={{ fontSize: 14, fontWeight: "700", color: "#16a34a" }}>
                                                 R$ {r.valorTotal.toFixed(2)}
                                             </Text>
