@@ -28,6 +28,8 @@ export default function VerTodosAnimais() {
     const [modalVisible, setModalVisible] = useState(false);
     const [animalSelecionado, setAnimalSelecionado] = useState<Animal | null>(null);
     const [animalDetalhes, setAnimalDetalhes] = useState<Animal | null>(null);
+    const [modalStatusVisible, setModalStatusVisible] = useState(false);
+    const [animalStatusSelecionado, setAnimalStatusSelecionado] = useState<Animal | null>(null);
     function handleExcluir(animal: Animal) {
         setAnimalSelecionado(animal);
         setModalVisible(true);
@@ -63,7 +65,7 @@ export default function VerTodosAnimais() {
         }
     }
 
-    async function alternarStatusAnimal(animal: Animal) {
+    function handleAlternarStatus(animal: Animal) {
         if (animal.status === "vendido") {
             Toast.show({
                 type: "info",
@@ -74,6 +76,12 @@ export default function VerTodosAnimais() {
             });
             return;
         }
+
+        setAnimalStatusSelecionado(animal);
+        setModalStatusVisible(true);
+    }
+
+    async function alternarStatusAnimal(animal: Animal) {
         const statusAtual = animal.status === "inativo" ? "inativo" : "ativo";
         const novoStatus = statusAtual === "ativo" ? "inativo" : "ativo";
 
@@ -126,6 +134,16 @@ export default function VerTodosAnimais() {
         }
     }
 
+    async function confirmarAlteracaoStatus() {
+        if (!animalStatusSelecionado) return;
+        await alternarStatusAnimal(animalStatusSelecionado);
+        setModalStatusVisible(false);
+        setAnimalStatusSelecionado(null);
+    }
+
+    const statusAtualSelecionado = animalStatusSelecionado?.status === "inativo" ? "inativo" : "ativo";
+    const novoStatusSelecionado = statusAtualSelecionado === "ativo" ? "inativo" : "ativo";
+
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
             <StatusBar barStyle="light-content" />
@@ -169,7 +187,7 @@ export default function VerTodosAnimais() {
                                 onAbrirDetalhes={() => setAnimalDetalhes(animal)}
                                 onEditar={() => navigation.navigate("editar_animais", { animal })}
                                 onExcluir={() => handleExcluir(animal)}
-                                onAlternarStatus={() => alternarStatusAnimal(animal)}
+                                onAlternarStatus={() => handleAlternarStatus(animal)}
                             />
                         ))
                     )}
@@ -185,6 +203,44 @@ export default function VerTodosAnimais() {
                         animal={animalDetalhes}
                         onClose={() => setAnimalDetalhes(null)}
                     />
+                    <Modal visible={modalStatusVisible} transparent animationType="fade" onRequestClose={() => setModalStatusVisible(false)}>
+                        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                            <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
+                                <View style={{ alignItems: "center", marginBottom: 12 }}>
+                                    <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: novoStatusSelecionado === "ativo" ? "#dcfce7" : "#f3f4f6", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                                        <MaterialCommunityIcons name={novoStatusSelecionado === "ativo" ? "check-circle" : "pause-circle"} size={28} color={novoStatusSelecionado === "ativo" ? "#15803d" : "#4b5563"} />
+                                    </View>
+                                    <Text style={{ fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center" }}>
+                                        {novoStatusSelecionado === "ativo" ? "Ativar animal" : "Inativar animal"}
+                                    </Text>
+                                </View>
+                                <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
+                                    Tem certeza que deseja marcar{" "}
+                                    <Text style={{ fontWeight: "800", color: "#0f172a" }}>{animalStatusSelecionado?.nome || "este animal"}</Text>
+                                    {" "}como {novoStatusSelecionado}?
+                                </Text>
+                                <View style={{ flexDirection: "row", gap: 10 }}>
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            setModalStatusVisible(false);
+                                            setAnimalStatusSelecionado(null);
+                                        }}
+                                        activeOpacity={0.75}
+                                        style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                                    >
+                                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={confirmarAlteracaoStatus}
+                                        activeOpacity={0.8}
+                                        style={{ flex: 1, backgroundColor: novoStatusSelecionado === "ativo" ? "#16a34a" : "#4b5563", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                                    >
+                                        <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
                 </View>
             </ScrollView>
         </View>
@@ -266,52 +322,54 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                         )}
                     </View>
                 </View>
-                <View style={{ flexDirection: "row", gap: 6 }}>
-                    <TouchableOpacity
-                        onPress={(event) => {
-                            event.stopPropagation();
-                            onEditar();
-                        }}
-                        activeOpacity={0.7}
-                        style={{
-                            width: 32,
-                            height: 32,
-                            backgroundColor: "#f59e0b",
-                            borderRadius: 8,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            shadowColor: "#f59e0b",
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 2,
-                        }}
-                    >
-                        <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={(event) => {
-                            event.stopPropagation();
-                            onExcluir();
-                        }}
-                        activeOpacity={0.7}
-                        style={{
-                            width: 32,
-                            height: 32,
-                            backgroundColor: "#ef4444",
-                            borderRadius: 8,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            shadowColor: "#ef4444",
-                            shadowOffset: { width: 0, height: 1 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 2,
-                        }}
-                    >
-                        <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
-                    </TouchableOpacity>
-                </View>
+                {!vendido && (
+                    <View style={{ flexDirection: "row", gap: 6 }}>
+                        <TouchableOpacity
+                            onPress={(event) => {
+                                event.stopPropagation();
+                                onEditar();
+                            }}
+                            activeOpacity={0.7}
+                            style={{
+                                width: 32,
+                                height: 32,
+                                backgroundColor: "#f59e0b",
+                                borderRadius: 8,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                shadowColor: "#f59e0b",
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 3,
+                                elevation: 2,
+                            }}
+                        >
+                            <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={(event) => {
+                                event.stopPropagation();
+                                onExcluir();
+                            }}
+                            activeOpacity={0.7}
+                            style={{
+                                width: 32,
+                                height: 32,
+                                backgroundColor: "#ef4444",
+                                borderRadius: 8,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                shadowColor: "#ef4444",
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 3,
+                                elevation: 2,
+                            }}
+                        >
+                            <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
             <View style={{ marginTop: 10, padding: 10, backgroundColor: "#eff6ff", borderRadius: 8 }}>
                 <Text style={{ fontSize: 11, color: "#6b7280" }}>Produção Média Diária</Text>
@@ -321,30 +379,32 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                         : "—"}
                 </Text>
             </View>
-            <TouchableOpacity
-                onPress={(event) => {
-                    event.stopPropagation();
-                    onAlternarStatus();
-                }}
-                activeOpacity={0.78}
-                style={{
-                    marginTop: 10,
-                    backgroundColor: inativo ? "#dcfce7" : "#f3f4f6",
-                    borderWidth: 1,
-                    borderColor: inativo ? "#bbf7d0" : "#d1d5db",
-                    borderRadius: 10,
-                    paddingVertical: 10,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6,
-                }}
-            >
-                <MaterialCommunityIcons name={inativo ? "check-circle" : "pause-circle"} size={16} color={inativo ? "#15803d" : "#4b5563"} />
-                <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
-                    {vendido ? "Animal vendido" : inativo ? "Ativar animal" : "Inativar animal"}
-                </Text>
-            </TouchableOpacity>
+            {!vendido && (
+                <TouchableOpacity
+                    onPress={(event) => {
+                        event.stopPropagation();
+                        onAlternarStatus();
+                    }}
+                    activeOpacity={0.78}
+                    style={{
+                        marginTop: 10,
+                        backgroundColor: inativo ? "#dcfce7" : "#f3f4f6",
+                        borderWidth: 1,
+                        borderColor: inativo ? "#bbf7d0" : "#d1d5db",
+                        borderRadius: 10,
+                        paddingVertical: 10,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                    }}
+                >
+                    <MaterialCommunityIcons name={inativo ? "check-circle" : "pause-circle"} size={16} color={inativo ? "#15803d" : "#4b5563"} />
+                    <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
+                        {inativo ? "Ativar animal" : "Inativar animal"}
+                    </Text>
+                </TouchableOpacity>
+            )}
         </TouchableOpacity>
     );
 }

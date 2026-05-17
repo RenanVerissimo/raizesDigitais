@@ -396,6 +396,73 @@ export async function excluirReceita(id: number) {
     return res.json();
 }
 
+export interface PrevisaoReceitaConfirmada {
+    id?: number;
+    anoMes: string;
+    valorEstimado: number;
+    valorReal: number;
+    observacoes?: string | null;
+    confirmadoEm?: string | null;
+}
+
+export async function buscarPrevisaoReceita(anoMes: string): Promise<PrevisaoReceitaConfirmada | null> {
+    const res = await apiFetch(`/previsoes-receita/${anoMes}`);
+
+    if (!res.ok) {
+        throw new Error("Erro ao buscar previsao de receita");
+    }
+
+    const dados = await res.json();
+    if (!dados) return null;
+
+    return {
+        ...dados,
+        valorEstimado: Number(dados.valorEstimado),
+        valorReal: Number(dados.valorReal),
+    };
+}
+
+export async function listarPrevisoesReceita(): Promise<PrevisaoReceitaConfirmada[]> {
+    const res = await apiFetch(`/previsoes-receita`);
+
+    if (!res.ok) {
+        throw new Error("Erro ao listar previsoes de receita");
+    }
+
+    const dados = await res.json();
+
+    return dados.map((item: any) => ({
+        ...item,
+        valorEstimado: Number(item.valorEstimado),
+        valorReal: Number(item.valorReal),
+    }));
+}
+
+export async function salvarPrevisaoReceita(dados: {
+    anoMes: string;
+    valorEstimado: number;
+    valorReal: number;
+    observacoes?: string | null;
+}) {
+    const res = await apiFetch(`/previsoes-receita`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao salvar previsao de receita");
+    }
+
+    const resposta = await res.json();
+    return {
+        ...resposta,
+        valorEstimado: Number(resposta.valorEstimado),
+        valorReal: Number(resposta.valorReal),
+    };
+}
+
 export async function listarFinanciamentos(): Promise<Financiamento[]> {
     const res = await apiFetch(`/financiamentos`);
 
