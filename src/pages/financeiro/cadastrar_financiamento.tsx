@@ -144,18 +144,17 @@ export default function CadastrarFinanciamento() {
                         borderBottomRightRadius: 24,
                     }}
                 >
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={handleCancelar} style={{ padding: 4 }}>
+                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
+                        <TouchableOpacity onPress={handleCancelar} style={{ padding: 4, marginTop: 2 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
-                        <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center" }}>
-                                <Feather name="plus-circle" size={18} color="#fff" />
-                                <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                            <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
+                                <Text numberOfLines={2} style={{ flex: 1, fontSize: 21, lineHeight: 26, fontWeight: "700", color: "#fff" }}>
                                     Cadastrar Financiamento
                                 </Text>
                             </View>
-                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 4 }}>
                                 Registre valor, parcelas e vencimentos
                             </Text>
                         </View>

@@ -449,7 +449,7 @@ export default function Financeiro() {
                         onPress={() => navigation.navigate("financiamentos")}
                         style={{ marginTop: 10, backgroundColor: "rgba(255,255,255,0.14)", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
                     >
-                        <Feather name="trending-up" size={20} color="#fff" />
+                        <Feather name="dollar-sign" size={20} color="#fff" />
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>
                             Financiamentos
                         </Text>
