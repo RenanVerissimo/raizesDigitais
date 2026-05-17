@@ -196,7 +196,7 @@ export default function EditarCompra() {
         }
 
         if (formData.categoria === "racao" && formData.unidadeCompra !== "kg" && (isNaN(pesoPorUnidade) || pesoPorUnidade <= 0)) {
-            Alert.alert("AtenÃ§Ã£o", "Informe o peso por unidade para calcular o estoque em kg.");
+            Alert.alert("Atenção", "Informe o peso por unidade para calcular o estoque em kg.");
             return;
         }
 

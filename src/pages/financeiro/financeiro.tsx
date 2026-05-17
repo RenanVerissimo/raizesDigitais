@@ -1,13 +1,12 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal, Dimensions } from "react-native";
+﻿import React, { useCallback, useState } from "react";
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Dimensions } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { VictoryPie } from "victory-native";
-import { excluirReceita, listarCompras, listarReceitas } from "../../services/api";
+import { listarCompras, listarReceitas } from "../../services/api";
 import { Compra } from "../../interfaces/interfaces";
-import Toast from "react-native-toast-message";
 
 
 export interface Receita {
@@ -86,8 +85,6 @@ export default function Financeiro() {
     const [periodoReceitaDespesa, setPeriodoReceitaDespesa] = useState<PeriodoGrafico>("6M");
     const [periodoFluxoCaixa, setPeriodoFluxoCaixa] = useState<PeriodoGrafico>("6M");
     const [periodoCategorias, setPeriodoCategorias] = useState<PeriodoGrafico>("6M");
-    const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
-    const [receitaSelecionada, setReceitaSelecionada] = useState<Receita | null>(null);
 
     async function carregarDadosFinanceiros() {
         try {
@@ -124,42 +121,6 @@ export default function Financeiro() {
     function handleAdicionarReceita(nova: Receita) {
         setReceitas((prev) => [nova, ...prev.filter((r) => r.id !== nova.id)]);
     }
-
-    function handleExcluir(receita: Receita) {
-        setReceitaSelecionada(receita);
-        setModalExcluirVisible(true);
-    }
-
-    async function confirmarExclusaoReceita() {
-        if (!receitaSelecionada) return;
-
-        const nomeComprador = receitaSelecionada.comprador;
-
-        try {
-            await excluirReceita(receitaSelecionada.id);
-            setReceitas((prev) => prev.filter((r) => r.id !== receitaSelecionada.id));
-
-            Toast.show({
-                type: "success",
-                text1: "Receita excluída",
-                text2: `Venda de ${nomeComprador} foi removida com sucesso.`,
-                position: "top",
-                visibilityTime: 3000,
-            });
-        } catch (error: any) {
-            Toast.show({
-                type: "error",
-                text1: "Erro ao excluir",
-                text2: error.message || "Não foi possível excluir a receita.",
-                position: "top",
-                visibilityTime: 3000,
-            });
-        } finally {
-            setModalExcluirVisible(false);
-            setReceitaSelecionada(null);
-        }
-    }
-
     function formatarChaveData(data: Date) {
         const ano = data.getFullYear();
         const mes = String(data.getMonth() + 1).padStart(2, "0");
@@ -367,6 +328,90 @@ export default function Financeiro() {
 
     const valorMaximoMedicamentos = Math.max(...dadosGraficoMedicamentos.map((grupo) => grupo.valor), 1);
 
+    function renderReceitasRecentes() {
+        return (
+            <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
+                        Receitas Recentes
+                    </Text>
+                    {receitas.length > 5 && (
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate("ver_todas_receitas")}
+                            activeOpacity={0.7}
+                            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                        >
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#4a90e2" }}>Ver todos</Text>
+                            <Feather name="chevron-right" size={16} color="#4a90e2" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {receitas.length === 0 ? (
+                    <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 16 }}>
+                        Nenhuma receita registrada
+                    </Text>
+                ) : (
+                    <View style={{ gap: 8 }}>
+                        {receitas.slice(0, 5).map((r) => {
+                            const vendaAnimal = r.tipoReceita === "animal";
+                            return (
+                                <View key={r.id} style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, padding: 10 }}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+                                        <View
+                                            style={{
+                                                width: 34,
+                                                height: 34,
+                                                borderRadius: 9,
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                backgroundColor: vendaAnimal ? "#fff7ed" : "#eff6ff",
+                                            }}
+                                        >
+                                            {vendaAnimal ? (
+                                                <MaterialCommunityIcons name="cow" size={20} color="#ea580c" />
+                                            ) : (
+                                                <Feather name="droplet" size={18} color="#2563eb" />
+                                            )}
+                                        </View>
+
+                                        <View style={{ flex: 1, minWidth: 0 }}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                                <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: 13, fontWeight: "700", color: "#0a0a0a" }}>
+                                                    {r.comprador || "Comprador não informado"}
+                                                </Text>
+                                                <View
+                                                    style={{
+                                                        paddingHorizontal: 7,
+                                                        paddingVertical: 3,
+                                                        borderRadius: 999,
+                                                        backgroundColor: vendaAnimal ? "#fff7ed" : "#eff6ff",
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 10, fontWeight: "800", color: vendaAnimal ? "#c2410c" : "#1d4ed8" }}>
+                                                        {vendaAnimal ? "Animal" : "Leite"}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                                                {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
+                                                {!vendaAnimal ? ` - ${r.litros}L x R$ ${r.precoPorLitro.toFixed(2)}` : ""}
+                                            </Text>
+                                        </View>
+
+                                        <Text style={{ fontSize: 14, fontWeight: "800", color: "#16a34a" }}>
+                                            R$ {r.valorTotal.toFixed(2)}
+                                        </Text>
+                                    </View>
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
+            </View>
+        );
+    }
+
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
             <StatusBar barStyle="light-content" />
@@ -451,6 +496,8 @@ export default function Financeiro() {
                             </Text>
                         </View>
                     </View>
+
+                    {renderReceitasRecentes()}
 
                     {/* Mês Atual */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
@@ -655,132 +702,6 @@ export default function Financeiro() {
                             </View>
                         </View>
                     )}
-
-                    {/* Receitas Recentes */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
-                                Receitas Recentes
-                            </Text>
-                            {receitas.length > 5 && (
-                                <TouchableOpacity
-                                    onPress={() => navigation.navigate("ver_todas_receitas")}
-                                    activeOpacity={0.7}
-                                    style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-                                >
-                                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#4a90e2" }}>Ver todos</Text>
-                                    <Feather name="chevron-right" size={16} color="#4a90e2" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                        {receitas.length === 0 ? (
-                            <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 20 }}>
-                                Nenhuma receita registrada
-                            </Text>
-                        ) : (
-                            <View style={{ gap: 10 }}>
-                                {receitas.slice(0, 5).map((r) => (
-                                    <View key={r.id} style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, padding: 12 }}>
-                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                                            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 10, paddingRight: 8 }}>
-                                                <View
-                                                    style={{
-                                                        width: 38,
-                                                        height: 38,
-                                                        borderRadius: 10,
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        backgroundColor: r.tipoReceita === "animal" ? "#fff7ed" : "#eff6ff",
-                                                    }}
-                                                >
-                                                    {r.tipoReceita === "animal" ? (
-                                                        <MaterialCommunityIcons name="cow" size={22} color="#ea580c" />
-                                                    ) : (
-                                                        <Feather name="droplet" size={20} color="#2563eb" />
-                                                    )}
-                                                </View>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                                        {r.comprador || "Comprador não informado"}
-                                                    </Text>
-                                                    <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
-                                                        {new Date(r.data + "T12:00:00").toLocaleDateString("pt-BR")}
-                                                    </Text>
-                                                </View>
-                                            </View>
-                                            <View style={{ flexDirection: "row", gap: 6 }}>
-                                                <TouchableOpacity
-                                                    onPress={() => navigation.navigate("editar_receita", { receita: r })}
-                                                    activeOpacity={0.7}
-                                                    style={{
-                                                        width: 32,
-                                                        height: 32,
-                                                        backgroundColor: "#f59e0b",
-                                                        borderRadius: 8,
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                    }}
-                                                >
-                                                    <Feather name="edit-2" size={16} color="#fff" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => handleExcluir(r)}
-                                                    activeOpacity={0.7}
-                                                    style={{ width: 32, height: 32, backgroundColor: "#ef4444", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
-                                                >
-                                                    <Feather name="trash-2" size={16} color="#fff" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                                            <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                                <View
-                                                    style={{
-                                                        flexDirection: "row",
-                                                        alignItems: "center",
-                                                        gap: 5,
-                                                        paddingHorizontal: 9,
-                                                        paddingVertical: 5,
-                                                        borderRadius: 999,
-                                                        backgroundColor: r.tipoReceita === "animal" ? "#fff7ed" : "#eff6ff",
-                                                    }}
-                                                >
-                                                    {r.tipoReceita === "animal" ? (
-                                                        <MaterialCommunityIcons name="cow" size={14} color="#ea580c" />
-                                                    ) : (
-                                                        <Feather name="droplet" size={13} color="#2563eb" />
-                                                    )}
-                                                    <Text
-                                                        style={{
-                                                            fontSize: 11,
-                                                            fontWeight: "800",
-                                                            color: r.tipoReceita === "animal" ? "#c2410c" : "#1d4ed8",
-                                                        }}
-                                                    >
-                                                        {r.tipoReceita === "animal" ? "Venda de animal" : "Venda de leite"}
-                                                    </Text>
-                                                </View>
-                                                {r.tipoReceita !== "animal" && (
-                                                    <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                        {r.litros}L x R$ {r.precoPorLitro.toFixed(2)}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#16a34a" }}>
-                                                R$ {r.valorTotal.toFixed(2)}
-                                            </Text>
-                                        </View>
-                                        {r.observacoes && (
-                                            <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6, fontStyle: "italic" }}>
-                                                {r.observacoes}
-                                            </Text>
-                                        )}
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-                    </View>
-
                     {/* Gastos com Medicamentos */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#e5e7eb", marginBottom: insets.bottom + 20 }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -826,46 +747,7 @@ export default function Financeiro() {
                     </View>
                 </View>
             </ScrollView>
-            <Modal
-                visible={modalExcluirVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setModalExcluirVisible(false)}
-            >
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center" }}>
-                    <View style={{ width: "85%", backgroundColor: "#fff", borderRadius: 20, padding: 20 }}>
-                        <View style={{ alignItems: "center", marginBottom: 16 }}>
-                            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: "#fef2f2", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#fecaca" }}>
-                                <Feather name="trash-2" size={28} color="#ef4444" />
-                            </View>
-                        </View>
-                        <Text style={{ fontSize: 20, fontWeight: "700", color: "#0a0a0a", textAlign: "center", marginBottom: 8 }}>
-                            Excluir receita
-                        </Text>
-                        <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
-                            Tem certeza que deseja excluir a venda para{" "}
-                            <Text style={{ fontWeight: "700", color: "#0a0a0a" }}>{receitaSelecionada?.comprador || ""}</Text>?
-                        </Text>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                            <TouchableOpacity
-                                onPress={() => setModalExcluirVisible(false)}
-                                activeOpacity={0.7}
-                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
-                            >
-                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>Cancelar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={confirmarExclusaoReceita}
-                                activeOpacity={0.8}
-                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 14, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
-                            >
-                                <Feather name="trash-2" size={16} color="#fff" />
-                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Excluir</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 }
+
