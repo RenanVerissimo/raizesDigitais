@@ -422,7 +422,7 @@ export default function Financeiro() {
                     style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 18 }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={() => navigation.navigate("Dashboard")} style={{ padding: 4 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
@@ -441,6 +441,17 @@ export default function Financeiro() {
                         <Feather name="plus" size={20} color="#fff" />
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>
                             Registrar Receita (Venda)
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => navigation.navigate("financiamentos")}
+                        style={{ marginTop: 10, backgroundColor: "rgba(255,255,255,0.14)", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}
+                    >
+                        <Feather name="trending-up" size={20} color="#fff" />
+                        <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>
+                            Financiamentos
                         </Text>
                     </TouchableOpacity>
 
