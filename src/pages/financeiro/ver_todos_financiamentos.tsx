@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Alert, View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -12,6 +12,7 @@ import {
 } from "../../utils/financiamentos";
 import { Financiamento } from "../../interfaces/interfaces";
 import { listarFinanciamentos } from "../../services/api";
+import Toast from "react-native-toast-message";
 
 export default function VerTodosFinanciamentos() {
     const navigation = useNavigation<any>();
@@ -24,7 +25,7 @@ export default function VerTodosFinanciamentos() {
         useCallback(() => {
             listarFinanciamentos()
                 .then(setFinanciamentos)
-                .catch((error: any) => Alert.alert("Erro", error.message || "Nao foi possivel carregar os financiamentos."));
+                .catch((error: any) => Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel carregar os financiamentos.", position: "top", visibilityTime: 3000 }));
         }, [])
     );
 

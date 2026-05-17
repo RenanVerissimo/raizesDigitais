@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -48,37 +48,37 @@ export default function EditarFinanciamento() {
 
     function validarFormulario() {
         if (!financiamento) {
-            Alert.alert("Erro", "Financiamento nao encontrado.");
+            Toast.show({ type: "error", text1: "Erro", text2: "Financiamento nao encontrado.", position: "top", visibilityTime: 3000 });
             return false;
         }
 
         if (!formData.nome.trim()) {
-            Alert.alert("Atencao", "Informe o nome do financiamento.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe o nome do financiamento.", position: "top", visibilityTime: 3000 });
             return false;
         }
 
         if (!valorTotal || valorTotal <= 0) {
-            Alert.alert("Atencao", "Informe o valor total da divida.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe o valor total da divida.", position: "top", visibilityTime: 3000 });
             return false;
         }
 
         if (!quantidadeParcelas || quantidadeParcelas <= 0) {
-            Alert.alert("Atencao", "Informe o total de parcelas.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe o total de parcelas.", position: "top", visibilityTime: 3000 });
             return false;
         }
 
         if (parcelasPagas < 0 || parcelasPagas > quantidadeParcelas) {
-            Alert.alert("Atencao", "As parcelas pagas nao podem ser maiores que o total de parcelas.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "As parcelas pagas nao podem ser maiores que o total de parcelas.", position: "top", visibilityTime: 3000 });
             return false;
         }
 
         if (!toIso(formData.dataVencimentoParcela)) {
-            Alert.alert("Atencao", "Informe a data de vencimento no formato DD/MM/AAAA.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe a data de vencimento no formato DD/MM/AAAA.", position: "top", visibilityTime: 3000 });
             return false;
         }
 
         if (formData.dataFinanciamento.trim() && !toIso(formData.dataFinanciamento)) {
-            Alert.alert("Atencao", "Informe a data do financiamento no formato DD/MM/AAAA.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe a data do financiamento no formato DD/MM/AAAA.", position: "top", visibilityTime: 3000 });
             return false;
         }
 
@@ -116,7 +116,7 @@ export default function EditarFinanciamento() {
             setTimeout(() => navigation.navigate("ver_todos_financiamentos"), 500);
         } catch (error: any) {
             setModalConfirmacaoVisible(false);
-            Alert.alert("Erro", error.message || "Nao foi possivel atualizar o financiamento.");
+            Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel atualizar o financiamento.", position: "top", visibilityTime: 3000 });
         }
     }
 

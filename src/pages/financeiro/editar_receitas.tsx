@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import DateInput from "../../components/DateInput";
 import {
     View, Text, TextInput, TouchableOpacity, ScrollView,
-    StatusBar, Alert, KeyboardAvoidingView, Platform,
+    StatusBar, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -63,7 +63,7 @@ export default function EditarReceita() {
     async function handleSubmit() {
         const dataIso = toIso(formData.data);
         if (!dataIso) {
-            Alert.alert("Atenção", "Informe uma data válida (DD/MM/AAAA).");
+            Toast.show({ type: "info", text1: "Atenção", text2: "Informe uma data válida (DD/MM/AAAA).", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -73,12 +73,12 @@ export default function EditarReceita() {
                 const animalPeso = !animalCadastrado && formData.animalPeso.trim() ? parseDecimal(formData.animalPeso) : null;
 
                 if (!valorAnimal || valorAnimal <= 0) {
-                    Alert.alert("Atenção", "Informe o valor da venda do animal.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Informe o valor da venda do animal.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
                 if (!animalCadastrado && !formData.animalNome.trim()) {
-                    Alert.alert("Atenção", "Informe o nome ou descrição do animal vendido.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Informe o nome ou descrição do animal vendido.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
@@ -95,19 +95,19 @@ export default function EditarReceita() {
                 });
             } else {
                 if (!formData.comprador.trim()) {
-                    Alert.alert("Atenção", "Informe o nome do comprador.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Informe o nome do comprador.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
                 const litrosNum = parseDecimal(formData.litros);
                 if (!formData.litros.trim() || isNaN(litrosNum) || litrosNum <= 0) {
-                    Alert.alert("Atenção", "Informe a quantidade de litros corretamente.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Informe a quantidade de litros corretamente.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
                 const precoNum = parseDecimal(formData.precoPorLitro);
                 if (!formData.precoPorLitro.trim() || isNaN(precoNum) || precoNum <= 0) {
-                    Alert.alert("Atenção", "Informe o preço por litro corretamente.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Informe o preço por litro corretamente.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 

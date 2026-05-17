@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -31,7 +31,7 @@ export default function QuitarFinanciamento() {
         useCallback(() => {
             listarFinanciamentos()
                 .then((dados) => setFinanciamentos(dados.filter((item) => item.status === "ativo")))
-                .catch((error: any) => Alert.alert("Erro", error.message || "Nao foi possivel carregar os financiamentos."));
+                .catch((error: any) => Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel carregar os financiamentos.", position: "top", visibilityTime: 3000 }));
         }, [])
     );
 
@@ -62,17 +62,17 @@ export default function QuitarFinanciamento() {
 
     function handleQuitar() {
         if (!financiamentoSelecionado) {
-            Alert.alert("Atencao", "Selecione o financiamento que deseja quitar.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Selecione o financiamento que deseja quitar.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (descontoNumero > saldoRestante) {
-            Alert.alert("Atencao", "O desconto nao pode ser maior que o saldo restante.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "O desconto nao pode ser maior que o saldo restante.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (!valorPagoFinal || valorPagoFinal <= 0) {
-            Alert.alert("Atencao", "Informe o valor pago para quitar o financiamento.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe o valor pago para quitar o financiamento.", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -101,7 +101,7 @@ export default function QuitarFinanciamento() {
             setTimeout(() => navigation.navigate("financiamentos"), 500);
         } catch (error: any) {
             setModalConfirmacaoVisible(false);
-            Alert.alert("Erro", error.message || "Nao foi possivel quitar o financiamento.");
+            Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel quitar o financiamento.", position: "top", visibilityTime: 3000 });
         }
     }
 

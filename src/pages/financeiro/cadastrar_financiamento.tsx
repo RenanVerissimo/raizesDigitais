@@ -5,7 +5,6 @@ import {
     TouchableOpacity,
     ScrollView,
     StatusBar,
-    Alert,
     TextInput,
     KeyboardAvoidingView,
     Platform,
@@ -16,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { criarFinanciamento } from "../../services/api";
 import { toIso } from "../../utils/formatters";
+import Toast from "react-native-toast-message";
 
 function parseDecimal(valor: string) {
     return Number(valor.replace(/\./g, "").replace(",", "."));
@@ -71,27 +71,27 @@ export default function CadastrarFinanciamento() {
 
     const handleSubmit = async () => {
         if (!formData.nome.trim()) {
-            Alert.alert("Atencao", "Informe o nome do financiamento.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe o nome do financiamento.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (!valorTotal || valorTotal <= 0) {
-            Alert.alert("Atencao", "Informe o valor total da divida.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe o valor total da divida.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (!quantidadeParcelas || quantidadeParcelas <= 0) {
-            Alert.alert("Atencao", "Informe em quantas parcelas foi feito.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe em quantas parcelas foi feito.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (parcelasPagas > quantidadeParcelas) {
-            Alert.alert("Atencao", "As parcelas pagas nao podem ser maiores que o total de parcelas.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "As parcelas pagas nao podem ser maiores que o total de parcelas.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (!formData.dataVencimentoParcela.trim()) {
-            Alert.alert("Atencao", "Informe a data de vencimento da parcela.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe a data de vencimento da parcela.", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -99,12 +99,12 @@ export default function CadastrarFinanciamento() {
         const dataVencimentoIso = toIso(formData.dataVencimentoParcela);
 
         if (formData.dataFinanciamento.trim() && !dataFinanciamentoIso) {
-            Alert.alert("Atencao", "Informe a data do financiamento no formato DD/MM/AAAA.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe a data do financiamento no formato DD/MM/AAAA.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (!dataVencimentoIso) {
-            Alert.alert("Atencao", "Informe a data de vencimento no formato DD/MM/AAAA.");
+            Toast.show({ type: "info", text1: "Atencao", text2: "Informe a data de vencimento no formato DD/MM/AAAA.", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -120,11 +120,10 @@ export default function CadastrarFinanciamento() {
                 observacoes: formData.observacoes.trim() || null,
             });
 
-            Alert.alert("Financiamento cadastrado", "O financiamento foi salvo com sucesso.", [
-                { text: "OK", onPress: handleCancelar },
-            ]);
+            Toast.show({ type: "success", text1: "Financiamento cadastrado", text2: "O financiamento foi salvo com sucesso.", position: "top", visibilityTime: 3000 });
+            setTimeout(handleCancelar, 500);
         } catch (error: any) {
-            Alert.alert("Erro", error.message || "Nao foi possivel cadastrar o financiamento.");
+            Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel cadastrar o financiamento.", position: "top", visibilityTime: 3000 });
         }
     };
 

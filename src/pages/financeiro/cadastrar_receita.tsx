@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import {
     View, Text, TextInput, TouchableOpacity, ScrollView,
-    StatusBar, Alert, KeyboardAvoidingView, Platform,
+    StatusBar, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -76,12 +76,12 @@ export default function CadastrarReceita() {
     async function handleSubmit() {
         const dataIso = toIso(formData.data);
         if (!dataIso) {
-            Alert.alert("Atenção", "Informe uma data válida (DD/MM/AAAA).");
+            Toast.show({ type: "info", text1: "Atenção", text2: "Informe uma data válida (DD/MM/AAAA).", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (formData.tipoReceita === "leite" && !formData.comprador.trim()) {
-            Alert.alert("Atenção", "Informe o comprador.");
+            Toast.show({ type: "info", text1: "Atenção", text2: "Informe o comprador.", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -91,12 +91,12 @@ export default function CadastrarReceita() {
                 const preco = parseDecimal(formData.precoPorLitro);
 
                 if (!litros || litros <= 0) {
-                    Alert.alert("Atenção", "Litros inválidos.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Litros inválidos.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
                 if (!preco || preco <= 0) {
-                    Alert.alert("Atenção", "Preço inválido.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Preço inválido.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
@@ -115,17 +115,17 @@ export default function CadastrarReceita() {
                 const animalPeso = formData.origemAnimal === "manual" && formData.animalPeso.trim() ? parseDecimal(formData.animalPeso) : null;
 
                 if (!valorAnimal || valorAnimal <= 0) {
-                    Alert.alert("Atenção", "Informe o valor da venda do animal.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Informe o valor da venda do animal.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
                 if (formData.origemAnimal === "cadastrado" && !formData.animalId) {
-                    Alert.alert("Atenção", "Selecione o animal vendido.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Selecione o animal vendido.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 
                 if (formData.origemAnimal === "manual" && !formData.animalNome.trim()) {
-                    Alert.alert("Atenção", "Informe o nome ou descrição do animal vendido.");
+                    Toast.show({ type: "info", text1: "Atenção", text2: "Informe o nome ou descrição do animal vendido.", position: "top", visibilityTime: 3000 });
                     return;
                 }
 

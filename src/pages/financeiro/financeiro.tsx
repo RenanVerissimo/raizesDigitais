@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Dimensions } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StatusBar, Dimensions } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,6 +7,7 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { VictoryPie } from "victory-native";
 import { listarCompras, listarReceitas } from "../../services/api";
 import { Compra } from "../../interfaces/interfaces";
+import Toast from "react-native-toast-message";
 
 
 export interface Receita {
@@ -108,7 +109,7 @@ export default function Financeiro() {
             );
             setDespesasPendentes(comprasPendentes);
         } catch (error: any) {
-            Alert.alert("Erro", error.message || "Não foi possível carregar os dados financeiros.");
+            Toast.show({ type: "error", text1: "Erro", text2: error.message || "Não foi possível carregar os dados financeiros.", position: "top", visibilityTime: 3000 });
         }
     }
 

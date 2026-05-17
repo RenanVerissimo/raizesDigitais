@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Alert, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -25,7 +25,7 @@ export default function VerTodasReceitas() {
             const dados = await listarReceitas();
             setReceitas(dados);
         } catch (error: any) {
-            Alert.alert("Erro", error.message || "Não foi possível carregar as receitas.");
+            Toast.show({ type: "error", text1: "Erro", text2: error.message || "Não foi possível carregar as receitas.", position: "top", visibilityTime: 3000 });
         }
     }
 
