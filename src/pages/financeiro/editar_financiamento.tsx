@@ -1,0 +1,216 @@
+import { useMemo, useState } from "react";
+import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Feather } from "@expo/vector-icons";
+import Toast from "react-native-toast-message";
+import { Financiamento } from "../../interfaces/interfaces";
+import { atualizarFinanciamento } from "../../services/api";
+import { toBr, toIso } from "../../utils/formatters";
+import { formatarMoeda } from "../../utils/financiamentos";
+
+function parseDecimal(valor: string) {
+    return Number(valor.replace(/\./g, "").replace(",", "."));
+}
+
+function aplicarMascaraData(texto: string) {
+    const numeros = texto.replace(/\D/g, "").slice(0, 8);
+    if (numeros.length >= 5) return `${numeros.slice(0, 2)}/${numeros.slice(2, 4)}/${numeros.slice(4)}`;
+    if (numeros.length >= 3) return `${numeros.slice(0, 2)}/${numeros.slice(2)}`;
+    return numeros;
+}
+
+export default function EditarFinanciamento() {
+    const navigation = useNavigation<any>();
+    const route = useRoute<any>();
+    const insets = useSafeAreaInsets();
+    const financiamento = route.params?.financiamento as Financiamento | undefined;
+    const [modalConfirmacaoVisible, setModalConfirmacaoVisible] = useState(false);
+    const [formData, setFormData] = useState({
+        nome: financiamento?.nome || "",
+        credor: financiamento?.credor || "",
+        valorTotal: financiamento ? String(financiamento.valorTotal.toFixed(2)).replace(".", ",") : "",
+        quantidadeParcelas: financiamento ? String(financiamento.quantidadeParcelas) : "",
+        parcelasPagas: financiamento ? String(financiamento.parcelasPagas) : "",
+        dataFinanciamento: toBr(financiamento?.dataFinanciamento),
+        dataVencimentoParcela: toBr(financiamento?.dataVencimentoParcela),
+        observacoes: financiamento?.observacoes || "",
+    });
+
+    const valorTotal = parseDecimal(formData.valorTotal) || 0;
+    const quantidadeParcelas = Number(formData.quantidadeParcelas.replace(/\D/g, "")) || 0;
+    const parcelasPagas = Number(formData.parcelasPagas.replace(/\D/g, "")) || 0;
+    const valorParcela = useMemo(() => {
+        if (!valorTotal || !quantidadeParcelas) return 0;
+        return valorTotal / quantidadeParcelas;
+    }, [valorTotal, quantidadeParcelas]);
+
+    function validarFormulario() {
+        if (!financiamento) {
+            Alert.alert("Erro", "Financiamento nao encontrado.");
+            return false;
+        }
+
+        if (!formData.nome.trim()) {
+            Alert.alert("Atencao", "Informe o nome do financiamento.");
+            return false;
+        }
+
+        if (!valorTotal || valorTotal <= 0) {
+            Alert.alert("Atencao", "Informe o valor total da divida.");
+            return false;
+        }
+
+        if (!quantidadeParcelas || quantidadeParcelas <= 0) {
+            Alert.alert("Atencao", "Informe o total de parcelas.");
+            return false;
+        }
+
+        if (parcelasPagas < 0 || parcelasPagas > quantidadeParcelas) {
+            Alert.alert("Atencao", "As parcelas pagas nao podem ser maiores que o total de parcelas.");
+            return false;
+        }
+
+        if (!toIso(formData.dataVencimentoParcela)) {
+            Alert.alert("Atencao", "Informe a data de vencimento no formato DD/MM/AAAA.");
+            return false;
+        }
+
+        if (formData.dataFinanciamento.trim() && !toIso(formData.dataFinanciamento)) {
+            Alert.alert("Atencao", "Informe a data do financiamento no formato DD/MM/AAAA.");
+            return false;
+        }
+
+        return true;
+    }
+
+    function handleSalvar() {
+        if (!validarFormulario()) return;
+        setModalConfirmacaoVisible(true);
+    }
+
+    async function confirmarEdicao() {
+        if (!financiamento) return;
+
+        try {
+            await atualizarFinanciamento(financiamento.id, {
+                nome: formData.nome.trim(),
+                credor: formData.credor.trim() || null,
+                valorTotal,
+                quantidadeParcelas,
+                parcelasPagas,
+                dataFinanciamento: formData.dataFinanciamento.trim() ? toIso(formData.dataFinanciamento) : null,
+                dataVencimentoParcela: toIso(formData.dataVencimentoParcela)!,
+                observacoes: formData.observacoes.trim() || null,
+            });
+
+            setModalConfirmacaoVisible(false);
+            Toast.show({
+                type: "success",
+                text1: "Financiamento atualizado",
+                text2: `${formData.nome.trim()} foi atualizado com sucesso.`,
+                position: "top",
+                visibilityTime: 3000,
+            });
+            setTimeout(() => navigation.navigate("ver_todos_financiamentos"), 500);
+        } catch (error: any) {
+            setModalConfirmacaoVisible(false);
+            Alert.alert("Erro", error.message || "Nao foi possivel atualizar o financiamento.");
+        }
+    }
+
+    return (
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
+            <StatusBar barStyle="light-content" />
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <LinearGradient colors={["#4a90e2", "#357abd"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+                            <Feather name="arrow-left" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Feather name="edit-2" size={18} color="#fff" />
+                                <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Editar Financiamento</Text>
+                            </View>
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
+                                Ajuste os dados cadastrados
+                            </Text>
+                        </View>
+                    </View>
+                </LinearGradient>
+
+                <View style={{ padding: 20, gap: 16, paddingBottom: insets.bottom + 20 }}>
+                    <Campo icone="tag" label="Nome do financiamento *" valor={formData.nome} onChange={(v: string) => setFormData({ ...formData, nome: v })} placeholder="Ex: Trator" />
+                    <Campo icone="dollar-sign" label="Valor total da divida *" valor={formData.valorTotal} onChange={(v: string) => setFormData({ ...formData, valorTotal: v })} placeholder="Ex: 45000,00" keyboard="decimal-pad" />
+                    <Campo icone="grid" label="Total de parcelas *" valor={formData.quantidadeParcelas} onChange={(v: string) => setFormData({ ...formData, quantidadeParcelas: v.replace(/\D/g, "") })} placeholder="Ex: 36" keyboard="number-pad" />
+                    <Campo icone="check-square" label="Parcelas pagas" valor={formData.parcelasPagas} onChange={(v: string) => setFormData({ ...formData, parcelasPagas: v.replace(/\D/g, "") })} placeholder="Ex: 3" keyboard="number-pad" />
+                    <Campo icone="calendar" label="Data do financiamento" valor={formData.dataFinanciamento} onChange={(v: string) => setFormData({ ...formData, dataFinanciamento: aplicarMascaraData(v) })} placeholder="DD/MM/AAAA" keyboard="number-pad" maxLength={10} />
+                    <Campo icone="clock" label="Data de vencimento da parcela *" valor={formData.dataVencimentoParcela} onChange={(v: string) => setFormData({ ...formData, dataVencimentoParcela: aplicarMascaraData(v) })} placeholder="DD/MM/AAAA" keyboard="number-pad" maxLength={10} />
+                    <Campo icone="user" label="Banco, loja ou credor" valor={formData.credor} onChange={(v: string) => setFormData({ ...formData, credor: v })} placeholder="Ex: Banco do Brasil" />
+
+                    {valorParcela > 0 && (
+                        <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#bfdbfe" }}>
+                            <Text style={{ fontSize: 12, color: "#475569", marginBottom: 4 }}>Valor estimado da parcela</Text>
+                            <Text style={{ fontSize: 24, fontWeight: "800", color: "#1d4ed8" }}>{formatarMoeda(valorParcela)}</Text>
+                        </View>
+                    )}
+
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="edit-3" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Observacoes</Text>
+                        </View>
+                        <TextInput value={formData.observacoes} onChangeText={(v) => setFormData({ ...formData, observacoes: v })} placeholder="Observacoes adicionais..." placeholderTextColor="#9ca3af" multiline numberOfLines={3} textAlignVertical="top" style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 84 }} />
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>
+                            <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleSalvar} activeOpacity={0.85} style={{ flex: 2 }}>
+                            <LinearGradient colors={["#4a90e2", "#357abd"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
+                                <Feather name="check" size={18} color="#fff" />
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar alteracoes</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </ScrollView>
+
+            <Modal visible={modalConfirmacaoVisible} transparent animationType="fade" onRequestClose={() => setModalConfirmacaoVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
+                    <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
+                        <Text style={{ fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center", marginBottom: 8 }}>
+                            Confirmar edicao
+                        </Text>
+                        <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
+                            As alteracoes feitas neste financiamento serao salvas e passarao a aparecer nos relatorios e listas do financeiro.
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 10 }}>
+                            <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
+                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Revisar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={confirmarEdicao} activeOpacity={0.8} style={{ flex: 1, backgroundColor: "#4a90e2", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </KeyboardAvoidingView>
+    );
+}
+
+function Campo({ icone, label, valor, onChange, placeholder, keyboard, maxLength }: any) {
+    return (
+        <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Feather name={icone} size={16} color="#4a90e2" />
+                <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>{label}</Text>
+            </View>
+            <TextInput value={valor} onChangeText={onChange} placeholder={placeholder} placeholderTextColor="#9ca3af" keyboardType={keyboard || "default"} maxLength={maxLength} style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }} />
+        </View>
+    );
+}

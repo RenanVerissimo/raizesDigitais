@@ -1,5 +1,5 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Animal, Compra, Receita, StatusCompra } from "../interfaces/interfaces";
+import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
 
 const BASE_URL = "http://192.168.32.108:3001/api";
 const USUARIO_STORAGE_KEY = "@raizes_digitais_usuario";
@@ -391,6 +391,92 @@ export async function excluirReceita(id: number) {
 
     if (!res.ok) {
         throw new Error("Erro ao excluir receita");
+    }
+
+    return res.json();
+}
+
+export async function listarFinanciamentos(): Promise<Financiamento[]> {
+    const res = await apiFetch(`/financiamentos`);
+
+    if (!res.ok) {
+        throw new Error("Erro ao listar financiamentos");
+    }
+
+    const dados = await res.json();
+
+    return dados.map((f: any) => ({
+        ...f,
+        valorTotal: Number(f.valorTotal),
+        quantidadeParcelas: Number(f.quantidadeParcelas),
+        parcelasPagas: Number(f.parcelasPagas),
+        valorQuitacao: f.valorQuitacao === null || f.valorQuitacao === undefined ? null : Number(f.valorQuitacao),
+        descontoQuitacao: f.descontoQuitacao === null || f.descontoQuitacao === undefined ? null : Number(f.descontoQuitacao),
+    }));
+}
+
+export async function criarFinanciamento(dados: {
+    nome: string;
+    credor?: string | null;
+    valorTotal: number;
+    quantidadeParcelas: number;
+    parcelasPagas: number;
+    dataFinanciamento?: string | null;
+    dataVencimentoParcela: string;
+    observacoes?: string | null;
+}) {
+    const res = await apiFetch(`/financiamentos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao cadastrar financiamento");
+    }
+
+    return res.json();
+}
+
+export async function atualizarFinanciamento(id: number, dados: {
+    nome: string;
+    credor?: string | null;
+    valorTotal: number;
+    quantidadeParcelas: number;
+    parcelasPagas: number;
+    dataFinanciamento?: string | null;
+    dataVencimentoParcela: string;
+    observacoes?: string | null;
+}) {
+    const res = await apiFetch(`/financiamentos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao atualizar financiamento");
+    }
+
+    return res.json();
+}
+
+export async function quitarFinanciamento(id: number, dados: {
+    valorQuitacao: number;
+    descontoQuitacao: number;
+    dataQuitacao: string;
+}) {
+    const res = await apiFetch(`/financiamentos/${id}/quitar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao quitar financiamento");
     }
 
     return res.json();

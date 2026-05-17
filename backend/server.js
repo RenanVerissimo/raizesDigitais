@@ -6,6 +6,7 @@ const producaoRoutes = require("./routes/producao");
 const animaisRoutes = require("./routes/animais");
 const comprasRouter = require("./routes/compras");
 const receitasRouter = require("./routes/receitas");
+const financiamentosRouter = require("./routes/financiamentos");
 const estoqueRoutes = require("./routes/estoque");
 const authRoutes = require("./routes/auth");
 
@@ -20,6 +21,7 @@ app.use("/api/producao", producaoRoutes);
 app.use("/api/animais", animaisRoutes);
 app.use("/api/compras", comprasRouter);
 app.use("/api/receitas", receitasRouter);
+app.use("/api/financiamentos", financiamentosRouter);
 app.use("/api/estoque", estoqueRoutes);
 app.use("/api/auth", authRoutes);
 

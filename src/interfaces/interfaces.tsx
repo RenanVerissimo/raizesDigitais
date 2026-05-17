@@ -105,3 +105,21 @@ export interface Receita {
     valorAnimal?: number | null;
     observacoes?: string | null;
 }
+
+export type StatusFinanciamento = "ativo" | "quitado" | "cancelado";
+
+export interface Financiamento {
+    id: number;
+    nome: string;
+    credor?: string | null;
+    valorTotal: number;
+    quantidadeParcelas: number;
+    parcelasPagas: number;
+    dataFinanciamento?: string | null;
+    dataVencimentoParcela: string;
+    observacoes?: string | null;
+    status: StatusFinanciamento;
+    valorQuitacao?: number | null;
+    descontoQuitacao?: number | null;
+    dataQuitacao?: string | null;
+}
