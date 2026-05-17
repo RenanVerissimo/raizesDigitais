@@ -401,6 +401,8 @@ export interface PrevisaoReceitaConfirmada {
     anoMes: string;
     valorEstimado: number;
     valorReal: number;
+    ccs?: number | null;
+    cbt?: number | null;
     observacoes?: string | null;
     confirmadoEm?: string | null;
 }
@@ -419,6 +421,8 @@ export async function buscarPrevisaoReceita(anoMes: string): Promise<PrevisaoRec
         ...dados,
         valorEstimado: Number(dados.valorEstimado),
         valorReal: Number(dados.valorReal),
+        ccs: dados.ccs === null || dados.ccs === undefined ? null : Number(dados.ccs),
+        cbt: dados.cbt === null || dados.cbt === undefined ? null : Number(dados.cbt),
     };
 }
 
@@ -435,6 +439,8 @@ export async function listarPrevisoesReceita(): Promise<PrevisaoReceitaConfirmad
         ...item,
         valorEstimado: Number(item.valorEstimado),
         valorReal: Number(item.valorReal),
+        ccs: item.ccs === null || item.ccs === undefined ? null : Number(item.ccs),
+        cbt: item.cbt === null || item.cbt === undefined ? null : Number(item.cbt),
     }));
 }
 
@@ -442,6 +448,8 @@ export async function salvarPrevisaoReceita(dados: {
     anoMes: string;
     valorEstimado: number;
     valorReal: number;
+    ccs?: number | null;
+    cbt?: number | null;
     observacoes?: string | null;
 }) {
     const res = await apiFetch(`/previsoes-receita`, {
@@ -460,6 +468,8 @@ export async function salvarPrevisaoReceita(dados: {
         ...resposta,
         valorEstimado: Number(resposta.valorEstimado),
         valorReal: Number(resposta.valorReal),
+        ccs: resposta.ccs === null || resposta.ccs === undefined ? null : Number(resposta.ccs),
+        cbt: resposta.cbt === null || resposta.cbt === undefined ? null : Number(resposta.cbt),
     };
 }
 
