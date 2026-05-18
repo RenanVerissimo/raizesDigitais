@@ -8,6 +8,7 @@ import { Animal } from "../../interfaces/interfaces";
 import { listarAnimais, excluirAnimal } from "../../services/api";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
+import { calcularAvisoDescarteLeite } from "../../utils/alerts";
 
 const LIMITE_CARDS = 5;
 
@@ -188,6 +189,7 @@ export default function Animais() {
                                     const inativo = animal.status === "inativo";
                                     const vendido = animal.status === "vendido";
                                     const destacado = inativo || vendido;
+                                    const avisoDescarte = calcularAvisoDescarteLeite(animal.data_ultimo_parto, animal.dias_descarte_leite);
                                     return (
                                     <View
                                         key={animal.id}
@@ -239,13 +241,16 @@ export default function Animais() {
                                                     <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
                                                         Descrição: {animal.descricao || "—"}
                                                     </Text>
-                                                    {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
+                                                    {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || avisoDescarte || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
                                                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                                                             {Number(animal.prenha) === 1 && (
                                                                 <TagAnimal label="Gestante" backgroundColor="#dcfce7" color="#15803d" />
                                                             )}
                                                             {Number(animal.mastite) === 1 && (
                                                                 <TagAnimal label="Mastite" backgroundColor="#fee2e2" color="#dc2626" />
+                                                            )}
+                                                            {avisoDescarte && (
+                                                                <TagAnimal label="Leite em descarte" backgroundColor="#ffedd5" color="#c2410c" />
                                                             )}
                                                             {Number(animal.doente) === 1 && animal.doenca === "outra" && (
                                                                 <TagAnimal label={animal.descricao_doenca || "Outra doença"} backgroundColor="#dbeafe" color="#1d4ed8" />

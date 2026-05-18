@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
-import { calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
+import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 
 function formatarDataLocal(data: Date) {
     const ano = data.getFullYear();
@@ -46,9 +46,10 @@ function contarAlertas(animais: any[]) {
     const abortos = animais.filter((a) => Number(a.abortou) === 1);
     const mastite = animais.filter((a) => Number(a.mastite) === 1);
     const outrasDoencas = animais.filter((a) => Number(a.doente) === 1 && a.doenca === "outra");
+    const descarteLeite = animais.filter((a) => calcularAvisoDescarteLeite(a.data_ultimo_parto, a.dias_descarte_leite));
 
     const proximosPartos = vacasPrenhas.filter((a) => {
-        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        const dataBaseGestacao = a.data_inseminacao || a.data_reproducao || a.data_base_gestacao || a.data_cobertura;
         if (!dataBaseGestacao) return false;
 
         const parto = calcularDataParto(dataBaseGestacao);
@@ -59,7 +60,7 @@ function contarAlertas(animais: any[]) {
     });
 
     const secagem = vacasPrenhas.filter((a) => {
-        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        const dataBaseGestacao = a.data_inseminacao || a.data_reproducao || a.data_base_gestacao || a.data_cobertura;
         if (!dataBaseGestacao) return false;
 
         const dataSecagem = calcularDataSecagem(dataBaseGestacao);
@@ -69,7 +70,7 @@ function contarAlertas(animais: any[]) {
         return dias >= 0 && dias <= 10;
     });
 
-    return emCio.length + vacasPrenhas.length + proximosPartos.length + secagem.length + abortos.length + mastite.length + outrasDoencas.length;
+    return emCio.length + vacasPrenhas.length + proximosPartos.length + secagem.length + descarteLeite.length + abortos.length + mastite.length + outrasDoencas.length;
 }
 
 export default function Dashboard() {

@@ -45,6 +45,7 @@ export interface Animal {
 
     data_nascimento: string;
     data_ultimo_parto?: string | null;
+    dias_descarte_leite?: number | null;
 
     // Novos campos
     prenha: boolean;
@@ -57,6 +58,8 @@ export interface Animal {
     doenca?: "mastite" | "outra" | null;
     descricao_doenca?: string | null;
 
+    data_reproducao?: string | null;
+    data_base_gestacao?: string | null;
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
     data_confirmacao_prenhez?: string | null;

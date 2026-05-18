@@ -31,6 +31,7 @@ export default function EditarAnimais() {
         descricao: animal?.descricao ?? "",
         dataNascimento: toBr(animal?.data_nascimento),
         dataUltimoParto: toBr(animal?.data_ultimo_parto),
+        diasDescarteLeite: animal?.dias_descarte_leite != null ? String(animal.dias_descarte_leite) : "",
 
         // 🔥 NOVOS
         prenha: Number(animal?.prenha) === 1,
@@ -39,8 +40,8 @@ export default function EditarAnimais() {
         naoEmprenha: Number(animal?.nao_emprenha) === 1,
         mastite: Number(animal?.mastite) === 1,
         tratamentoMastite: animal?.tratamento_mastite ?? "",
-        dataCobertura: toBr(animal?.data_cobertura),
-        dataInseminacao: toBr(animal?.data_inseminacao || animal?.data_cobertura),
+        dataReproducao: toBr(animal?.data_reproducao || animal?.data_base_gestacao || animal?.data_cobertura),
+        dataInseminacao: toBr(animal?.data_inseminacao || animal?.data_reproducao || animal?.data_base_gestacao || animal?.data_cobertura),
         dataConfirmacaoPrenhez: toBr(animal?.data_confirmacao_prenhez),
     });
 
@@ -63,6 +64,7 @@ export default function EditarAnimais() {
                 descricao: animal.descricao ?? "",
                 dataNascimento: toBr(animal.data_nascimento),
                 dataUltimoParto: toBr(animal.data_ultimo_parto),
+                diasDescarteLeite: animal.dias_descarte_leite != null ? String(animal.dias_descarte_leite) : "",
 
                 // 🔥 NOVOS
                 prenha: Number(animal.prenha) === 1,
@@ -71,8 +73,8 @@ export default function EditarAnimais() {
                 naoEmprenha: Number(animal.nao_emprenha) === 1,
                 mastite: Number(animal.mastite) === 1,
                 tratamentoMastite: animal.tratamento_mastite ?? "",
-                dataCobertura: toBr(animal.data_cobertura),
-                dataInseminacao: toBr(animal.data_inseminacao || animal.data_cobertura),
+                dataReproducao: toBr(animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura),
+                dataInseminacao: toBr(animal.data_inseminacao || animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura),
                 dataConfirmacaoPrenhez: toBr(animal.data_confirmacao_prenhez),
             });
         }
@@ -117,6 +119,15 @@ export default function EditarAnimais() {
             return;
         }
 
+        let diasDescarteLeite: number | null = null;
+        if (formData.diasDescarteLeite.trim()) {
+            diasDescarteLeite = parseInt(formData.diasDescarteLeite, 10);
+            if (isNaN(diasDescarteLeite) || diasDescarteLeite <= 0) {
+                Alert.alert("AtenÃ§Ã£o", "Se preenchido, o descarte de leite deve ser maior que 0 dias.");
+                return;
+            }
+        }
+
         try {
             await atualizarAnimal(animal.id, {
                 nome: formData.nome.trim(),
@@ -128,6 +139,7 @@ export default function EditarAnimais() {
                 descricao: formData.descricao.trim() || null,
                 data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
+                dias_descarte_leite: diasDescarteLeite,
 
                 // 🔥 NOVOS
                 prenha: formData.prenha,
@@ -139,7 +151,7 @@ export default function EditarAnimais() {
                 doente: formData.mastite,
                 doenca: formData.mastite ? "mastite" : null,
                 descricao_doenca: null,
-                data_cobertura: toIso(formData.dataInseminacao || formData.dataCobertura),
+                data_reproducao: toIso(formData.dataInseminacao || formData.dataReproducao),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
             });
@@ -301,6 +313,32 @@ export default function EditarAnimais() {
                             onChange={(v) => setFormData({ ...formData, dataUltimoParto: v })}
                         />
                     </View>
+
+                    <View style={{ backgroundColor: "#fff7ed", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#fed7aa" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="alert-triangle" size={16} color="#ea580c" />
+                            <Text style={labelStyle}>
+                                Descarte de leite apos o parto <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <TextInput
+                            value={formData.diasDescarteLeite}
+                            onChangeText={(v) => setFormData({ ...formData, diasDescarteLeite: v.replace(/[^0-9]/g, "") })}
+                            placeholder="Ex: 4"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="number-pad"
+                            style={{ ...inputStyle, backgroundColor: "#fff", borderColor: "#fed7aa" }}
+                        />
+                        <Text style={{ fontSize: 11, color: "#9a3412", lineHeight: 16, marginTop: 8 }}>
+                            Informe por quantos dias o leite deve ser descartado apos o ultimo parto. O aviso ajuda a evitar leite com colostro, antibiotico ou terapia de vaca seca no tanque.
+                        </Text>
+                        {!formData.dataUltimoParto && formData.diasDescarteLeite ? (
+                            <Text style={{ fontSize: 11, color: "#dc2626", lineHeight: 16, marginTop: 6 }}>
+                                Para calcular a data final do descarte, informe tambem a data do ultimo parto.
+                            </Text>
+                        ) : null}
+                    </View>
+
                     <View style={cardStyle}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
                             <MaterialCommunityIcons name="cow" size={16} color="#f59e0b" />
@@ -350,7 +388,7 @@ export default function EditarAnimais() {
                         </View>
                         <DateInput
                             value={formData.dataInseminacao}
-                            onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataCobertura: v })}
+                            onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataReproducao: v })}
                         />
                     </View>
 

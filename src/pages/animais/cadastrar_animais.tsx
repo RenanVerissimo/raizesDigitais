@@ -34,6 +34,7 @@ export default function CadastrarAnimais() {
         descricao: "",
         dataNascimento: "",
         dataUltimoParto: "",
+        diasDescarteLeite: "",
         // Reprodutivo
         prenha: false,
         emCio: false,
@@ -41,7 +42,7 @@ export default function CadastrarAnimais() {
         naoEmprenha: false,
         mastite: false,
         tratamentoMastite: "",
-        dataCobertura: "",
+        dataReproducao: "",
         dataInseminacao: "",
         dataConfirmacaoPrenhez: "",
     });
@@ -93,6 +94,15 @@ export default function CadastrarAnimais() {
             return;
         }
 
+        let diasDescarteLeite: number | null = null;
+        if (formData.diasDescarteLeite.trim()) {
+            diasDescarteLeite = parseInt(formData.diasDescarteLeite, 10);
+            if (isNaN(diasDescarteLeite) || diasDescarteLeite <= 0) {
+                Alert.alert("AtenÃ§Ã£o", "Se preenchido, o descarte de leite deve ser maior que 0 dias.");
+                return;
+            }
+        }
+
         const todosAnimais = await listarAnimais();
         const novoId = normalizarId(formData.identificador);
         const jaExiste = todosAnimais.some((a) => normalizarId(a.identificador) === novoId);
@@ -117,6 +127,7 @@ export default function CadastrarAnimais() {
                 descricao: formData.descricao.trim() || null,
                 data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
+                dias_descarte_leite: diasDescarteLeite,
                 prenha: formData.prenha,
                 em_cio: formData.emCio,
                 abortou: formData.abortou,
@@ -126,7 +137,7 @@ export default function CadastrarAnimais() {
                 doente: formData.mastite,
                 doenca: formData.mastite ? "mastite" : null,
                 descricao_doenca: null,
-                data_cobertura: toIso(formData.dataInseminacao || formData.dataCobertura),
+                data_reproducao: toIso(formData.dataInseminacao || formData.dataReproducao),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
             });
@@ -307,6 +318,31 @@ export default function CadastrarAnimais() {
                         />
                     </View>
 
+                    <View style={{ backgroundColor: "#fff7ed", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#fed7aa" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="alert-triangle" size={16} color="#ea580c" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
+                                Descarte de leite apos o parto <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            </Text>
+                        </View>
+                        <TextInput
+                            value={formData.diasDescarteLeite}
+                            onChangeText={(v) => setFormData({ ...formData, diasDescarteLeite: v.replace(/[^0-9]/g, "") })}
+                            placeholder="Ex: 4"
+                            placeholderTextColor="#9ca3af"
+                            keyboardType="number-pad"
+                            style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#fed7aa", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                        />
+                        <Text style={{ fontSize: 11, color: "#9a3412", lineHeight: 16, marginTop: 8 }}>
+                            Informe por quantos dias o leite deve ser descartado apos o ultimo parto. O aviso ajuda a evitar leite com colostro, antibiotico ou terapia de vaca seca no tanque.
+                        </Text>
+                        {!formData.dataUltimoParto && formData.diasDescarteLeite ? (
+                            <Text style={{ fontSize: 11, color: "#dc2626", lineHeight: 16, marginTop: 6 }}>
+                                Para calcular a data final do descarte, informe tambem a data do ultimo parto.
+                            </Text>
+                        ) : null}
+                    </View>
+
                     {/* Descrição */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -390,7 +426,7 @@ export default function CadastrarAnimais() {
                         </View>
                         <DateInput
                             value={formData.dataInseminacao}
-                            onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataCobertura: v })}
+                            onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataReproducao: v })}
                         />
                     </View>
 

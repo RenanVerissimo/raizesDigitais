@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { listarAnimais } from "../../services/api";
-import { calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
+import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 
 function Secao({ titulo, dados, cor, icone, onSelecionar }: any) {
     if (!dados || dados.length === 0) return null;
@@ -91,9 +91,19 @@ export default function Alertas() {
 
     const mastite = animais.filter(a => Number(a.mastite) === 1);
     const outrasDoencas = animais.filter(a => Number(a.doente) === 1 && a.doenca === "outra");
+    const descarteLeite = animais.map(a => {
+        const aviso = calcularAvisoDescarteLeite(a.data_ultimo_parto, a.dias_descarte_leite);
+        if (!aviso) return null;
+
+        return {
+            ...a,
+            detalheAlerta: aviso.texto,
+            fimDescarteLeite: aviso.fimDescarte.toISOString(),
+        };
+    }).filter(Boolean);
 
     const proximosPartos = vacasPrenhas.map(a => {
-        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        const dataBaseGestacao = a.data_inseminacao || a.data_reproducao || a.data_base_gestacao || a.data_cobertura;
         if (!dataBaseGestacao) return null;
 
         const parto = calcularDataParto(dataBaseGestacao);
@@ -109,7 +119,7 @@ export default function Alertas() {
     }).filter(Boolean);
 
     const secagem = vacasPrenhas.map(a => {
-        const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
+        const dataBaseGestacao = a.data_inseminacao || a.data_reproducao || a.data_base_gestacao || a.data_cobertura;
         if (!dataBaseGestacao) return null;
 
         const dataSecagem = calcularDataSecagem(dataBaseGestacao);
@@ -164,11 +174,13 @@ export default function Alertas() {
 
                 <Secao titulo="Atenção: Abortos" dados={abortos} cor="#7f1d1d" icone="alert-octagon" onSelecionar={setAnimalSelecionado} />
 
+                <Secao titulo="Leite em descarte" dados={descarteLeite} cor="#ea580c" icone="alert-triangle" onSelecionar={setAnimalSelecionado} />
+
                 <Secao titulo="Saúde: Mastite" dados={mastite} cor="#dc2626" icone="medical-bag" onSelecionar={setAnimalSelecionado} />
 
                 <Secao titulo="Saúde: Outras Doenças" dados={outrasDoencas} cor="#1d4ed8" icone="heart-pulse" onSelecionar={setAnimalSelecionado} />
 
-                {emCio.length === 0 && vacasPrenhas.length === 0 && proximosPartos.length === 0 && secagem.length === 0 && abortos.length === 0 && mastite.length === 0 && outrasDoencas.length === 0 && (
+                {emCio.length === 0 && vacasPrenhas.length === 0 && proximosPartos.length === 0 && secagem.length === 0 && descarteLeite.length === 0 && abortos.length === 0 && mastite.length === 0 && outrasDoencas.length === 0 && (
                     <View style={{ alignItems: "center", marginTop: 60 }}>
                         <MaterialCommunityIcons name="check-decagram" size={60} color="#d1d5db" />
                         <Text style={{ color: "#9ca3af", fontSize: 16, marginTop: 10 }}>Nenhum alerta no momento</Text>
@@ -193,9 +205,10 @@ function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; a
     const statusLabel = vendido ? "Vendida" : inativo ? "Inativa" : "Ativa";
     const statusBg = vendido ? "#fee2e2" : inativo ? "#e5e7eb" : "#dcfce7";
     const statusText = vendido ? "#b91c1c" : inativo ? "#4b5563" : "#15803d";
-    const dataBaseGestacao = animal.data_inseminacao || animal.data_cobertura;
+    const dataBaseGestacao = animal.data_inseminacao || animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura;
     const parto = dataBaseGestacao ? calcularDataParto(dataBaseGestacao) : null;
     const secagem = dataBaseGestacao ? calcularDataSecagem(dataBaseGestacao) : null;
+    const avisoDescarte = calcularAvisoDescarteLeite(animal.data_ultimo_parto, animal.dias_descarte_leite);
 
     return (
         <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -229,9 +242,22 @@ function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; a
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 14 }}>
+                        {avisoDescarte && (
+                            <View style={{ backgroundColor: "#fff7ed", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#fed7aa", flexDirection: "row", gap: 10 }}>
+                                <Feather name="alert-triangle" size={18} color="#ea580c" />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "900", color: "#9a3412" }}>Antibiotico no leite / terapia de vaca seca</Text>
+                                    <Text style={{ fontSize: 12, color: "#9a3412", lineHeight: 17, marginTop: 3 }}>
+                                        {avisoDescarte.texto}. Descartar ate {formatarData(avisoDescarte.fimDescarte.toISOString())}.
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
                         <SecaoDetalhes titulo="Dados gerais">
                             <LinhaDetalhe label="Raça" valor={detalheValor(animal.raca)} />
                             <LinhaDetalhe label="Nascimento" valor={animal.data_nascimento ? formatarData(animal.data_nascimento) : "-"} />
+                            <LinhaDetalhe label="Descarte de leite" valor={animal.dias_descarte_leite ? `${animal.dias_descarte_leite} dia(s)` : "-"} />
+                            <LinhaDetalhe label="Fim do descarte" valor={avisoDescarte ? formatarData(avisoDescarte.fimDescarte.toISOString()) : "-"} />
                             <LinhaDetalhe label="Último parto" valor={animal.data_ultimo_parto ? formatarData(animal.data_ultimo_parto) : "-"} />
                             <LinhaDetalhe label="Peso" valor={animal.peso != null ? `${Number(animal.peso).toFixed(1)} kg` : "-"} />
                             <LinhaDetalhe label="Produção média" valor={animal.producao_media_diaria != null ? `${Number(animal.producao_media_diaria).toFixed(1)} L/dia` : "-"} />
@@ -241,7 +267,7 @@ function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; a
                             <LinhaDetalhe label="Gestante" valor={boolTexto(animal.prenha)} />
                             <LinhaDetalhe label="Em cio" valor={boolTexto(animal.em_cio)} />
                             <LinhaDetalhe label="Abortou" valor={boolTexto(animal.abortou)} />
-                            <LinhaDetalhe label="Cobertura" valor={animal.data_cobertura ? formatarData(animal.data_cobertura) : "-"} />
+                            <LinhaDetalhe label="Reproducao" valor={animal.data_reproducao || animal.data_base_gestacao ? formatarData(animal.data_reproducao || animal.data_base_gestacao) : "-"} />
                             <LinhaDetalhe label="Inseminação" valor={animal.data_inseminacao ? formatarData(animal.data_inseminacao) : "-"} />
                             <LinhaDetalhe label="Confirmação prenhez" valor={animal.data_confirmacao_prenhez ? formatarData(animal.data_confirmacao_prenhez) : "-"} />
                             <LinhaDetalhe label="Parto previsto" valor={parto ? formatarData(parto.toISOString()) : "-"} />

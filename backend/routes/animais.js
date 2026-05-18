@@ -15,6 +15,8 @@ async function ensureAnimaisSchema() {
         { name: "descricao_doenca", sql: "ADD COLUMN descricao_doenca VARCHAR(255) NULL AFTER doenca" },
         { name: "tratamento_mastite", sql: "ADD COLUMN tratamento_mastite VARCHAR(255) NULL AFTER descricao_doenca" },
         { name: "status", sql: "ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ativo' AFTER identificador" },
+        { name: "dias_descarte_leite", sql: "ADD COLUMN dias_descarte_leite INT NULL AFTER data_ultimo_parto" },
+        { name: "data_reproducao", sql: "ADD COLUMN data_reproducao DATE NULL AFTER data_ultimo_parto" },
     ];
 
     const [columns] = await pool.query(`
@@ -62,6 +64,7 @@ router.post("/", async (req, res) => {
             descricao,
             data_nascimento,
             data_ultimo_parto,
+            dias_descarte_leite,
 
             // 🔥 NOVOS CAMPOS
             prenha,
@@ -73,7 +76,7 @@ router.post("/", async (req, res) => {
             doente,
             doenca,
             descricao_doenca,
-            data_cobertura,
+            data_reproducao,
             data_inseminacao,
             data_confirmacao_prenhez
         } = req.body;
@@ -101,6 +104,7 @@ router.post("/", async (req, res) => {
                 descricao,
                 data_nascimento,
                 data_ultimo_parto,
+                dias_descarte_leite,
 
                 prenha,
                 em_cio,
@@ -111,11 +115,11 @@ router.post("/", async (req, res) => {
                 doente,
                 doenca,
                 descricao_doenca,
-                data_cobertura,
+                data_reproducao,
                 data_inseminacao,
                 data_confirmacao_prenhez
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 usuarioId,
                 nome,
@@ -127,6 +131,7 @@ router.post("/", async (req, res) => {
                 descricao || null,
                 data_nascimento,
                 data_ultimo_parto || null,
+                dias_descarte_leite === null || dias_descarte_leite === undefined || dias_descarte_leite === "" ? null : Number(dias_descarte_leite),
 
                 // 🔥 BOOLEAN → 0/1
                 prenha ? 1 : 0,
@@ -139,7 +144,7 @@ router.post("/", async (req, res) => {
                 mastite ? "mastite" : null,
                 null,
 
-                data_cobertura || null,
+                data_reproducao || null,
                 data_inseminacao || null,
                 data_confirmacao_prenhez || null,
             ]
@@ -169,6 +174,7 @@ router.put("/:id", async (req, res) => {
             data_nascimento,
             data_ultimo_parto,
 
+            dias_descarte_leite,
             // 🔥 NOVOS
             prenha,
             em_cio,
@@ -179,7 +185,7 @@ router.put("/:id", async (req, res) => {
             doente,
             doenca,
             descricao_doenca,
-            data_cobertura,
+            data_reproducao,
             data_inseminacao,
             data_confirmacao_prenhez
         } = req.body;
@@ -202,6 +208,7 @@ router.put("/:id", async (req, res) => {
                 descricao = ?,
                 data_nascimento = ?,
                 data_ultimo_parto = ?,
+                dias_descarte_leite = ?,
 
                 prenha = ?,
                 em_cio = ?,
@@ -212,7 +219,7 @@ router.put("/:id", async (req, res) => {
                 doente = ?,
                 doenca = ?,
                 descricao_doenca = ?,
-                data_cobertura = ?,
+                data_reproducao = ?,
                 data_inseminacao = ?,
                 data_confirmacao_prenhez = ?
 
@@ -227,6 +234,7 @@ router.put("/:id", async (req, res) => {
                 descricao || null,
                 data_nascimento,
                 data_ultimo_parto || null,
+                dias_descarte_leite === null || dias_descarte_leite === undefined || dias_descarte_leite === "" ? null : Number(dias_descarte_leite),
 
                 // 🔥 BOOLEAN
                 prenha ? 1 : 0,
@@ -238,7 +246,7 @@ router.put("/:id", async (req, res) => {
                 mastite ? 1 : 0,
                 mastite ? "mastite" : null,
                 null,
-                data_cobertura || null,
+                data_reproducao || null,
                 data_inseminacao || null,
                 data_confirmacao_prenhez || null,
 
