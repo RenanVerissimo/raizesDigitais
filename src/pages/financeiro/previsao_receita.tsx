@@ -19,7 +19,6 @@ const PERIODO_MENSAL_DIAS = 30;
 const SIMULAR_ULTIMO_DIA_DO_MES = false;
 const PERIODOS_HISTORICO = ["3M", "6M", "12M"] as const;
 type PeriodoHistorico = typeof PERIODOS_HISTORICO[number];
-type ModoModalConfirmacao = "completo" | "financeiro";
 const NOMES_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 function formatarMoeda(valor: number) {
@@ -78,7 +77,6 @@ export default function PrevisaoReceita() {
     const [historicoPrevisoes, setHistoricoPrevisoes] = useState<PrevisaoReceitaConfirmada[]>([]);
     const [modalConfirmacaoVisible, setModalConfirmacaoVisible] = useState(false);
     const [modalAvisoAntecipadoVisible, setModalAvisoAntecipadoVisible] = useState(false);
-    const [modoModalConfirmacao, setModoModalConfirmacao] = useState<ModoModalConfirmacao>("completo");
     const [valorRealInformado, setValorRealInformado] = useState("");
     const [ccsInformado, setCcsInformado] = useState("");
     const [cbtInformado, setCbtInformado] = useState("");
@@ -162,33 +160,26 @@ export default function PrevisaoReceita() {
         .slice()
         .sort((a, b) => String(b.data).localeCompare(String(a.data)))[0];
 
-    function abrirFormularioConfirmacao(modo: ModoModalConfirmacao = "completo") {
+    function abrirFormularioConfirmacao() {
         const valorInicial = previsaoConfirmada?.valorReal ?? receitaRealMes;
-        setModoModalConfirmacao(modo);
         setValorRealInformado(String(valorInicial.toFixed(2)).replace(".", ","));
         setCcsInformado((atual) => previsaoConfirmada?.ccs !== null && previsaoConfirmada?.ccs !== undefined ? String(previsaoConfirmada.ccs) : atual);
         setCbtInformado((atual) => previsaoConfirmada?.cbt !== null && previsaoConfirmada?.cbt !== undefined ? String(previsaoConfirmada.cbt) : atual);
         setModalConfirmacaoVisible(true);
     }
 
-    function solicitarConfirmacaoDados(modo: ModoModalConfirmacao = "completo") {
-        setModoModalConfirmacao(modo);
-
+    function solicitarConfirmacaoDados() {
         if (!deveDestacarFechamento) {
             setModalAvisoAntecipadoVisible(true);
             return;
         }
 
-        abrirFormularioConfirmacao(modo);
-    }
-
-    function solicitarValorReal() {
-        solicitarConfirmacaoDados("financeiro");
+        abrirFormularioConfirmacao();
     }
 
     function continuarConfirmacaoAntecipada() {
         setModalAvisoAntecipadoVisible(false);
-        abrirFormularioConfirmacao(modoModalConfirmacao);
+        abrirFormularioConfirmacao();
     }
 
     function alternarConferencia() {
@@ -340,7 +331,7 @@ export default function PrevisaoReceita() {
                             <View style={{ flex: 1 }}>
                                 <Text style={{ fontSize: 16, fontWeight: "800", color: "#1e3a8a" }}>Conferência do mês</Text>
                                 <Text style={{ fontSize: 12, color: "#475569", marginTop: 2 }}>
-                                    {mostrarConferencia ? "Ocultar comparação" : "Ver estimado x real"}
+                                    {mostrarConferencia ? "Recolher conferência" : "Conferir previsão e resultado"}
                                 </Text>
                             </View>
                         </View>
@@ -404,16 +395,6 @@ export default function PrevisaoReceita() {
                                         borderColor={valoresConferenciaOk ? "#bbf7d0" : "#bfdbfe"}
                                         onPress={() => setValoresConferenciaOk((atual) => !atual)}
                                     />
-                                    <TouchableOpacity
-                                        onPress={solicitarValorReal}
-                                        activeOpacity={0.75}
-                                        style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 2 }}
-                                    >
-                                        <Feather name="edit-3" size={14} color="#4a90e2" />
-                                        <Text style={{ fontSize: 12, fontWeight: "800", color: "#4a90e2" }}>
-                                            Inserir valor real
-                                        </Text>
-                                    </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -488,12 +469,12 @@ export default function PrevisaoReceita() {
                             </View>
 
                             <TouchableOpacity
-                                onPress={previsaoConfirmada ? () => solicitarConfirmacaoDados() : undefined}
-                                activeOpacity={previsaoConfirmada ? 0.75 : 1}
+                                onPress={() => solicitarConfirmacaoDados()}
+                                activeOpacity={0.75}
                                 style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 2 }}
                             >
-                                <Feather name="edit-3" size={14} color={previsaoConfirmada ? "#4a90e2" : "#94a3b8"} />
-                                <Text style={{ fontSize: 12, fontWeight: "800", color: previsaoConfirmada ? "#4a90e2" : "#94a3b8" }}>
+                                <Feather name="edit-3" size={14} color="#4a90e2" />
+                                <Text style={{ fontSize: 12, fontWeight: "800", color: "#4a90e2" }}>
                                     {previsaoConfirmada ? "Editar dados do fechamento" : "Informar dados do fechamento"}
                                 </Text>
                             </TouchableOpacity>
@@ -698,12 +679,10 @@ export default function PrevisaoReceita() {
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
                     <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
                         <Text style={{ fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center", marginBottom: 8 }}>
-                            {modoModalConfirmacao === "financeiro" ? "Inserir valor real" : "Confirmar receita do mês"}
+                            Confirmar receita do mês
                         </Text>
                         <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
-                            {modoModalConfirmacao === "financeiro"
-                                ? "Informe o valor realmente arrecadado para comparar com a previsão do mês."
-                                : `Informe o valor realmente arrecadado para comparar com a previsão e armazenar o fechamento de ${mesReferencia}.`}
+                            {`Informe o valor realmente arrecadado para comparar com a previsão e armazenar o fechamento de ${mesReferencia}.`}
                         </Text>
                         <View style={{ backgroundColor: "#f8fafc", borderRadius: 14, borderWidth: 1, borderColor: "#e5e7eb", padding: 12, marginBottom: 12 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -723,9 +702,7 @@ export default function PrevisaoReceita() {
                                 />
                             </View>
                         </View>
-                        {modoModalConfirmacao === "completo" && (
-                            <>
-                                <View style={{ backgroundColor: "#f0fdf4", borderRadius: 14, borderWidth: 1, borderColor: "#dcfce7", padding: 12, marginBottom: 12 }}>
+                        <View style={{ backgroundColor: "#f0fdf4", borderRadius: 14, borderWidth: 1, borderColor: "#dcfce7", padding: 12, marginBottom: 12 }}>
                                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
                                         <Feather name="activity" size={15} color="#16a34a" />
                                         <View style={{ flex: 1 }}>
@@ -760,8 +737,8 @@ export default function PrevisaoReceita() {
                                     <Text style={{ fontSize: 11, color: "#64748b", lineHeight: 16, marginTop: 10 }}>
                                         Campos opcionais para registrar a qualidade do leite no fechamento.
                                     </Text>
-                                </View>
-                                <TextInput
+                        </View>
+                        <TextInput
                                     value={observacoesConfirmacao}
                                     onChangeText={setObservacoesConfirmacao}
                                     placeholder="Observações sobre a diferença..."
@@ -769,9 +746,7 @@ export default function PrevisaoReceita() {
                                     multiline
                                     textAlignVertical="top"
                                     style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, minHeight: 78, fontSize: 14, color: "#0f172a", marginBottom: 16 }}
-                                />
-                            </>
-                        )}
+                        />
                         <View style={{ flexDirection: "row", gap: 10 }}>
                             <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
                                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
