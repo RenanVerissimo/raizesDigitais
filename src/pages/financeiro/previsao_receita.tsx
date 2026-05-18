@@ -19,6 +19,7 @@ const PERIODO_MENSAL_DIAS = 30;
 const SIMULAR_ULTIMO_DIA_DO_MES = false;
 const PERIODOS_HISTORICO = ["3M", "6M", "12M"] as const;
 type PeriodoHistorico = typeof PERIODOS_HISTORICO[number];
+type ModoModalConfirmacao = "completo" | "financeiro";
 const NOMES_MES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 function formatarMoeda(valor: number) {
@@ -77,6 +78,7 @@ export default function PrevisaoReceita() {
     const [historicoPrevisoes, setHistoricoPrevisoes] = useState<PrevisaoReceitaConfirmada[]>([]);
     const [modalConfirmacaoVisible, setModalConfirmacaoVisible] = useState(false);
     const [modalAvisoAntecipadoVisible, setModalAvisoAntecipadoVisible] = useState(false);
+    const [modoModalConfirmacao, setModoModalConfirmacao] = useState<ModoModalConfirmacao>("completo");
     const [valorRealInformado, setValorRealInformado] = useState("");
     const [ccsInformado, setCcsInformado] = useState("");
     const [cbtInformado, setCbtInformado] = useState("");
@@ -85,6 +87,7 @@ export default function PrevisaoReceita() {
     const [valoresConferenciaOk, setValoresConferenciaOk] = useState(false);
     const [celulasConferenciaOk, setCelulasConferenciaOk] = useState(false);
     const [periodoHistorico, setPeriodoHistorico] = useState<PeriodoHistorico>("6M");
+    const [periodoCelular, setPeriodoCelular] = useState<PeriodoHistorico>("6M");
 
     const mesReferencia = anoMesAtual();
     const deveDestacarFechamento = SIMULAR_ULTIMO_DIA_DO_MES || ultimoDiaDoMes();
@@ -150,33 +153,42 @@ export default function PrevisaoReceita() {
     );
     const totalEstimadoHistorico = historicoFiltrado.reduce((sum, item) => sum + item.valorEstimado, 0);
     const totalRealHistorico = historicoFiltrado.reduce((sum, item) => sum + item.valorReal, 0);
-    const ccsExibido = previsaoConfirmada?.ccs ?? parseInteiroOpcional(ccsInformado);
-    const cbtExibido = previsaoConfirmada?.cbt ?? parseInteiroOpcional(cbtInformado);
+    const historicoCelular = filtrarHistoricoPrevisoes(historicoPrevisoes, periodoCelular)
+        .filter((item) => (item.ccs !== null && item.ccs !== undefined) || (item.cbt !== null && item.cbt !== undefined))
+        .slice()
+        .sort((a, b) => b.anoMes.localeCompare(a.anoMes));
 
     const ultimaReceita = receitas
         .slice()
         .sort((a, b) => String(b.data).localeCompare(String(a.data)))[0];
 
-    function abrirFormularioConfirmacao() {
+    function abrirFormularioConfirmacao(modo: ModoModalConfirmacao = "completo") {
         const valorInicial = previsaoConfirmada?.valorReal ?? receitaRealMes;
+        setModoModalConfirmacao(modo);
         setValorRealInformado(String(valorInicial.toFixed(2)).replace(".", ","));
         setCcsInformado((atual) => previsaoConfirmada?.ccs !== null && previsaoConfirmada?.ccs !== undefined ? String(previsaoConfirmada.ccs) : atual);
         setCbtInformado((atual) => previsaoConfirmada?.cbt !== null && previsaoConfirmada?.cbt !== undefined ? String(previsaoConfirmada.cbt) : atual);
         setModalConfirmacaoVisible(true);
     }
 
-    function solicitarConfirmacaoDados() {
+    function solicitarConfirmacaoDados(modo: ModoModalConfirmacao = "completo") {
+        setModoModalConfirmacao(modo);
+
         if (!deveDestacarFechamento) {
             setModalAvisoAntecipadoVisible(true);
             return;
         }
 
-        abrirFormularioConfirmacao();
+        abrirFormularioConfirmacao(modo);
+    }
+
+    function solicitarValorReal() {
+        solicitarConfirmacaoDados("financeiro");
     }
 
     function continuarConfirmacaoAntecipada() {
         setModalAvisoAntecipadoVisible(false);
-        abrirFormularioConfirmacao();
+        abrirFormularioConfirmacao(modoModalConfirmacao);
     }
 
     function alternarConferencia() {
@@ -383,26 +395,26 @@ export default function PrevisaoReceita() {
                                         {previsaoBateu ? "A previsão ficou próxima do valor real." : "A previsão ficou distante do valor real."}
                                     </Text>
                                 </View>
-                                <TouchableOpacity
-                                    onPress={() => setValoresConferenciaOk((atual) => !atual)}
-                                    activeOpacity={0.75}
-                                    style={{ alignSelf: "flex-start", backgroundColor: valoresConferenciaOk ? "#dcfce7" : "#eff6ff", borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 6 }}
-                                >
-                                    <Feather name={valoresConferenciaOk ? "check" : "check-circle"} size={14} color={valoresConferenciaOk ? "#15803d" : "#2563eb"} />
-                                    <Text style={{ fontSize: 12, fontWeight: "800", color: valoresConferenciaOk ? "#15803d" : "#2563eb" }}>
-                                        {valoresConferenciaOk ? "Valores conferidos" : "Confirmar valores"}
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    onPress={solicitarConfirmacaoDados}
-                                    activeOpacity={0.75}
-                                    style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 2 }}
-                                >
-                                    <Feather name="edit-3" size={14} color="#4a90e2" />
-                                    <Text style={{ fontSize: 12, fontWeight: "800", color: "#4a90e2" }}>
-                                        Editar valor real
-                                    </Text>
-                                </TouchableOpacity>
+                                <View style={{ gap: 10 }}>
+                                    <BotaoConferencia
+                                        label={valoresConferenciaOk ? "Valores conferidos" : "Confirmar valores"}
+                                        icon={valoresConferenciaOk ? "check-circle" : "check"}
+                                        color={valoresConferenciaOk ? "#15803d" : "#2563eb"}
+                                        backgroundColor={valoresConferenciaOk ? "#dcfce7" : "#eff6ff"}
+                                        borderColor={valoresConferenciaOk ? "#bbf7d0" : "#bfdbfe"}
+                                        onPress={() => setValoresConferenciaOk((atual) => !atual)}
+                                    />
+                                    <TouchableOpacity
+                                        onPress={solicitarValorReal}
+                                        activeOpacity={0.75}
+                                        style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 2 }}
+                                    >
+                                        <Feather name="edit-3" size={14} color="#4a90e2" />
+                                        <Text style={{ fontSize: 12, fontWeight: "800", color: "#4a90e2" }}>
+                                            Inserir valor real
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
                             <View style={{ display: "none" }}>
@@ -465,28 +477,26 @@ export default function PrevisaoReceita() {
                                     </View>
                                 )}
 
-                                <TouchableOpacity
-                                    onPress={solicitarConfirmacaoDados}
-                                    activeOpacity={0.75}
-                                    style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 2 }}
-                                >
-                                    <Feather name="edit-3" size={14} color="#16a34a" />
-                                    <Text style={{ fontSize: 12, fontWeight: "800", color: "#16a34a" }}>
-                                        Informar ou editar contagem
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
+                                <BotaoConferencia
+                                    label={celulasConferenciaOk ? "Contagem conferida" : "Confirmar contagem"}
+                                    icon={celulasConferenciaOk ? "check-circle" : "check"}
+                                    color="#15803d"
+                                    backgroundColor={celulasConferenciaOk ? "#dcfce7" : "#f0fdf4"}
+                                    borderColor="#bbf7d0"
                                     onPress={() => setCelulasConferenciaOk((atual) => !atual)}
-                                    activeOpacity={0.75}
-                                    style={{ alignSelf: "flex-start", backgroundColor: celulasConferenciaOk ? "#dcfce7" : "#f0fdf4", borderRadius: 999, paddingVertical: 8, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 6 }}
-                                >
-                                    <Feather name={celulasConferenciaOk ? "check" : "check-circle"} size={14} color="#15803d" />
-                                    <Text style={{ fontSize: 12, fontWeight: "800", color: "#15803d" }}>
-                                        {celulasConferenciaOk ? "Contagem conferida" : "Confirmar contagem"}
-                                    </Text>
-                                </TouchableOpacity>
+                                />
                             </View>
+
+                            <TouchableOpacity
+                                onPress={previsaoConfirmada ? () => solicitarConfirmacaoDados() : undefined}
+                                activeOpacity={previsaoConfirmada ? 0.75 : 1}
+                                style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 2 }}
+                            >
+                                <Feather name="edit-3" size={14} color={previsaoConfirmada ? "#4a90e2" : "#94a3b8"} />
+                                <Text style={{ fontSize: 12, fontWeight: "800", color: previsaoConfirmada ? "#4a90e2" : "#94a3b8" }}>
+                                    {previsaoConfirmada ? "Editar dados do fechamento" : "Informar dados do fechamento"}
+                                </Text>
+                            </TouchableOpacity>
 
                             <TouchableOpacity
                                 onPress={() => {
@@ -503,55 +513,10 @@ export default function PrevisaoReceita() {
                                 </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                onPress={solicitarConfirmacaoDados}
-                                activeOpacity={0.75}
-                                style={{ display: "none" }}
-                            >
-                                <Feather name="edit-3" size={14} color="#4a90e2" />
-                                <Text style={{ fontSize: 13, fontWeight: "700", color: "#4a90e2" }}>
-                                    {previsaoConfirmada ? "Editar dados do fechamento" : "Informar dados do fechamento"}
-                                </Text>
-                            </TouchableOpacity>
                         </View>
                     )}
 
-                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#dcfce7", gap: 12 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#0f172a" }}>Contagem celular</Text>
-                                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>
-                                    CCS e CBT registrados no fechamento do mês.
-                                </Text>
-                            </View>
-                            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "#f0fdf4", alignItems: "center", justifyContent: "center" }}>
-                                <Feather name="activity" size={19} color="#16a34a" />
-                            </View>
-                        </View>
 
-                        {previsaoConfirmada ? (
-                            <View style={{ flexDirection: "row", gap: 10 }}>
-                                <CelulaCard label="CCS" valor={formatarInteiro(previsaoConfirmada.ccs)} />
-                                <CelulaCard label="CBT" valor={formatarInteiro(previsaoConfirmada.cbt)} />
-                            </View>
-                        ) : (
-                            <View style={{ backgroundColor: "#f8fafc", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#e5e7eb" }}>
-                                <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", lineHeight: 19 }}>
-                                    Confirme o mês para registrar CCS e CBT.
-                                </Text>
-                            </View>
-                        )}
-                        <TouchableOpacity
-                            onPress={solicitarConfirmacaoDados}
-                            activeOpacity={0.75}
-                            style={{ display: "none" }}
-                        >
-                            <Feather name="edit-3" size={14} color="#16a34a" />
-                            <Text style={{ fontSize: 12, fontWeight: "800", color: "#16a34a" }}>
-                                Informar ou editar contagem
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9", gap: 14 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -617,6 +582,84 @@ export default function PrevisaoReceita() {
                         )}
                     </View>
 
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#dcfce7", gap: 12 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#0f172a" }}>Contagem celular</Text>
+                                <Text style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>
+                                    CCS e CBT registrados por mês fechado.
+                                </Text>
+                            </View>
+                            <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: "#f0fdf4", alignItems: "center", justifyContent: "center" }}>
+                                <Feather name="activity" size={19} color="#16a34a" />
+                            </View>
+                        </View>
+
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                            {PERIODOS_HISTORICO.map((periodo) => {
+                                const ativo = periodoCelular === periodo;
+                                return (
+                                    <TouchableOpacity
+                                        key={periodo}
+                                        onPress={() => setPeriodoCelular(periodo as PeriodoHistorico)}
+                                        activeOpacity={0.75}
+                                        style={{
+                                            minWidth: 54,
+                                            paddingVertical: 8,
+                                            paddingHorizontal: 12,
+                                            borderRadius: 999,
+                                            alignItems: "center",
+                                            backgroundColor: ativo ? "#4a90e2" : "#f8fafc",
+                                            borderWidth: 1,
+                                            borderColor: ativo ? "#4a90e2" : "#e5e7eb",
+                                        }}
+                                    >
+                                        <Text style={{ fontSize: 12, fontWeight: "800", color: ativo ? "#fff" : "#475569" }}>
+                                            {periodo}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+
+                        {historicoCelular.length > 0 ? (
+                            <ScrollView
+                                nestedScrollEnabled
+                                showsVerticalScrollIndicator={historicoCelular.length > 3}
+                                style={{ maxHeight: historicoCelular.length > 3 ? 244 : undefined }}
+                                contentContainerStyle={{ gap: 8 }}
+                            >
+                                {historicoCelular.map((item) => (
+                                    <View key={item.anoMes} style={{ backgroundColor: "#f8fafc", borderRadius: 12, padding: 10, borderWidth: 1, borderColor: "#e5e7eb", gap: 8 }}>
+                                        <Text style={{ fontSize: 12, fontWeight: "900", color: "#0f172a" }}>
+                                            {formatarAnoMes(item.anoMes)}
+                                        </Text>
+                                        <View style={{ flexDirection: "row", gap: 8 }}>
+                                            <CelulaCompacta label="CCS" valor={formatarInteiro(item.ccs)} />
+                                            <CelulaCompacta label="CBT" valor={formatarInteiro(item.cbt)} />
+                                        </View>
+                                    </View>
+                                ))}
+                            </ScrollView>
+                        ) : (
+                            <View style={{ backgroundColor: "#f8fafc", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#e5e7eb" }}>
+                                <Text style={{ fontSize: 13, color: "#64748b", textAlign: "center", lineHeight: 19 }}>
+                                    Nenhuma contagem celular registrada nos fechamentos.
+                                </Text>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            onPress={() => solicitarConfirmacaoDados()}
+                            activeOpacity={0.75}
+                            style={{ display: "none" }}
+                        >
+                            <Feather name="edit-3" size={14} color="#16a34a" />
+                            <Text style={{ fontSize: 12, fontWeight: "800", color: "#16a34a" }}>
+                                Informar ou editar contagem
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 12 }}>Base do cálculo</Text>
                         <LinhaInfo label="Média mensal" valor={`${formatarNumero(media30Dias)} L/dia`} />
@@ -655,10 +698,12 @@ export default function PrevisaoReceita() {
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
                     <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
                         <Text style={{ fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center", marginBottom: 8 }}>
-                            Confirmar receita do mês
+                            {modoModalConfirmacao === "financeiro" ? "Inserir valor real" : "Confirmar receita do mês"}
                         </Text>
                         <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
-                            Informe o valor realmente arrecadado para comparar com a previsão e armazenar o fechamento de {mesReferencia}.
+                            {modoModalConfirmacao === "financeiro"
+                                ? "Informe o valor realmente arrecadado para comparar com a previsão do mês."
+                                : `Informe o valor realmente arrecadado para comparar com a previsão e armazenar o fechamento de ${mesReferencia}.`}
                         </Text>
                         <View style={{ backgroundColor: "#f8fafc", borderRadius: 14, borderWidth: 1, borderColor: "#e5e7eb", padding: 12, marginBottom: 12 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -667,62 +712,66 @@ export default function PrevisaoReceita() {
                             </View>
                             <Text style={{ fontSize: 12, fontWeight: "700", color: "#475569", marginBottom: 6 }}>Valor real arrecadado</Text>
                             <View style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 12, flexDirection: "row", alignItems: "center" }}>
-                            <Text style={{ fontSize: 15, color: "#6b7280", marginRight: 6 }}>R$</Text>
-                            <TextInput
-                                value={valorRealInformado}
-                                onChangeText={setValorRealInformado}
-                                keyboardType="decimal-pad"
-                                placeholder="0,00"
-                                placeholderTextColor="#9ca3af"
-                                style={{ flex: 1, paddingVertical: 12, fontSize: 16, fontWeight: "800", color: "#0f172a" }}
-                            />
+                                <Text style={{ fontSize: 15, color: "#6b7280", marginRight: 6 }}>R$</Text>
+                                <TextInput
+                                    value={valorRealInformado}
+                                    onChangeText={setValorRealInformado}
+                                    keyboardType="decimal-pad"
+                                    placeholder="0,00"
+                                    placeholderTextColor="#9ca3af"
+                                    style={{ flex: 1, paddingVertical: 12, fontSize: 16, fontWeight: "800", color: "#0f172a" }}
+                                />
                             </View>
                         </View>
-                        <View style={{ backgroundColor: "#f0fdf4", borderRadius: 14, borderWidth: 1, borderColor: "#dcfce7", padding: 12, marginBottom: 12 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                                <Feather name="activity" size={15} color="#16a34a" />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: "800", color: "#0f172a" }}>Contagem celular</Text>
-                                    <Text style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>Não são valores em dinheiro</Text>
+                        {modoModalConfirmacao === "completo" && (
+                            <>
+                                <View style={{ backgroundColor: "#f0fdf4", borderRadius: 14, borderWidth: 1, borderColor: "#dcfce7", padding: 12, marginBottom: 12 }}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                                        <Feather name="activity" size={15} color="#16a34a" />
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 13, fontWeight: "800", color: "#0f172a" }}>Contagem celular</Text>
+                                            <Text style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>Não são valores em dinheiro</Text>
+                                        </View>
+                                    </View>
+                                    <View style={{ flexDirection: "row", gap: 10 }}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: "700", color: "#475569", marginBottom: 6 }}>CCS</Text>
+                                            <TextInput
+                                                value={ccsInformado}
+                                                onChangeText={setCcsInformado}
+                                                keyboardType="number-pad"
+                                                placeholder="Ex.: 250000"
+                                                placeholderTextColor="#9ca3af"
+                                                style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#bbf7d0", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontWeight: "800", color: "#0f172a" }}
+                                            />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontSize: 12, fontWeight: "700", color: "#475569", marginBottom: 6 }}>CBT</Text>
+                                            <TextInput
+                                                value={cbtInformado}
+                                                onChangeText={setCbtInformado}
+                                                keyboardType="number-pad"
+                                                placeholder="Ex.: 10000"
+                                                placeholderTextColor="#9ca3af"
+                                                style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#bbf7d0", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontWeight: "800", color: "#0f172a" }}
+                                            />
+                                        </View>
+                                    </View>
+                                    <Text style={{ fontSize: 11, color: "#64748b", lineHeight: 16, marginTop: 10 }}>
+                                        Campos opcionais para registrar a qualidade do leite no fechamento.
+                                    </Text>
                                 </View>
-                            </View>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 12, fontWeight: "700", color: "#475569", marginBottom: 6 }}>CCS</Text>
                                 <TextInput
-                                    value={ccsInformado}
-                                    onChangeText={setCcsInformado}
-                                    keyboardType="number-pad"
-                                    placeholder="Ex.: 250000"
+                                    value={observacoesConfirmacao}
+                                    onChangeText={setObservacoesConfirmacao}
+                                    placeholder="Observações sobre a diferença..."
                                     placeholderTextColor="#9ca3af"
-                                    style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#bbf7d0", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontWeight: "800", color: "#0f172a" }}
+                                    multiline
+                                    textAlignVertical="top"
+                                    style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, minHeight: 78, fontSize: 14, color: "#0f172a", marginBottom: 16 }}
                                 />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 12, fontWeight: "700", color: "#475569", marginBottom: 6 }}>CBT</Text>
-                                <TextInput
-                                    value={cbtInformado}
-                                    onChangeText={setCbtInformado}
-                                    keyboardType="number-pad"
-                                    placeholder="Ex.: 10000"
-                                    placeholderTextColor="#9ca3af"
-                                    style={{ backgroundColor: "#fff", borderWidth: 1, borderColor: "#bbf7d0", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontWeight: "800", color: "#0f172a" }}
-                                />
-                            </View>
-                        </View>
-                        <Text style={{ fontSize: 11, color: "#64748b", lineHeight: 16, marginTop: 10 }}>
-                            Campos opcionais para registrar a qualidade do leite no fechamento.
-                        </Text>
-                        </View>
-                        <TextInput
-                            value={observacoesConfirmacao}
-                            onChangeText={setObservacoesConfirmacao}
-                            placeholder="Observações sobre a diferença..."
-                            placeholderTextColor="#9ca3af"
-                            multiline
-                            textAlignVertical="top"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, minHeight: 78, fontSize: 14, color: "#0f172a", marginBottom: 16 }}
-                        />
+                            </>
+                        )}
                         <View style={{ flexDirection: "row", gap: 10 }}>
                             <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
                                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
@@ -803,6 +852,52 @@ function ComparacaoCard({ label, valor, color }: { label: string; valor: string;
     );
 }
 
+function BotaoConferencia({
+    label,
+    icon,
+    color,
+    backgroundColor,
+    borderColor,
+    minWidth,
+    disabled = false,
+    onPress,
+}: {
+    label: string;
+    icon: React.ComponentProps<typeof Feather>["name"];
+    color: string;
+    backgroundColor: string;
+    borderColor: string;
+    minWidth?: number;
+    disabled?: boolean;
+    onPress: () => void;
+}) {
+    return (
+        <TouchableOpacity
+            onPress={disabled ? undefined : onPress}
+            activeOpacity={disabled ? 1 : 0.78}
+            style={{
+                alignSelf: "stretch",
+                minWidth,
+                backgroundColor,
+                borderWidth: 1,
+                borderColor,
+                borderRadius: 10,
+                paddingVertical: 10,
+                paddingHorizontal: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+            }}
+        >
+            <Feather name={icon} size={16} color={color} />
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 13, fontWeight: "800", color }}>
+                {label}
+            </Text>
+        </TouchableOpacity>
+    );
+}
+
 function CelulaCard({ label, valor }: { label: string; valor: string }) {
     return (
         <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#bbf7d0" }}>
@@ -811,6 +906,17 @@ function CelulaCard({ label, valor }: { label: string; valor: string }) {
                 {valor}
             </Text>
             <Text style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>contagem</Text>
+        </View>
+    );
+}
+
+function CelulaCompacta({ label, valor }: { label: string; valor: string }) {
+    return (
+        <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 10, paddingVertical: 9, paddingHorizontal: 10, borderWidth: 1, borderColor: "#bbf7d0" }}>
+            <Text style={{ fontSize: 10, color: "#15803d", fontWeight: "900", marginBottom: 3 }}>{label}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 15, fontWeight: "900", color: "#0f172a" }}>
+                {valor}
+            </Text>
         </View>
     );
 }
