@@ -16,6 +16,13 @@ import { criarProducao, atualizarProducao } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 
+function dataLocalTexto(data = new Date()) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+}
+
 export default function ProducaoRegistro() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -24,7 +31,7 @@ export default function ProducaoRegistro() {
     const producaoEditando: Producao | undefined = route.params?.producao;
     const isEditando = !!producaoEditando;
     const [formData, setFormData] = useState({
-        date: producaoEditando?.data?.split("T")[0] ?? new Date().toISOString().split("T")[0],
+        date: producaoEditando?.data?.slice(0, 10) ?? dataLocalTexto(),
         dailyProduction: producaoEditando?.producao_diaria?.toString() ?? "",
         notes: producaoEditando?.observacoes ?? "",
     });
@@ -68,7 +75,7 @@ export default function ProducaoRegistro() {
 
             if (!isEditando) {
                 setFormData({
-                    date: new Date().toISOString().split("T")[0],
+                    date: dataLocalTexto(),
                     dailyProduction: "",
                     notes: "",
                 });

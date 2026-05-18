@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
-import { calcularDataParto, calcularDias } from "../../utils/alerts";
+import { calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 
 function formatarDataLocal(data: Date) {
     const ano = data.getFullYear();
@@ -26,6 +26,13 @@ function formatarDataLocal(data: Date) {
 function normalizarDataProducao(data?: string | null) {
     if (!data) return "";
     return data.slice(0, 10);
+}
+
+function formatarDataProducao(data?: string | null) {
+    const normalizada = normalizarDataProducao(data);
+    const [ano, mes, dia] = normalizada.split("-").map(Number);
+    if (!ano || !mes || !dia) return "-";
+    return `${String(dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}/${ano}`;
 }
 
 function obterProducaoDiaria(producao: Producao) {
@@ -48,18 +55,18 @@ function contarAlertas(animais: any[]) {
         if (!parto) return false;
 
         const dias = calcularDias(parto.toISOString());
-        return dias >= 0 && dias <= 15;
+        return dias >= 0 && dias <= 10;
     });
 
     const secagem = vacasPrenhas.filter((a) => {
         const dataBaseGestacao = a.data_inseminacao || a.data_cobertura;
         if (!dataBaseGestacao) return false;
 
-        const parto = calcularDataParto(dataBaseGestacao);
-        if (!parto) return false;
+        const dataSecagem = calcularDataSecagem(dataBaseGestacao);
+        if (!dataSecagem) return false;
 
-        const dias = calcularDias(parto.toISOString());
-        return dias >= 0 && dias <= 60;
+        const dias = calcularDias(dataSecagem.toISOString());
+        return dias >= 0 && dias <= 10;
     });
 
     return emCio.length + vacasPrenhas.length + proximosPartos.length + secagem.length + abortos.length + mastite.length + outrasDoencas.length;
@@ -387,7 +394,7 @@ export default function Dashboard() {
                                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                             <Feather name="calendar" size={14} color="#4a90e2" />
                                             <Text style={{ fontSize: 17, fontWeight: "800", color: "#0a0a0a" }}>
-                                                {new Date(prod.data).toLocaleDateString("pt-BR")}
+                                                {formatarDataProducao(prod.data)}
                                             </Text>
                                         </View>
                                     </View>

@@ -239,16 +239,17 @@ export default function Animais() {
                                                     <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
                                                         Descrição: {animal.descricao || "—"}
                                                     </Text>
-                                                    {Number(animal.mastite) === 1 && (
-                                                        <View style={{ alignSelf: "flex-start", backgroundColor: "#fee2e2", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 6 }}>
-                                                            <Text style={{ fontSize: 11, color: "#dc2626", fontWeight: "600" }}>Mastite</Text>
-                                                        </View>
-                                                    )}
-                                                    {Number(animal.doente) === 1 && animal.doenca === "outra" && (
-                                                        <View style={{ alignSelf: "flex-start", backgroundColor: "#dbeafe", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 6 }}>
-                                                            <Text style={{ fontSize: 11, color: "#1d4ed8", fontWeight: "600" }}>
-                                                                {animal.descricao_doenca || "Outra doença"}
-                                                            </Text>
+                                                    {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
+                                                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                                                            {Number(animal.prenha) === 1 && (
+                                                                <TagAnimal label="Gestante" backgroundColor="#dcfce7" color="#15803d" />
+                                                            )}
+                                                            {Number(animal.mastite) === 1 && (
+                                                                <TagAnimal label="Mastite" backgroundColor="#fee2e2" color="#dc2626" />
+                                                            )}
+                                                            {Number(animal.doente) === 1 && animal.doenca === "outra" && (
+                                                                <TagAnimal label={animal.descricao_doenca || "Outra doença"} backgroundColor="#dbeafe" color="#1d4ed8" />
+                                                            )}
                                                         </View>
                                                     )}
                                                 </View>
@@ -316,6 +317,14 @@ export default function Animais() {
 
                 </View>
             </ScrollView>
+        </View>
+    );
+}
+
+function TagAnimal({ label, backgroundColor, color }: { label: string; backgroundColor: string; color: string }) {
+    return (
+        <View style={{ backgroundColor, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+            <Text style={{ fontSize: 11, color, fontWeight: "600" }}>{label}</Text>
         </View>
     );
 }

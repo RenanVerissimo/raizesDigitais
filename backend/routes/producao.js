@@ -8,7 +8,7 @@ const SELECT_PRODUCAO = `
     SELECT
         id,
         usuario_id,
-        data,
+        DATE_FORMAT(data, '%Y-%m-%d') AS data,
         producao_diaria,
         qualidade,
         observacoes,
