@@ -204,15 +204,15 @@ export default function EstoqueRacao() {
                         </View>
                     )}
 
-                    <View style={{ gap: 10 }}>
-                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a" }}>Itens em estoque</Text>
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Itens em estoque</Text>
                         {racoes.length === 0 ? (
-                            <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <View style={{ paddingVertical: 22, alignItems: "center" }}>
                                 <Feather name="package" size={44} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>Cadastre compras de ração para alimentar este estoque</Text>
                             </View>
                         ) : (
-                            <View style={{ backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#f1f5f9", overflow: "hidden" }}>
+                            <View style={{ overflow: "hidden" }}>
                                 {racoes.map((racao) => {
                                     const tipo = TIPOS_RACAO.find((t) => t.key === racao.tipo) || TIPOS_RACAO[0];
                                     const baixo = racao.quantidadeAtual <= racao.estoqueMinimo;
@@ -275,7 +275,7 @@ export default function EstoqueRacao() {
                     </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Movimentações recentes</Text>
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Saídas recentes</Text>
                         {movimentacoes.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma movimentação registrada</Text>
                         ) : movimentacoes.map((m) => (
