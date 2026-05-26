@@ -837,15 +837,6 @@ export async function cadastrar(dados: {
         throw new Error(erro.erro || "Erro ao cadastrar");
     }
     const resposta = await res.json();
-    if (resposta.id) {
-        await salvarUsuarioLogado({
-            id: resposta.id,
-            nome: resposta.nome,
-            email: resposta.email,
-            telefone: resposta.telefone || null,
-            nome_fazenda: resposta.nome_fazenda || null,
-        });
-    }
     return resposta;
 }
 

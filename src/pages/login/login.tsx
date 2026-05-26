@@ -245,9 +245,18 @@ export default function LoginScreen() {
                 senha: registerData.password,
                 confirmar_senha: registerData.confirmPassword,
             });
-            Alert.alert("Sucesso", "Conta criada com sucesso!");
+            Alert.alert("Sucesso", "Conta criada com sucesso! Faça login para entrar.");
+            setLoginData({ email: registerData.email.trim(), password: "" });
+            setRegisterData({
+                name: "",
+                email: "",
+                phone: "",
+                farmName: "",
+                password: "",
+                confirmPassword: "",
+            });
+            setIsLogin(true);
             setIsLoading(false);
-            navigation.replace("Dashboard");
         } catch (err: any) {
             setIsLoading(false);
             Alert.alert("Erro", err.message || "Não foi possível criar a conta.");
