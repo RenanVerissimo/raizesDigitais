@@ -12,7 +12,7 @@ export interface UsuarioLogado {
     nome_fazenda?: string | null;
 }
 
-async function getUsuarioLogado() {
+export async function getUsuarioLogado() {
     const raw = await AsyncStorage.getItem(USUARIO_STORAGE_KEY);
     return raw ? JSON.parse(raw) as UsuarioLogado : null;
 }

@@ -12,7 +12,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes } from "../../services/api";
+import { getUsuarioLogado, limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes, UsuarioLogado } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 
@@ -77,8 +77,10 @@ export default function Dashboard() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
 
-    const userName = "Produtor";
-    const farmName = "Fazenda Modelo";
+    const [usuario, setUsuario] = useState<UsuarioLogado | null>(null);
+
+    const userName = usuario?.nome || "Produtor";
+    const farmName = usuario?.nome_fazenda || "Minha fazenda";
 
     const [todayProduction, setTodayProduction] = useState(0);
     const [average7Days, setAverage7Days] = useState(0);
@@ -101,6 +103,9 @@ export default function Dashboard() {
 
     async function carregarDados() {
         try {
+            const usuarioSalvo = await getUsuarioLogado();
+            setUsuario(usuarioSalvo);
+
             const [producoes, animais, recentes] = await Promise.all([
                 listarProducoes(),
                 listarAnimais(),
