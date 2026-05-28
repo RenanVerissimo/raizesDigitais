@@ -41,6 +41,23 @@ const FINALIDADE_LABEL: Record<string, { label: string; bg: string; text: string
     uso_geral: { label: "Uso geral", bg: "#f3f4f6", text: "#374151" },
 };
 
+const UNIDADE_COMPRA_LABEL: Record<string, { singular: string; plural: string }> = {
+    kg: { singular: "kg", plural: "kg" },
+    saco: { singular: "saco", plural: "sacos" },
+    saca: { singular: "saca", plural: "sacas" },
+    fardo: { singular: "fardo", plural: "fardos" },
+    unidade: { singular: "un.", plural: "un." },
+};
+
+function formatarQuantidadeCompra(compra: Compra) {
+    const quantidade = Number(compra.quantidade || 0);
+    const unidadeBase = compra.categoria === "racao" ? compra.unidadeCompra : "unidade";
+    const unidade = unidadeBase ? UNIDADE_COMPRA_LABEL[unidadeBase] : UNIDADE_COMPRA_LABEL.unidade;
+    const labelUnidade = quantidade === 1 ? unidade.singular : unidade.plural;
+
+    return `${quantidade.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ${labelUnidade}`;
+}
+
 export default function ComprasEPedidos() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -356,7 +373,7 @@ export default function ComprasEPedidos() {
                                         <View style={{ flexDirection: "row", gap: 8, backgroundColor: "#f9fafb", padding: 10, borderRadius: 10 }}>
                                             <View style={{ flex: 1 }}>
                                                 <Text style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>Quantidade</Text>
-                                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{compra.quantidade}</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#0a0a0a" }}>{formatarQuantidadeCompra(compra)}</Text>
                                             </View>
                                             <View style={{ flex: 1 }}>
                                                 <Text style={{ fontSize: 10, color: "#6b7280", marginBottom: 2 }}>Preço Un.</Text>
