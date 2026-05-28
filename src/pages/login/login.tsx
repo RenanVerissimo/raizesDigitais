@@ -17,6 +17,7 @@ import {
     View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 import { styles } from "./styles";
 import { FloatingIconProps, InputFieldProps } from "../../interfaces/interfaces";
@@ -217,7 +218,12 @@ export default function LoginScreen() {
             navigation.replace("Dashboard");
         } catch (err: any) {
             setIsLoading(false);
-            Alert.alert("Erro", err.message || "Não foi possível entrar.");
+            Toast.show({
+                type: "error",
+                text1: "Não foi possível entrar",
+                text2: err.message || "Verifique seu e-mail e senha.",
+                position: "top",
+            });
         }
     }
 

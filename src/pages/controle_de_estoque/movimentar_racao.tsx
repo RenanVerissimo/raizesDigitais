@@ -17,6 +17,11 @@ function hojeBr() {
     return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
+function formatarQuantidadeInput(valor?: number | null) {
+    const numero = Number(valor ?? 0);
+    return Number.isFinite(numero) ? numero.toFixed(2) : "";
+}
+
 export default function MovimentarRacao() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -114,7 +119,16 @@ export default function MovimentarRacao() {
                                     {racoes.map((r) => {
                                         const ativo = String(r.id) === formData.racaoId;
                                         return (
-                                            <TouchableOpacity key={r.id} onPress={() => setFormData({ ...formData, racaoId: String(r.id) })} activeOpacity={0.7} style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 }}>
+                                            <TouchableOpacity
+                                                key={r.id}
+                                                onPress={() => setFormData({
+                                                    ...formData,
+                                                    racaoId: String(r.id),
+                                                    quantidade: formData.tipo === "ajuste" ? formatarQuantidadeInput(r.quantidadeAtual) : formData.quantidade,
+                                                })}
+                                                activeOpacity={0.7}
+                                                style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 }}
+                                            >
                                                 <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#0a0a0a" }}>{r.nome}</Text>
                                                 <Text style={{ fontSize: 10, color: ativo ? "rgba(255,255,255,0.85)" : "#6b7280", marginTop: 2 }}>{r.quantidadeAtual.toFixed(2)} {r.unidade}</Text>
                                             </TouchableOpacity>
@@ -137,7 +151,16 @@ export default function MovimentarRacao() {
                             ].map((tipo) => {
                                 const ativo = formData.tipo === tipo.key;
                                 return (
-                                    <TouchableOpacity key={tipo.key} onPress={() => setFormData({ ...formData, tipo: tipo.key })} activeOpacity={0.7} style={{ flex: 1, backgroundColor: ativo ? tipo.cor : "#f9fafb", borderWidth: 1, borderColor: ativo ? tipo.cor : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", gap: 4 }}>
+                                    <TouchableOpacity
+                                        key={tipo.key}
+                                        onPress={() => setFormData({
+                                            ...formData,
+                                            tipo: tipo.key,
+                                            quantidade: tipo.key === "ajuste" ? formatarQuantidadeInput(racaoSelecionada?.quantidadeAtual) : "",
+                                        })}
+                                        activeOpacity={0.7}
+                                        style={{ flex: 1, backgroundColor: ativo ? tipo.cor : "#f9fafb", borderWidth: 1, borderColor: ativo ? tipo.cor : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", gap: 4 }}
+                                    >
                                         <Feather name={tipo.icon} size={16} color={ativo ? "#fff" : "#6b7280"} />
                                         <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>{tipo.label}</Text>
                                     </TouchableOpacity>
@@ -147,6 +170,13 @@ export default function MovimentarRacao() {
                     </View>
 
                     <Campo icone="archive" label={formData.tipo === "ajuste" ? "Nova quantidade em kg *" : "Quantidade que saiu em kg *"} valor={formData.quantidade} onChange={(v: string) => setFormData({ ...formData, quantidade: v })} placeholder="0" keyboard="decimal-pad" />
+                    {formData.tipo === "ajuste" && racaoSelecionada && (
+                        <View style={{ marginTop: -8, marginLeft: 4 }}>
+                            <Text style={{ fontSize: 12, color: "#6b7280" }}>
+                                Essa é a quantidade disponível em estoque atual: {racaoSelecionada.quantidadeAtual.toFixed(2)} kg.
+                            </Text>
+                        </View>
+                    )}
                     {formData.tipo === "saida" && (
                         <Campo
                             icone="edit-3"
