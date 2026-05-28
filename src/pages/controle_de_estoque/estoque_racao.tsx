@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -108,6 +108,7 @@ export default function EstoqueRacao() {
     const [racoes, setRacoes] = useState<Racao[]>([]);
     const [movimentacoes, setMovimentacoes] = useState<MovimentacaoRacao[]>([]);
     const [comprasRacao, setComprasRacao] = useState<Compra[]>([]);
+    const [modalSaidasVisivel, setModalSaidasVisivel] = useState(false);
 
     async function carregarDados() {
         try {
@@ -151,6 +152,8 @@ export default function EstoqueRacao() {
     }, []));
 
     const baixoEstoque = racoes.filter((r) => r.quantidadeAtual <= r.estoqueMinimo);
+    const saidasRacao = movimentacoes.filter((m) => m.tipo === "saida");
+    const saidasRecentes = saidasRacao.slice(0, 5);
     const vencendo = racoes.filter((r) => {
         const dias = diasAteValidade(r.validade);
         return dias !== null && dias >= 0 && dias <= 30;
@@ -276,26 +279,38 @@ export default function EstoqueRacao() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Saídas recentes</Text>
-                        {movimentacoes.length === 0 ? (
+                        {saidasRacao.length > 0 && (
+                            <TouchableOpacity onPress={() => setModalSaidasVisivel(true)} activeOpacity={0.75} style={{ alignSelf: "flex-end", flexDirection: "row", alignItems: "center", gap: 4, marginTop: -32, marginBottom: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, backgroundColor: "#eff6ff" }}>
+                                <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563eb" }}>Ver todos</Text>
+                                <Feather name="chevron-right" size={14} color="#2563eb" />
+                            </TouchableOpacity>
+                        )}
+                        {saidasRacao.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma movimentação registrada</Text>
-                        ) : movimentacoes.map((m) => (
-                            <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
-                                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: m.tipo === "entrada" ? "#dcfce7" : m.tipo === "saida" ? "#fee2e2" : "#dbeafe", alignItems: "center", justifyContent: "center" }}>
-                                    <Feather name={m.tipo === "entrada" ? "trending-up" : m.tipo === "saida" ? "trending-down" : "sliders"} size={15} color={m.tipo === "entrada" ? "#15803d" : m.tipo === "saida" ? "#b91c1c" : "#1d4ed8"} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#0a0a0a" }}>{m.racaoNome}</Text>
-                                    <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{m.motivo}</Text>
-                                    <Text style={{ fontSize: 10, color: "#9ca3af" }}>{toBr(m.data)}{m.destino ? ` - ${m.destino}` : ""}</Text>
-                                </View>
-                                <Text style={{ fontSize: 13, fontWeight: "800", color: m.tipo === "entrada" ? "#15803d" : m.tipo === "saida" ? "#b91c1c" : "#1d4ed8" }}>
-                                    {m.tipo === "entrada" ? "+" : m.tipo === "saida" ? "-" : "="}{formatarNumero(m.quantidade)} {m.unidade}
-                                </Text>
-                            </View>
-                        ))}
+                        ) : saidasRecentes.map((m) => <LinhaMovimentacaoRacao key={m.id} movimentacao={m} />)}
                     </View>
                 </View>
             </ScrollView>
+
+            <Modal visible={modalSaidasVisivel} transparent animationType="fade" onRequestClose={() => setModalSaidasVisivel(false)}>
+                <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.45)", justifyContent: "flex-end" }}>
+                    <View style={{ maxHeight: "82%", backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 16, paddingHorizontal: 18, paddingBottom: insets.bottom + 18 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 18, fontWeight: "800", color: "#0a0a0a" }}>Todas as saÃ­das</Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{saidasRacao.length} registro{saidasRacao.length === 1 ? "" : "s"} encontrado{saidasRacao.length === 1 ? "" : "s"}</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setModalSaidasVisivel(false)} activeOpacity={0.75} style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center" }}>
+                                <Feather name="x" size={20} color="#475569" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false}>
+                            {saidasRacao.map((m) => <LinhaMovimentacaoRacao key={m.id} movimentacao={m} />)}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -313,6 +328,24 @@ function LinhaInfo({ icon, texto }: { icon: React.ComponentProps<typeof Feather>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             <Feather name={icon} size={12} color="#6b7280" />
             <Text style={{ fontSize: 11, color: "#6b7280" }}>{texto}</Text>
+        </View>
+    );
+}
+
+function LinhaMovimentacaoRacao({ movimentacao: m }: { movimentacao: MovimentacaoRacao }) {
+    return (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
+            <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: m.tipo === "entrada" ? "#dcfce7" : m.tipo === "saida" ? "#fee2e2" : "#dbeafe", alignItems: "center", justifyContent: "center" }}>
+                <Feather name={m.tipo === "entrada" ? "trending-up" : m.tipo === "saida" ? "trending-down" : "sliders"} size={15} color={m.tipo === "entrada" ? "#15803d" : m.tipo === "saida" ? "#b91c1c" : "#1d4ed8"} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: "#0a0a0a" }}>{m.racaoNome}</Text>
+                <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{m.motivo}</Text>
+                <Text style={{ fontSize: 10, color: "#9ca3af" }}>{toBr(m.data)}{m.destino ? ` - ${m.destino}` : ""}</Text>
+            </View>
+            <Text style={{ fontSize: 13, fontWeight: "800", color: m.tipo === "entrada" ? "#15803d" : m.tipo === "saida" ? "#b91c1c" : "#1d4ed8" }}>
+                {m.tipo === "entrada" ? "+" : m.tipo === "saida" ? "-" : "="}{formatarNumero(m.quantidade)} {m.unidade}
+            </Text>
         </View>
     );
 }
