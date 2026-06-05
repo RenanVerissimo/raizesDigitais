@@ -21,6 +21,7 @@ import EstoqueRacao from "./src/pages/controle_de_estoque/estoque_racao";
 import MovimentarRacao from "./src/pages/controle_de_estoque/movimentar_racao";
 import RegistrarMovimentacao from "./src/pages/controle_de_estoque/registrar_movimentacao";
 import TodasMovimentacoes from "./src/pages/controle_de_estoque/todas_movimentacoes";
+import TodasComprasRacao from "./src/pages/controle_de_estoque/todas_compras_racao";
 import EditarMovimentacao from "./src/pages/controle_de_estoque/editar_movimentacao";
 import Financeiro from "./src/pages/financeiro/financeiro";
 import CadastrarReceita from "./src/pages/financeiro/cadastrar_receita";
@@ -61,6 +62,7 @@ export default function App() {
                     <Stack.Screen name="movimentar_racao" component={MovimentarRacao} />
                     <Stack.Screen name="registrar_movimentacao" component={RegistrarMovimentacao} />
                     <Stack.Screen name="todas_movimentacoes" component={TodasMovimentacoes} />
+                    <Stack.Screen name="todas_compras_racao" component={TodasComprasRacao} />
                     <Stack.Screen name="editar_movimentacao" component={EditarMovimentacao} />
                     <Stack.Screen name="financeiro" component={Financeiro} />
                     <Stack.Screen name="cadastrar_receita" component={CadastrarReceita} />

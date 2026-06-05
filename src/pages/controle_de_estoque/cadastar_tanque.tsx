@@ -18,7 +18,6 @@ export default function CadastrarTanque() {
         nome: "",
         capacidade: "",
         volumeAtual: "",
-        temperatura: "",
         localizacao: "",
         observacoes: "",
     });
@@ -29,7 +28,6 @@ export default function CadastrarTanque() {
                 nome: tanqueEdicao.nome,
                 capacidade: String(tanqueEdicao.capacidade),
                 volumeAtual: String(tanqueEdicao.volumeAtual),
-                temperatura: String(tanqueEdicao.temperatura),
                 localizacao: tanqueEdicao.localizacao || "",
                 observacoes: tanqueEdicao.observacoes || "",
             });
@@ -50,7 +48,6 @@ export default function CadastrarTanque() {
 
         const cap = parseFloat(formData.capacidade);
         const vol = parseFloat(formData.volumeAtual);
-        const temp = parseFloat(formData.temperatura);
 
         if (isNaN(cap) || cap <= 0) {
             Alert.alert("Atencao", "Capacidade invalida.");
@@ -70,7 +67,7 @@ export default function CadastrarTanque() {
                 nome: formData.nome.trim(),
                 capacidade: cap,
                 volumeAtual: vol,
-                temperatura: isNaN(temp) ? 0 : temp,
+                temperatura: tanqueEdicao?.temperatura ?? 0,
                 localizacao: formData.localizacao.trim() || null,
                 observacoes: formData.observacoes.trim() || null,
             };
@@ -141,7 +138,6 @@ export default function CadastrarTanque() {
                         </View>
                     </View>
 
-                    <Campo icone="thermometer" label="Temperatura (C)" valor={formData.temperatura} onChange={(v: string) => setFormData({ ...formData, temperatura: v })} placeholder="3.5" keyboard="decimal-pad" />
                     <Campo icone="map-pin" label="Localizacao (Opcional)" valor={formData.localizacao} onChange={(v: string) => setFormData({ ...formData, localizacao: v })} placeholder="Ex: Sala de Ordenha, Deposito" />
                     <Campo icone="file-text" label="Observacoes (Opcional)" valor={formData.observacoes} onChange={(v: string) => setFormData({ ...formData, observacoes: v })} placeholder="Observacoes adicionais..." />
 

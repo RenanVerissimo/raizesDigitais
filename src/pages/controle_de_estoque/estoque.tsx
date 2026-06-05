@@ -37,12 +37,6 @@ export interface Movimentacao {
     observacoes?: string;
 }
 
-const QUALIDADE_CFG: Record<Qualidade, { label: string; bg: string; text: string }> = {
-    excelente: { label: "Excelente", bg: "#dcfce7", text: "#15803d" },
-    boa: { label: "Boa", bg: "#dbeafe", text: "#1d4ed8" },
-    regular: { label: "Regular", bg: "#fef9c3", text: "#a16207" },
-};
-
 function corOcupacao(p: number) {
     if (p > 90) return "#ef4444";
     if (p > 70) return "#f97316";
@@ -214,11 +208,10 @@ export default function Estoque() {
                         </View>
                     </View>
 
-                    <View style={{ gap: 10 }}>
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9", gap: 10 }}>
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Tanques de Armazenamento</Text>
-
                         {tanques.length === 0 ? (
-                            <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <View style={{ padding: 32, alignItems: "center" }}>
                                 <Feather name="droplet" size={48} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>Nenhum tanque cadastrado</Text>
                             </View>
@@ -226,17 +219,14 @@ export default function Estoque() {
                             tanques.map((tank) => {
                                 const fill = (tank.volumeAtual / tank.capacidade) * 100;
                                 const critico = fill > 90;
-                                const tempRuim = tank.temperatura > 4;
-                                const qcfg = QUALIDADE_CFG[tank.qualidade];
                                 return (
-                                    <View key={tank.id} style={{ backgroundColor: critico || tempRuim ? "#fff7ed" : "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: critico || tempRuim ? "#fed7aa" : "#f1f5f9" }}>
+                                    <View key={tank.id} style={{ backgroundColor: critico ? "#fff7ed" : "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: critico ? "#fed7aa" : "#f1f5f9" }}>
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                                             <View style={{ flex: 1 }}>
                                                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
                                                     <Feather name="droplet" size={18} color="#4a90e2" />
                                                     <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>{tank.nome}</Text>
                                                     {critico && <Feather name="alert-triangle" size={14} color="#ea580c" />}
-                                                    {tempRuim && <Feather name="thermometer" size={14} color="#dc2626" />}
                                                 </View>
                                                 {tank.localizacao && (
                                                     <Text style={{ fontSize: 11, color: "#6b7280", marginBottom: 2 }}>📍 {tank.localizacao}</Text>
@@ -272,10 +262,6 @@ export default function Estoque() {
                                                 <Text style={{ fontSize: 10, color: "#6b7280" }}>Capacidade</Text>
                                                 <Text style={{ fontSize: 13, fontWeight: "600", color: "#0a0a0a", marginTop: 2 }}>{tank.capacidade.toFixed(1)} L</Text>
                                             </View>
-                                            <View style={{ flex: 1, backgroundColor: tempRuim ? "#fef2f2" : "#eff6ff", borderRadius: 8, padding: 8 }}>
-                                                <Text style={{ fontSize: 10, color: "#6b7280" }}>Temp.</Text>
-                                                <Text style={{ fontSize: 13, fontWeight: "700", color: tempRuim ? "#dc2626" : "#4a90e2", marginTop: 2 }}>{tank.temperatura.toFixed(1)}°C</Text>
-                                            </View>
                                         </View>
 
                                         <View style={{ marginBottom: 8 }}>
@@ -288,11 +274,6 @@ export default function Estoque() {
                                             </View>
                                         </View>
 
-                                        <View style={{ flexDirection: "row" }}>
-                                            <View style={{ backgroundColor: qcfg.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                                                <Text style={{ fontSize: 11, fontWeight: "500", color: qcfg.text }}>Qualidade: {qcfg.label}</Text>
-                                            </View>
-                                        </View>
                                     </View>
                                 );
                             })
@@ -317,7 +298,7 @@ export default function Estoque() {
                             </Text>
                         ) : (
                             <View style={{ gap: 8 }}>
-                                {movimentacoes.slice(0, 10).map((m) => (
+                                {movimentacoes.slice(0, 6).map((m) => (
                                     <View key={m.id} style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 10, backgroundColor: "#f9fafb", borderRadius: 10 }}>
                                         <View style={{ padding: 8, borderRadius: 8, backgroundColor: m.tipo === "entrada" ? "#dcfce7" : "#fee2e2" }}>
                                             <Feather name={m.tipo === "entrada" ? "trending-up" : "trending-down"} size={14} color={m.tipo === "entrada" ? "#16a34a" : "#dc2626"} />

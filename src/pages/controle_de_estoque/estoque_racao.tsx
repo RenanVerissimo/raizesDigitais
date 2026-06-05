@@ -74,6 +74,15 @@ function obterTipoCompra(compra: Compra) {
     );
 }
 
+function descricaoCompraRacao(compra: Compra) {
+    const unidade = compra.unidadeCompra ? UNIDADES_COMPRA_RACAO[compra.unidadeCompra] || compra.unidadeCompra : "un.";
+    const quantidadeObtidaKg = Number(compra.quantidadeEstoqueKg ?? compra.quantidade);
+    const textoKg = `${formatarNumero(quantidadeObtidaKg)} kg obtidos`;
+
+    if (compra.unidadeCompra === "kg") return textoKg;
+    return `${formatarNumero(compra.quantidade)} ${unidade} - ${textoKg}`;
+}
+
 function agruparComprasRacao(compras: Compra[]) {
     const grupos = new Map<TipoRacao, { tipo: TipoRacao; quantidade: number; valor: number; fornecedor: string | null }>();
 
@@ -251,25 +260,35 @@ export default function EstoqueRacao() {
                     </View>
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Compras de ração realizadas</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a" }}>Compras de ração realizadas</Text>
+                            {comprasRacao.length > 0 && (
+                                <TouchableOpacity
+                                    activeOpacity={0.75}
+                                    onPress={() => navigation.navigate("todas_compras_racao")}
+                                    style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5 }}
+                                >
+                                    <Text style={{ fontSize: 12, fontWeight: "800", color: "#4a90e2" }}>Ver todas</Text>
+                                    <Feather name="chevron-right" size={15} color="#4a90e2" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
                         {comprasRacao.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma compra de ração concluída</Text>
-                        ) : comprasRacao.slice(0, 8).map((compra) => {
+                        ) : comprasRacao.slice(0, 6).map((compra) => {
                             const tipo = obterTipoCompra(compra);
-                            const unidade = compra.unidadeCompra ? UNIDADES_COMPRA_RACAO[compra.unidadeCompra] || compra.unidadeCompra : "un.";
                             return (
                                 <View key={compra.id} style={{ paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
                                     <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                                         <View style={{ flex: 1 }}>
                                             <Text style={{ fontSize: 13, fontWeight: "800", color: "#0a0a0a" }}>{tipo.label}</Text>
                                             <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
-                                                {formatarNumero(compra.quantidade)} {unidade} - {formatarNumero(Number(compra.quantidadeEstoqueKg ?? compra.quantidade))} kg no estoque
+                                                {descricaoCompraRacao(compra)}
                                             </Text>
                                             <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>{toBr(compra.data)}{compra.fornecedor ? ` - ${compra.fornecedor}` : ""}</Text>
                                         </View>
                                         <View style={{ alignItems: "flex-end" }}>
-                                            <Tag label={tipo.label} bg={tipo.bg} text={tipo.color} />
-                                            <Text style={{ fontSize: 12, fontWeight: "800", color: "#16a34a", marginTop: 6 }}>R$ {compra.precoTotal.toFixed(2)}</Text>
+                                            <Text style={{ fontSize: 12, fontWeight: "800", color: "#16a34a" }}>R$ {compra.precoTotal.toFixed(2)}</Text>
                                         </View>
                                     </View>
                                 </View>
@@ -340,7 +359,6 @@ function LinhaMovimentacaoRacao({ movimentacao: m }: { movimentacao: Movimentaca
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 13, fontWeight: "700", color: "#0a0a0a" }}>{m.racaoNome}</Text>
-                <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{m.motivo}</Text>
                 <Text style={{ fontSize: 10, color: "#9ca3af" }}>{toBr(m.data)}{m.destino ? ` - ${m.destino}` : ""}</Text>
             </View>
             <Text style={{ fontSize: 13, fontWeight: "800", color: m.tipo === "entrada" ? "#15803d" : m.tipo === "saida" ? "#b91c1c" : "#1d4ed8" }}>

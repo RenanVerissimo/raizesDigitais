@@ -26,7 +26,6 @@ export default function RegistrarMovimentacao() {
         tipo: "saida" as TipoMovimento,
         volume: "",
         data: `${dd}/${mm}/${yyyy}`,
-        motivo: "",
         comprador: "",
         temperatura: "",
         consumoProprio: "",
@@ -47,8 +46,8 @@ export default function RegistrarMovimentacao() {
     }
 
     async function handleSubmit() {
-        const motivo = formData.motivo.trim() || (ehConsumoProprio ? "Consumo próprio" : "");
-        if (!formData.tanqueId || !motivo) {
+        const motivo = ehConsumoProprio ? "Consumo próprio" : "Entrega/Venda";
+        if (!formData.tanqueId) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Preencha os campos obrigatórios.", position: "top", visibilityTime: 3000 });
             return;
         }
@@ -193,7 +192,6 @@ export default function RegistrarMovimentacao() {
                                             consumoProprio: destino.key === "entrega" ? "" : formData.consumoProprio,
                                             temperatura: destino.key === "consumo_proprio" ? "" : formData.temperatura,
                                             comprador: destino.key === "consumo_proprio" ? "" : formData.comprador,
-                                            motivo: destino.key === "consumo_proprio" && !formData.motivo.trim() ? "Consumo próprio" : formData.motivo,
                                         })}
                                         style={{ flex: 1, backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
                                     >
@@ -284,23 +282,6 @@ export default function RegistrarMovimentacao() {
                             />
                         </View>
                     )}
-
-                    {/* Motivo */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="file-text" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Motivo {ehConsumoProprio ? <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text> : null}
-                            </Text>
-                        </View>
-                        <TextInput
-                            value={formData.motivo}
-                            onChangeText={(v) => setFormData({ ...formData, motivo: v })}
-                            placeholder={ehConsumoProprio ? "Consumo próprio" : "Ex: Coleta da manhã, Entrega, Transferência"}
-                            placeholderTextColor="#9ca3af"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                        />
-                    </View>
 
                     {/* Comprador (só em saída) */}
                     {ehEntrega && (
