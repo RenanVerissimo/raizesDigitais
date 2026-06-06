@@ -15,6 +15,7 @@ import Animais from "./src/pages/animais/animais";
 import CadastrarAnimais from "./src/pages/animais/cadastrar_animais";
 import CadastrarCompras from "./src/pages/compras_e_pedidos/cadastrar_compras";
 import ComprasEPedidos from "./src/pages/compras_e_pedidos/compras_e_pedidos";
+import TodasCompras from "./src/pages/compras_e_pedidos/todas_compras";
 import CadastrarTanque from "./src/pages/controle_de_estoque/cadastar_tanque";
 import Estoque from "./src/pages/controle_de_estoque/estoque";
 import EstoqueRacao from "./src/pages/controle_de_estoque/estoque_racao";
@@ -55,6 +56,7 @@ export default function App() {
                     <Stack.Screen name="Animais" component={Animais} />
                     <Stack.Screen name="CadastrarAnimais" component={CadastrarAnimais} />
                     <Stack.Screen name="compras_e_pedidos" component={ComprasEPedidos} />
+                    <Stack.Screen name="todas_compras" component={TodasCompras} />
                     <Stack.Screen name="cadastrar_compras" component={CadastrarCompras} />
                     <Stack.Screen name="cadastar_tanque" component={CadastrarTanque} />
                     <Stack.Screen name="estoque" component={Estoque} />

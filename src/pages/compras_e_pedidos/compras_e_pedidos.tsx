@@ -15,6 +15,7 @@ import { atualizarStatusCompra, excluirCompra, listarCompras } from "../../servi
 import { CategoriaCompra, Compra, StatusCompra } from "../../interfaces/interfaces";
 import { Toast } from "react-native-toast-message/lib/src/Toast";
 import ConfirmDeleteModal from "../animais/ConfirmationModal";
+import { toBr } from "../../utils/formatters";
 
 
 
@@ -72,6 +73,7 @@ export default function ComprasEPedidos() {
     const comprasFiltradas = filtroStatus === "todos"
         ? compras
         : compras.filter((c) => c.status === filtroStatus);
+    const comprasExibidas = comprasFiltradas.slice(0, 6);
 
     const totalPendente = compras
         .filter((c) => c.status === "pendente")
@@ -169,7 +171,7 @@ export default function ComprasEPedidos() {
                                 Compras e Pedidos
                             </Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                {comprasFiltradas.length} {comprasFiltradas.length === 1 ? "item" : "itens"}
+                                {comprasExibidas.length} {comprasExibidas.length === 1 ? "item" : "itens"}
                             </Text>
                         </View>
                     </View>
@@ -264,16 +266,39 @@ export default function ComprasEPedidos() {
                         </View>
                     
 
-                    {comprasFiltradas.length === 0 ? (
-                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
-                            <Feather name="shopping-cart" size={48} color="#d1d5db" />
-                            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>
-                                Nenhuma compra encontrada
-                            </Text>
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9", gap: 12, marginBottom: insets.bottom + 20 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: "#eff6ff", alignItems: "center", justifyContent: "center" }}>
+                                <Feather name="shopping-bag" size={18} color="#4a90e2" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#0a0a0a" }}>Compras recentes</Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                                    {comprasExibidas.length} {comprasExibidas.length === 1 ? "compra exibida" : "compras exibidas"}
+                                </Text>
+                            </View>
+                            {comprasFiltradas.length > 6 && (
+                                <TouchableOpacity
+                                    activeOpacity={0.75}
+                                    onPress={() => navigation.navigate("todas_compras")}
+                                    style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 5 }}
+                                >
+                                    <Text style={{ fontSize: 12, fontWeight: "800", color: "#4a90e2" }}>Ver todas</Text>
+                                    <Feather name="chevron-right" size={15} color="#4a90e2" />
+                                </TouchableOpacity>
+                            )}
                         </View>
-                    ) : (
-                        <View style={{ gap: 12, marginBottom: insets.bottom + 20 }}>
-                            {comprasFiltradas.map((compra) => {
+
+                        {comprasExibidas.length === 0 ? (
+                            <View style={{ padding: 32, alignItems: "center" }}>
+                                <Feather name="shopping-cart" size={48} color="#d1d5db" />
+                                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>
+                                    Nenhuma compra encontrada
+                                </Text>
+                            </View>
+                        ) : (
+                        <View style={{ gap: 12 }}>
+                            {comprasExibidas.map((compra) => {
                                 const cat = CATEGORIAS[compra.categoria];
                                 const status = STATUS_CONFIG[compra.status];
                                 const finalidade = compra.finalidadeTratamento ? FINALIDADE_LABEL[compra.finalidadeTratamento] : null;
@@ -282,7 +307,7 @@ export default function ComprasEPedidos() {
                                     <View
                                         key={compra.id}
                                         style={{
-                                            backgroundColor: "#fff",
+                                            backgroundColor: "#f9fafb",
                                             borderRadius: 14,
                                             padding: 16,
                                             borderWidth: 1,
@@ -364,7 +389,7 @@ export default function ComprasEPedidos() {
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
                                                 <Feather name="calendar" size={12} color="#6b7280" />
                                                 <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                    {new Date(compra.data).toLocaleDateString("pt-BR")}
+                                                    {toBr(compra.data)}
                                                 </Text>
                                             </View>
                                         </View>
@@ -388,7 +413,8 @@ export default function ComprasEPedidos() {
                                 );
                             })}
                         </View>
-                    )}
+                        )}
+                    </View>
                 </View>
                 <ConfirmDeleteModal
                     visible={modalVisible}

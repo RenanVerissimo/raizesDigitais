@@ -300,24 +300,24 @@ export default function EstoqueRacao() {
                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Saídas recentes</Text>
                         {saidasRacao.length > 0 && (
                             <TouchableOpacity onPress={() => setModalSaidasVisivel(true)} activeOpacity={0.75} style={{ alignSelf: "flex-end", flexDirection: "row", alignItems: "center", gap: 4, marginTop: -32, marginBottom: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, backgroundColor: "#eff6ff" }}>
-                                <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563eb" }}>Ver todos</Text>
+                                <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563eb" }}>Ver todas</Text>
                                 <Feather name="chevron-right" size={14} color="#2563eb" />
                             </TouchableOpacity>
                         )}
                         {saidasRacao.length === 0 ? (
-                            <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma movimentação registrada</Text>
+                            <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma saída registrada</Text>
                         ) : saidasRecentes.map((m) => <LinhaMovimentacaoRacao key={m.id} movimentacao={m} />)}
                     </View>
                 </View>
             </ScrollView>
 
             <Modal visible={modalSaidasVisivel} transparent animationType="fade" onRequestClose={() => setModalSaidasVisivel(false)}>
-                <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.45)", justifyContent: "flex-end" }}>
-                    <View style={{ maxHeight: "82%", backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 16, paddingHorizontal: 18, paddingBottom: insets.bottom + 18 }}>
+                <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.45)", justifyContent: "center", padding: 20 }}>
+                    <View style={{ maxHeight: "82%", backgroundColor: "#fff", borderRadius: 20, paddingTop: 16, paddingHorizontal: 18, paddingBottom: insets.bottom + 18 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 8 }}>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 18, fontWeight: "800", color: "#0a0a0a" }}>Todas as saÃ­das</Text>
-                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{saidasRacao.length} registro{saidasRacao.length === 1 ? "" : "s"} encontrado{saidasRacao.length === 1 ? "" : "s"}</Text>
+                                <Text style={{ fontSize: 18, fontWeight: "800", color: "#0a0a0a" }}>Todas as saídas de ração</Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{saidasRacao.length} saída{saidasRacao.length === 1 ? "" : "s"} registrada{saidasRacao.length === 1 ? "" : "s"}</Text>
                             </View>
                             <TouchableOpacity onPress={() => setModalSaidasVisivel(false)} activeOpacity={0.75} style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center" }}>
                                 <Feather name="x" size={20} color="#475569" />
