@@ -7,14 +7,12 @@ import {
     StatusBar,
     Alert,
 } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
-import { atualizarStatusCompra, excluirCompra, listarCompras } from "../../services/api";
+import { listarCompras } from "../../services/api";
 import { CategoriaCompra, Compra, StatusCompra } from "../../interfaces/interfaces";
-import { Toast } from "react-native-toast-message/lib/src/Toast";
-import ConfirmDeleteModal from "../animais/ConfirmationModal";
 import { toBr } from "../../utils/formatters";
 
 
@@ -84,46 +82,6 @@ export default function ComprasEPedidos() {
         .reduce((sum, c) => sum + c.precoTotal, 0);
 
 
-    const [modalVisible, setModalVisible] = useState(false);
-    const [compraSelecionada, setCompraSelecionada] = useState<Compra | null>(null);
-
-    function handleExcluir(compra: Compra) {
-        setCompraSelecionada(compra);
-        setModalVisible(true);
-    }
-
-    async function confirmarExclusao() {
-        if (!compraSelecionada) return;
-        const itemExcluido = compraSelecionada.item;
-
-        try {
-            await excluirCompra(compraSelecionada.id);
-            setCompras((prev) => prev.filter((c) => c.id !== compraSelecionada.id));
-            Toast.show({
-                type: "success",
-                text1: "Compra excluída",
-                text2: `${itemExcluido} foi removido com sucesso.`,
-                position: "top",
-                visibilityTime: 3000,
-            });
-        } catch {
-            Toast.show({
-                type: "error",
-                text1: "Erro ao excluir",
-                text2: "Não foi possível excluir a compra.",
-                position: "top",
-                visibilityTime: 3000,
-            });
-        } finally {
-            setModalVisible(false);
-            setCompraSelecionada(null);
-        }
-    }
-
-
-    function handleEditar(compra: Compra) {
-        navigation.navigate("editar_compras", { compra });
-    }
     const filtros: { key: "todos" | StatusCompra; label: string; cor: string }[] = [
         { key: "todos", label: "Todos", cor: "#4a90e2" },
         { key: "pendente", label: "Pendente", cor: "#eab308" },
@@ -314,9 +272,9 @@ export default function ComprasEPedidos() {
                                             borderColor: "#f1f5f9",
                                         }}
                                     >
-                                        {/* 🔹 HEADER — título + categoria + ações */}
+                                        {/* 🔹 HEADER — título + categoria */}
                                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                                            <View style={{ flex: 1, marginRight: 10 }}>
+                                            <View style={{ flex: 1 }}>
                                                 <Text style={{ fontSize: 16, fontWeight: "600", color: "#0a0a0a", marginBottom: 6 }}>
                                                     {compra.item}
                                                 </Text>
@@ -335,49 +293,6 @@ export default function ComprasEPedidos() {
                                                     )}
                                                 </View>
                                             </View>
-
-                                            {/* Ações */}
-                                            <View style={{ flexDirection: "row", gap: 6 }}>
-                                                <TouchableOpacity
-                                                    onPress={() => handleEditar(compra)}
-                                                    activeOpacity={0.7}
-                                                    style={{
-                                                        width: 32,
-                                                        height: 32,
-                                                        backgroundColor: "#f59e0b",
-                                                        borderRadius: 8,
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        shadowColor: "#f59e0b",
-                                                        shadowOffset: { width: 0, height: 1 },
-                                                        shadowOpacity: 0.3,
-                                                        shadowRadius: 3,
-                                                        elevation: 2,
-                                                    }}
-                                                >
-                                                    <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity
-                                                    onPress={() => handleExcluir(compra)}
-                                                    activeOpacity={0.7}
-                                                    style={{
-                                                        width: 32,
-                                                        height: 32,
-                                                        backgroundColor: "#ef4444",
-                                                        borderRadius: 8,
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        shadowColor: "#ef4444",
-                                                        shadowOffset: { width: 0, height: 1 },
-                                                        shadowOpacity: 0.3,
-                                                        shadowRadius: 3,
-                                                        elevation: 2,
-                                                    }}
-                                                >
-                                                    <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
-                                                </TouchableOpacity>
-                                            </View>
-
                                         </View>
 
                                         {/* 🔹 INFO — fornecedor + data */}
@@ -416,13 +331,6 @@ export default function ComprasEPedidos() {
                         )}
                     </View>
                 </View>
-                <ConfirmDeleteModal
-                    visible={modalVisible}
-                    title="Excluir compra"
-                    nomeAnimal={compraSelecionada?.item || ""}
-                    onCancel={() => setModalVisible(false)}
-                    onConfirm={confirmarExclusao}
-                />
             </ScrollView>
         </View>
     );

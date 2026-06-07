@@ -88,6 +88,17 @@ export default function Financiamentos() {
 
                 <TouchableOpacity
                     activeOpacity={0.85}
+                    onPress={() => navigation.navigate("quitar_parcela_financiamento")}
+                    style={{ backgroundColor: "rgba(255,255,255,0.16)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }}
+                >
+                    <Feather name="credit-card" size={20} color="#fff" />
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>
+                        Quitar Parcela
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    activeOpacity={0.85}
                     onPress={() => navigation.navigate("quitar_financiamento")}
                     style={{ backgroundColor: "rgba(22,163,74,0.25)", borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 10 }}
                 >

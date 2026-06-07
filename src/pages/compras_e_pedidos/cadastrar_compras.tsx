@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
     View,
     Text,
@@ -17,15 +17,9 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { CategoriaCompra, FinalidadeTratamento, StatusCompra, TipoRacaoCompra, UnidadeCompraRacao } from "../../interfaces/interfaces";
 import { CATEGORIAS } from "./compras_e_pedidos";
 import Toast from "react-native-toast-message";
-import { criarCompra, listarAnimais } from "../../services/api";
+import { criarCompra } from "../../services/api";
 import DateInput from "../../components/DateInput";
 import { toBr, toIso } from "../../utils/formatters";
-
-const FINALIDADES_TRATAMENTO: { key: FinalidadeTratamento; label: string; cor: string }[] = [
-    { key: "mastite", label: "Mastite", cor: "#dc2626" },
-    { key: "outro_tratamento", label: "Outro tratamento", cor: "#4a90e2" },
-    { key: "uso_geral", label: "Uso geral", cor: "#6b7280" },
-];
 
 type ItemProdutoOpcao = "vacina" | "antibiotico" | "remedio" | "outro";
 
@@ -56,6 +50,10 @@ const PESO_SUGERIDO_RACAO: Partial<Record<TipoRacaoCompra, Partial<Record<Unidad
     nucleo_mineral: { saco: 25 },
 };
 
+const CATEGORIAS_CADASTRO = (Object.keys(CATEGORIAS) as CategoriaCompra[]).filter(
+    (key) => key !== "manutencao"
+);
+
 export default function CadastrarCompra() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -79,11 +77,10 @@ export default function CadastrarCompra() {
         fornecedor: "",
         data: `${dd}/${mm}/${yyyy}`,
         status: "pendente" as StatusCompra,
-        finalidadeTratamento: "uso_geral" as FinalidadeTratamento,
+        finalidadeTratamento: "outro_tratamento" as FinalidadeTratamento,
         finalidadeDescricao: "",
         observacoes: "",
     });
-    const [opcoesDoencas, setOpcoesDoencas] = useState<string[]>([]);
 
     const total = (parseFloat(formData.quantidade) || 0) * (parseFloat(formData.precoUnitario) || 0);
     const quantidade = parseFloat(formData.quantidade) || 0;
@@ -100,19 +97,6 @@ export default function CadastrarCompra() {
         ? formData.itemOutro.trim()
         : ITENS_PRODUTO.find((item) => item.key === formData.itemOpcao)?.label || ""
         : formData.itemDescricao.trim();
-
-    useEffect(() => {
-        listarAnimais()
-            .then((animais) => {
-                const doencas = Array.from(new Set(
-                    animais
-                        .map((animal) => animal.descricao_doenca?.trim())
-                        .filter((doenca): doenca is string => !!doenca)
-                ));
-                setOpcoesDoencas(doencas);
-            })
-            .catch(() => setOpcoesDoencas([]));
-    }, []);
 
     function handleCancelar() {
         const temDados = formData.itemDescricao || formData.itemOutro || formData.quantidade || formData.precoUnitario || formData.fornecedor;
@@ -157,8 +141,8 @@ export default function CadastrarCompra() {
             Alert.alert("Atenção", "Quantidade e preço devem ser maiores que 0.");
             return;
         }
-        if (formData.categoria === "medicamento" && formData.finalidadeTratamento === "outro_tratamento" && !formData.finalidadeDescricao.trim()) {
-            Alert.alert("Atenção", "Selecione ou informe a doença relacionada ao tratamento.");
+        if (formData.categoria === "medicamento" && formData.finalidadeTratamento !== "mastite" && !formData.finalidadeDescricao.trim()) {
+            Alert.alert("Atenção", "Informe a finalidade do tratamento.");
             return;
         }
         if (formData.categoria === "racao" && formData.unidadeCompra !== "kg" && (isNaN(pesoPorUnidade) || pesoPorUnidade <= 0)) {
@@ -255,7 +239,7 @@ export default function CadastrarCompra() {
                         </View>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <View style={{ flexDirection: "row", gap: 8 }}>
-                                {(Object.keys(CATEGORIAS) as CategoriaCompra[]).map((key) => {
+                                {CATEGORIAS_CADASTRO.map((key) => {
                                     const c = CATEGORIAS[key];
                                     const ativo = formData.categoria === key;
                                     return (
@@ -416,63 +400,55 @@ export default function CadastrarCompra() {
                                 <Feather name="heart" size={16} color="#dc2626" />
                                 <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Finalidade do tratamento</Text>
                             </View>
-                            <View style={{ gap: 8 }}>
-                                {FINALIDADES_TRATAMENTO.map((finalidade) => {
-                                    const ativo = formData.finalidadeTratamento === finalidade.key;
-                                    return (
-                                        <TouchableOpacity
-                                            key={finalidade.key}
-                                            activeOpacity={0.75}
-                                            onPress={() => setFormData({ ...formData, finalidadeTratamento: finalidade.key, finalidadeDescricao: finalidade.key === "outro_tratamento" ? formData.finalidadeDescricao : "" })}
-                                            style={{
-                                                backgroundColor: ativo ? finalidade.cor : "#f9fafb",
-                                                borderWidth: 1,
-                                                borderColor: ativo ? finalidade.cor : "#e5e7eb",
-                                                borderRadius: 10,
-                                                paddingVertical: 11,
-                                                paddingHorizontal: 12,
-                                                flexDirection: "row",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                            }}
-                                        >
-                                            <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>
-                                                {finalidade.label}
-                                            </Text>
-                                            {ativo && <Feather name="check" size={16} color="#fff" />}
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
+                            <TouchableOpacity
+                                activeOpacity={0.75}
+                                onPress={() => setFormData({ ...formData, finalidadeTratamento: "mastite", finalidadeDescricao: "" })}
+                                style={{
+                                    backgroundColor: formData.finalidadeTratamento === "mastite" ? "#dc2626" : "#f9fafb",
+                                    borderWidth: 1,
+                                    borderColor: formData.finalidadeTratamento === "mastite" ? "#dc2626" : "#e5e7eb",
+                                    borderRadius: 10,
+                                    paddingVertical: 11,
+                                    paddingHorizontal: 12,
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    marginBottom: 8,
+                                }}
+                            >
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: formData.finalidadeTratamento === "mastite" ? "#fff" : "#374151" }}>
+                                    Mastite
+                                </Text>
+                                {formData.finalidadeTratamento === "mastite" && <Feather name="check" size={16} color="#fff" />}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                activeOpacity={0.75}
+                                onPress={() => setFormData({ ...formData, finalidadeTratamento: "outro_tratamento" })}
+                                style={{
+                                    backgroundColor: formData.finalidadeTratamento === "outro_tratamento" ? "#4a90e2" : "#f9fafb",
+                                    borderWidth: 1,
+                                    borderColor: formData.finalidadeTratamento === "outro_tratamento" ? "#4a90e2" : "#e5e7eb",
+                                    borderRadius: 10,
+                                    paddingVertical: 11,
+                                    paddingHorizontal: 12,
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                }}
+                            >
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: formData.finalidadeTratamento === "outro_tratamento" ? "#fff" : "#374151" }}>
+                                    Outro tratamento
+                                </Text>
+                                {formData.finalidadeTratamento === "outro_tratamento" && <Feather name="check" size={16} color="#fff" />}
+                            </TouchableOpacity>
                             {formData.finalidadeTratamento === "outro_tratamento" && (
-                                <View style={{ gap: 8, marginTop: 12 }}>
-                                    {opcoesDoencas.length > 0 && (
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                            <View style={{ flexDirection: "row", gap: 8 }}>
-                                                {opcoesDoencas.map((doenca) => {
-                                                    const ativo = formData.finalidadeDescricao === doenca;
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={doenca}
-                                                            activeOpacity={0.75}
-                                                            onPress={() => setFormData({ ...formData, finalidadeDescricao: doenca })}
-                                                            style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }}
-                                                        >
-                                                            <Text style={{ fontSize: 12, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>{doenca}</Text>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-                                        </ScrollView>
-                                    )}
-                                    <TextInput
-                                        value={formData.finalidadeDescricao}
-                                        onChangeText={(v) => setFormData({ ...formData, finalidadeDescricao: v })}
-                                        placeholder="Qual doença?"
-                                        placeholderTextColor="#9ca3af"
-                                        style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
-                                    />
-                                </View>
+                                <TextInput
+                                    value={formData.finalidadeDescricao}
+                                    onChangeText={(v) => setFormData({ ...formData, finalidadeDescricao: v })}
+                                    placeholder="Digite a finalidade do tratamento"
+                                    placeholderTextColor="#9ca3af"
+                                    style={{ marginTop: 8, backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                                />
                             )}
                         </View>
                     )}

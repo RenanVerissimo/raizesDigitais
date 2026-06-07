@@ -38,6 +38,7 @@ import financiamentos from "./src/pages/financeiro/financiamentos";
 import cadastrar_financiamento from "./src/pages/financeiro/cadastrar_financiamento";
 import VerTodosFinanciamentos from "./src/pages/financeiro/ver_todos_financiamentos";
 import QuitarFinanciamento from "./src/pages/financeiro/quitar_financiamento";
+import QuitarParcelaFinanciamento from "./src/pages/financeiro/quitar_parcela_financiamento";
 import EditarFinanciamento from "./src/pages/financeiro/editar_financiamento";
 
 
@@ -80,6 +81,7 @@ export default function App() {
                     <Stack.Screen name="cadastrar_financiamento" component={cadastrar_financiamento} />
                     <Stack.Screen name="ver_todos_financiamentos" component={VerTodosFinanciamentos} />
                     <Stack.Screen name="quitar_financiamento" component={QuitarFinanciamento} />
+                    <Stack.Screen name="quitar_parcela_financiamento" component={QuitarParcelaFinanciamento} />
                     <Stack.Screen name="editar_financiamento" component={EditarFinanciamento} />
 
                 </Stack.Navigator>

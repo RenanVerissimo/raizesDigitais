@@ -235,4 +235,70 @@ router.patch("/:id/quitar", async (req, res) => {
     }
 });
 
+router.patch("/:id/quitar-parcela", async (req, res) => {
+    try {
+        await ensureFinanciamentosSchema();
+        const usuarioId = await requireUsuario(req, res, ["financiamentos"]);
+        if (!usuarioId) return;
+
+        const id = Number(req.params.id);
+        const valorPago = Number(req.body.valorPago);
+        const dataPagamento = req.body.dataPagamento || new Date().toISOString().slice(0, 10);
+
+        if (!id || !valorPago || valorPago <= 0) {
+            return res.status(400).json({ erro: "Dados de pagamento invalidos" });
+        }
+
+        const [financiamentos] = await pool.query(
+            `SELECT id, valor_total, quantidade_parcelas, parcelas_pagas, status
+             FROM financiamentos
+             WHERE id = ? AND usuario_id = ?`,
+            [id, usuarioId]
+        );
+
+        if (!financiamentos.length) {
+            return res.status(404).json({ erro: "Financiamento nao encontrado" });
+        }
+
+        const financiamento = financiamentos[0];
+
+        if (financiamento.status !== "ativo") {
+            return res.status(400).json({ erro: "Apenas financiamentos ativos podem receber pagamento de parcela" });
+        }
+
+        if (financiamento.parcelas_pagas >= financiamento.quantidade_parcelas) {
+            return res.status(400).json({ erro: "Todas as parcelas deste financiamento ja foram pagas" });
+        }
+
+        const novasParcelasPagas = financiamento.parcelas_pagas + 1;
+        const quitado = novasParcelasPagas >= financiamento.quantidade_parcelas;
+
+        await pool.query(
+            `UPDATE financiamentos
+             SET parcelas_pagas = ?,
+                 status = ?,
+                 valor_quitacao = CASE WHEN ? THEN ? ELSE valor_quitacao END,
+                 desconto_quitacao = CASE WHEN ? THEN 0 ELSE desconto_quitacao END,
+                 data_quitacao = CASE WHEN ? THEN ? ELSE data_quitacao END
+             WHERE id = ? AND usuario_id = ?`,
+            [
+                novasParcelasPagas,
+                quitado ? "quitado" : "ativo",
+                quitado,
+                financiamento.valor_total,
+                quitado,
+                quitado,
+                dataPagamento,
+                id,
+                usuarioId,
+            ]
+        );
+
+        res.json({ ok: true, parcelasPagas: novasParcelasPagas, status: quitado ? "quitado" : "ativo" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao quitar parcela do financiamento" });
+    }
+});
+
 module.exports = router;

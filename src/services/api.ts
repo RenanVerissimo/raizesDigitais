@@ -565,6 +565,24 @@ export async function quitarFinanciamento(id: number, dados: {
     return res.json();
 }
 
+export async function quitarParcelaFinanciamento(id: number, dados: {
+    valorPago: number;
+    dataPagamento: string;
+}) {
+    const res = await apiFetch(`/financiamentos/${id}/quitar-parcela`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!res.ok) {
+        const erroData = await res.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao quitar parcela do financiamento");
+    }
+
+    return res.json();
+}
+
 
 // ============================================
 // ESTOQUE — TANQUES
