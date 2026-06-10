@@ -1,8 +1,14 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
+import { API_URL } from "../config";
+const BASE_URL = API_URL;
 
-const BASE_URL = "http://192.168.32.108:3001/api";
+console.log("BASE_URL:", BASE_URL);
+
+
 const USUARIO_STORAGE_KEY = "@raizes_digitais_usuario";
+
+
 
 export interface UsuarioLogado {
     id: number;
