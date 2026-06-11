@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import {
+    ActivityIndicator,
     View,
     Text,
     TouchableOpacity,
@@ -247,7 +248,17 @@ export default function ComprasEPedidos() {
                             )}
                         </View>
 
-                        {comprasExibidas.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ padding: 32, alignItems: "center" }}>
+                                <ActivityIndicator size="large" color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151", marginTop: 14 }}>
+                                    Carregando compras
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                    A API pode levar alguns segundos para responder.
+                                </Text>
+                            </View>
+                        ) : comprasExibidas.length === 0 ? (
                             <View style={{ padding: 32, alignItems: "center" }}>
                                 <Feather name="shopping-cart" size={48} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>

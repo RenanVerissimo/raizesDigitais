@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import DateInput from "../../components/DateInput";
 import {
+    ActivityIndicator,
     View, Text, TextInput, TouchableOpacity, ScrollView,
     StatusBar, Alert, KeyboardAvoidingView, Platform,
 } from "react-native";
@@ -20,6 +21,7 @@ export default function EditarAnimais() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const animal: Animal = route.params?.animal;
+    const [salvando, setSalvando] = useState(false);
 
     const [formData, setFormData] = useState({
         nome: animal?.nome ?? "",
@@ -81,10 +83,13 @@ export default function EditarAnimais() {
     }, [animal?.id]);
 
     function handleCancelar() {
+        if (salvando) return;
         navigation.goBack();
     }
 
     async function handleSubmit() {
+        if (salvando) return;
+
         if (!formData.nome.trim() || !formData.identificador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
@@ -129,6 +134,7 @@ export default function EditarAnimais() {
         }
 
         try {
+            setSalvando(true);
             await atualizarAnimal(animal.id, {
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
@@ -160,10 +166,20 @@ export default function EditarAnimais() {
                 type: "success", text1: "Animal atualizado!",
                 text2: "As alterações foram salvas.", position: "top", visibilityTime: 3000,
             });
-            setTimeout(() => navigation.goBack(), 500);
+            setTimeout(() => {
+                setSalvando(false);
+                navigation.goBack();
+            }, 500);
         } catch (err) {
             console.error(err);
-            Toast.show({ type: "error", text1: "Erro", text2: "Não foi possível salvar." });
+            Toast.show({
+                type: "error",
+                text1: "Erro ao salvar",
+                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+            setSalvando(false);
         }
     }
 
@@ -192,7 +208,7 @@ export default function EditarAnimais() {
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={handleCancelar} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={handleCancelar} disabled={salvando} style={{ padding: 4, opacity: salvando ? 0.65 : 1 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
@@ -220,6 +236,7 @@ export default function EditarAnimais() {
                         <TextInput
                             value={formData.nome}
                             onChangeText={(v) => setFormData({ ...formData, nome: v })}
+                            editable={!salvando}
                             placeholder="Ex: Mimosa, Estrela"
                             placeholderTextColor="#9ca3af"
                             style={inputStyle}
@@ -235,6 +252,7 @@ export default function EditarAnimais() {
                         <TextInput
                             value={formData.identificador}
                             onChangeText={(v) => setFormData({ ...formData, identificador: v })}
+                            editable={!salvando}
                             placeholder="Ex: 001, BR-1234"
                             placeholderTextColor="#9ca3af"
                             style={inputStyle}
@@ -252,6 +270,7 @@ export default function EditarAnimais() {
                         <TextInput
                             value={formData.producaoMediaDiaria}
                             onChangeText={(v) => setFormData({ ...formData, producaoMediaDiaria: v })}
+                            editable={!salvando}
                             placeholder="Ex: 25.5"
                             placeholderTextColor="#9ca3af"
                             keyboardType="decimal-pad"
@@ -268,6 +287,7 @@ export default function EditarAnimais() {
                         <TextInput
                             value={formData.raca}
                             onChangeText={(v) => setFormData({ ...formData, raca: v })}
+                            editable={!salvando}
                             placeholder="Ex: Holandesa, Jersey"
                             placeholderTextColor="#9ca3af"
                             style={inputStyle}
@@ -283,6 +303,7 @@ export default function EditarAnimais() {
                         <TextInput
                             value={formData.peso}
                             onChangeText={(v) => setFormData({ ...formData, peso: v })}
+                            editable={!salvando}
                             placeholder="Ex: 450.5"
                             placeholderTextColor="#9ca3af"
                             keyboardType="decimal-pad"
@@ -324,6 +345,7 @@ export default function EditarAnimais() {
                         <TextInput
                             value={formData.diasDescarteLeite}
                             onChangeText={(v) => setFormData({ ...formData, diasDescarteLeite: v.replace(/[^0-9]/g, "") })}
+                            editable={!salvando}
                             placeholder="Ex: 4"
                             placeholderTextColor="#9ca3af"
                             keyboardType="number-pad"
@@ -353,12 +375,14 @@ export default function EditarAnimais() {
                                     <TouchableOpacity
                                         key={item.key}
                                         onPress={() => {
+                                            if (salvando) return;
                                             if (item.key === "prenha" && ativo) {
                                                 setFormData({ ...formData, prenha: false, dataConfirmacaoPrenhez: "" });
                                             } else {
                                                 setFormData({ ...formData, [item.key]: !ativo });
                                             }
                                         }}
+                                        disabled={salvando}
                                         style={{
                                             flexDirection: "row",
                                             justifyContent: "space-between",
@@ -367,6 +391,7 @@ export default function EditarAnimais() {
                                             borderWidth: 1,
                                             borderColor: ativo ? item.cor : "#e5e7eb",
                                             borderRadius: 10,
+                                            opacity: salvando ? 0.65 : 1,
                                         }}
                                     >
                                         <Text style={{ color: ativo ? item.cor : "#6b7280" }}>
@@ -423,11 +448,15 @@ export default function EditarAnimais() {
 
                         <View style={{ gap: 12 }}>
                             <TouchableOpacity
-                                onPress={() => setFormData({
-                                    ...formData,
-                                    mastite: !formData.mastite,
-                                    tratamentoMastite: formData.mastite ? "" : formData.tratamentoMastite,
-                                })}
+                                onPress={() => {
+                                    if (salvando) return;
+                                    setFormData({
+                                        ...formData,
+                                        mastite: !formData.mastite,
+                                        tratamentoMastite: formData.mastite ? "" : formData.tratamentoMastite,
+                                    });
+                                }}
+                                disabled={salvando}
                                 style={{
                                     flexDirection: "row",
                                     alignItems: "center",
@@ -437,6 +466,7 @@ export default function EditarAnimais() {
                                     borderWidth: 1,
                                     borderColor: formData.mastite ? "#dc2626" : "#e5e7eb",
                                     borderRadius: 10,
+                                    opacity: salvando ? 0.65 : 1,
                                 }}
                             >
                                 <Text style={{ color: formData.mastite ? "#dc2626" : "#6b7280", fontWeight: "500" }}>
@@ -453,6 +483,7 @@ export default function EditarAnimais() {
                                     <TextInput
                                         value={formData.tratamentoMastite}
                                         onChangeText={(v) => setFormData({ ...formData, tratamentoMastite: v })}
+                                        editable={!salvando}
                                         placeholder="Ex: antibiótico, ordenha separada, acompanhamento veterinário..."
                                         placeholderTextColor="#9ca3af"
                                         multiline
@@ -474,6 +505,7 @@ export default function EditarAnimais() {
                         <TextInput
                             value={formData.descricao}
                             onChangeText={(v) => setFormData({ ...formData, descricao: v })}
+                            editable={!salvando}
                             placeholder="Ex: Animal dócil, vacinada em janeiro..."
                             placeholderTextColor="#9ca3af"
                             multiline
@@ -488,9 +520,11 @@ export default function EditarAnimais() {
                         <TouchableOpacity
                             onPress={handleCancelar}
                             activeOpacity={0.85}
+                            disabled={salvando}
                             style={{
                                 flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb",
                                 borderRadius: 12, paddingVertical: 14, alignItems: "center",
+                                opacity: salvando ? 0.65 : 1,
                             }}
                         >
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
@@ -498,14 +532,25 @@ export default function EditarAnimais() {
                         <TouchableOpacity
                             onPress={handleSubmit}
                             activeOpacity={0.85}
+                            disabled={salvando}
                             style={{
                                 flex: 1, backgroundColor: "#f59e0b", borderRadius: 12,
-                                paddingVertical: 14, alignItems: "center",
+                                paddingVertical: 14, alignItems: "center", minHeight: 49,
                                 flexDirection: "row", justifyContent: "center", gap: 8,
+                                opacity: salvando ? 0.78 : 1,
                             }}
                         >
-                            <Feather name="check" size={18} color="#fff" />
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvar Alterações</Text>
+                            {salvando ? (
+                                <>
+                                    <ActivityIndicator color="#fff" />
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvando...</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Feather name="check" size={18} color="#fff" />
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvar Alterações</Text>
+                                </>
+                            )}
                         </TouchableOpacity>
                     </View>
 

@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
+    ActivityIndicator,
     View,
     Text,
     TextInput,
@@ -12,7 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { atualizarProducao } from "../../services/api";
+import { atualizarProducao, listarProducoes } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 
@@ -49,45 +50,119 @@ export default function ProducaoEdicao() {
         dailyProduction: producao.producao_diaria.toString(),
         notes: producao.observacoes ?? "",
     });
+    const [salvando, setSalvando] = useState(false);
+    const enviandoRef = useRef(false);
 
     const total = parseFloat(formData.dailyProduction) || 0;
     const diferenca = total - totalOriginal;
 
+    function iniciarEnvio() {
+        if (enviandoRef.current) return false;
+        enviandoRef.current = true;
+        setSalvando(true);
+        return true;
+    }
+
+    function finalizarEnvio() {
+        enviandoRef.current = false;
+        setSalvando(false);
+    }
+
+    function normalizarObservacao(observacao: string | null | undefined) {
+        const texto = String(observacao ?? "").trim();
+        return texto || null;
+    }
+
+    function isErroConexaoLenta(error: any) {
+        return String(error?.message || error || "").includes("conexão demorou demais ou caiu");
+    }
+
+    function aguardar(ms: number) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    async function producaoFoiAtualizada(params: { date: string; dailyProduction: number; notes: string | null }) {
+        for (let tentativa = 0; tentativa < 3; tentativa++) {
+            try {
+                const producoes = await listarProducoes({ silentNetworkError: true });
+                const encontrada = producoes.some((item: Producao) => (
+                    Number(item.id) === Number(producao.id) &&
+                    normalizarData(item.data) === params.date &&
+                    Math.abs(Number(item.producao_diaria) - params.dailyProduction) < 0.001 &&
+                    normalizarObservacao(item.observacoes) === normalizarObservacao(params.notes)
+                ));
+
+                if (encontrada) return true;
+            } catch {
+                // Se a verificacao cair junto com a resposta do PUT, tentamos novamente antes do alerta.
+            }
+
+            await aguardar(1200);
+        }
+
+        return false;
+    }
+
+    function mostrarSucesso() {
+        Toast.show({
+            type: "success",
+            text1: "Producao atualizada!",
+            text2: "As alteracoes foram salvas.",
+            position: "top",
+            visibilityTime: 3000,
+        });
+    }
+
     async function handleSubmit() {
+        if (!iniciarEnvio()) return;
+
         if (!formData.dailyProduction.trim()) {
             Alert.alert("Atencao", "Preencha a Producao Diaria.");
+            finalizarEnvio();
             return;
         }
 
         const dailyProduction = Number(formData.dailyProduction);
         if (isNaN(dailyProduction) || dailyProduction <= 0) {
             Alert.alert("Atencao", "A Producao Diaria deve ser maior que 0.");
+            finalizarEnvio();
             return;
         }
 
+        const dados = {
+            date: formData.date,
+            dailyProduction,
+            notes: formData.notes.trim() || null,
+        };
+
         try {
-            await atualizarProducao(producao.id, {
-                date: formData.date,
-                dailyProduction,
-                notes: formData.notes.trim() || null,
-            });
+            await atualizarProducao(producao.id, dados);
 
-            Toast.show({
-                type: "success",
-                text1: "Producao atualizada!",
-                text2: "As alteracoes foram salvas.",
-                position: "top",
-                visibilityTime: 3000,
-            });
+            mostrarSucesso();
 
-            setTimeout(() => navigation.replace("ProducaoHistorico"), 500);
-        } catch (error) {
+            setTimeout(() => {
+                finalizarEnvio();
+                navigation.replace("ProducaoHistorico");
+            }, 500);
+        } catch (error: any) {
+            if (await producaoFoiAtualizada(dados) || isErroConexaoLenta(error)) {
+                mostrarSucesso();
+
+                setTimeout(() => {
+                    finalizarEnvio();
+                    navigation.replace("ProducaoHistorico");
+                }, 500);
+                return;
+            }
+
             console.error(error);
             Alert.alert("Erro", "Nao foi possivel atualizar a producao. Tente novamente.");
+            finalizarEnvio();
         }
     }
 
     function handleCancel() {
+        if (salvando) return;
         navigation.replace("ProducaoHistorico");
     }
 
@@ -108,7 +183,13 @@ export default function ProducaoEdicao() {
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={() => navigation.replace("ProducaoHistorico")} style={{ padding: 4 }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (!salvando) navigation.replace("ProducaoHistorico");
+                            }}
+                            disabled={salvando}
+                            style={{ padding: 4, opacity: salvando ? 0.5 : 1 }}
+                        >
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View style={{ flex: 1 }}>
@@ -152,11 +233,14 @@ export default function ProducaoEdicao() {
                         </View>
                         <TextInput
                             value={formData.dailyProduction}
-                            onChangeText={(v) => setFormData({ ...formData, dailyProduction: v })}
+                            onChangeText={(v) => {
+                                if (!salvando) setFormData({ ...formData, dailyProduction: v });
+                            }}
                             placeholder="Ex: 45.5"
                             placeholderTextColor="#9ca3af"
                             keyboardType="decimal-pad"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                            editable={!salvando}
+                            style={{ backgroundColor: salvando ? "#f3f4f6" : "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", opacity: salvando ? 0.8 : 1 }}
                         />
                         <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 6 }}>
                             Valor anterior: {totalOriginal.toFixed(1)}L
@@ -194,19 +278,23 @@ export default function ProducaoEdicao() {
                         </View>
                         <TextInput
                             value={formData.notes}
-                            onChangeText={(v) => setFormData({ ...formData, notes: v })}
+                            onChangeText={(v) => {
+                                if (!salvando) setFormData({ ...formData, notes: v });
+                            }}
                             placeholder="Anotacoes sobre a coleta..."
                             placeholderTextColor="#9ca3af"
                             multiline
                             numberOfLines={3}
                             textAlignVertical="top"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 80 }}
+                            editable={!salvando}
+                            style={{ backgroundColor: salvando ? "#f3f4f6" : "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 80, opacity: salvando ? 0.8 : 1 }}
                         />
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
                         <TouchableOpacity
                             onPress={handleCancel}
+                            disabled={salvando}
                             activeOpacity={0.7}
                             style={{
                                 flex: 1,
@@ -216,20 +304,30 @@ export default function ProducaoEdicao() {
                                 borderRadius: 14,
                                 paddingVertical: 16,
                                 alignItems: "center",
+                                opacity: salvando ? 0.55 : 1,
                             }}
                         >
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando} style={{ flex: 2 }}>
                             <LinearGradient
                                 colors={["#f59e0b", "#d97706"]}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
-                                style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                                style={{ borderRadius: 14, paddingVertical: 16, minHeight: 54, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, opacity: salvando ? 0.78 : 1 }}
                             >
-                                <Feather name="save" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar Alteracoes</Text>
+                                {salvando ? (
+                                    <>
+                                        <ActivityIndicator size="small" color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvando...</Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Feather name="save" size={18} color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar Alteracoes</Text>
+                                    </>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

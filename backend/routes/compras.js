@@ -147,6 +147,28 @@ async function ensureComprasSchema() {
             ADD COLUMN quantidade_estoque_kg DECIMAL(12,2) NULL AFTER peso_unidade_kg
         `);
     }
+
+    if (!existingColumns.has("idempotency_key")) {
+        await pool.query(`
+            ALTER TABLE compras
+            ADD COLUMN idempotency_key VARCHAR(80) NULL AFTER observacoes
+        `);
+    }
+
+    const [indexes] = await pool.query(`
+        SELECT INDEX_NAME
+        FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'compras'
+          AND INDEX_NAME = 'ux_compras_usuario_idempotency'
+    `);
+
+    if (indexes.length === 0) {
+        await pool.query(`
+            CREATE UNIQUE INDEX ux_compras_usuario_idempotency
+            ON compras (usuario_id, idempotency_key)
+        `);
+    }
 }
 
 // LISTAR TODAS
@@ -194,9 +216,25 @@ router.post("/", async (req, res) => {
             categoria, item, quantidade, precoUnitario,
             fornecedor, data, status, tipoRacao, unidadeCompra, pesoPorUnidadeKg, finalidadeTratamento, finalidadeDescricao, observacoes
         } = req.body;
+        const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body.idempotencyKey || "").trim() || null;
 
         if (!categoria || !item || !quantidade || !precoUnitario || !fornecedor || !data) {
             return res.status(400).json({ erro: "Preencha todos os campos obrigatórios" });
+        }
+
+        if (idempotencyKey) {
+            const [comprasExistentes] = await pool.query(
+                "SELECT id FROM compras WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                [usuarioId, idempotencyKey]
+            );
+
+            if (comprasExistentes.length > 0) {
+                return res.status(200).json({
+                    id: comprasExistentes[0].id,
+                    mensagem: "Compra já cadastrada",
+                    duplicada: true,
+                });
+            }
         }
 
         const precoTotal = Number(quantidade) * Number(precoUnitario);
@@ -210,8 +248,8 @@ router.post("/", async (req, res) => {
 
         const [result] = await pool.query(
             `INSERT INTO compras
-             (usuario_id, categoria, tipo_racao, unidade_compra, peso_unidade_kg, quantidade_estoque_kg, item, quantidade, preco_unitario, preco_total, fornecedor, data, status, finalidade_tratamento, finalidade_descricao, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (usuario_id, categoria, tipo_racao, unidade_compra, peso_unidade_kg, quantidade_estoque_kg, item, quantidade, preco_unitario, preco_total, fornecedor, data, status, finalidade_tratamento, finalidade_descricao, observacoes, idempotency_key)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 usuarioId,
                 categoria,
@@ -229,6 +267,7 @@ router.post("/", async (req, res) => {
                 categoria === "medicamento" ? finalidadeTratamento || "uso_geral" : null,
                 categoria === "medicamento" && finalidadeTratamento === "outro_tratamento" ? finalidadeDescricao || null : null,
                 observacoes || null,
+                idempotencyKey,
             ]
         );
 
@@ -248,6 +287,23 @@ router.post("/", async (req, res) => {
 
         res.status(201).json({ id: result.insertId, mensagem: "Compra cadastrada" });
     } catch (err) {
+        const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body.idempotencyKey || "").trim() || null;
+        if (err?.code === "ER_DUP_ENTRY" && idempotencyKey) {
+            const usuarioId = await requireUsuario(req, res);
+            if (!usuarioId) return;
+            const [comprasExistentes] = await pool.query(
+                "SELECT id FROM compras WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                [usuarioId, idempotencyKey]
+            );
+
+            if (comprasExistentes.length > 0) {
+                return res.status(200).json({
+                    id: comprasExistentes[0].id,
+                    mensagem: "Compra já cadastrada",
+                    duplicada: true,
+                });
+            }
+        }
         console.error(err);
         res.status(500).json({ erro: "Erro ao cadastrar compra" });
     }

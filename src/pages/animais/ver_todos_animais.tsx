@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal } from "react-native";
+import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
-import { atualizarAnimal, atualizarStatusAnimal, listarAnimais, excluirAnimal } from "../../services/api";
+import { atualizarStatusAnimal, listarAnimais, excluirAnimal } from "../../services/api";
 import ConfirmDeleteModal from "./ConfirmationModal";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
@@ -18,12 +18,17 @@ export default function VerTodosAnimais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const [animais, setAnimais] = useState<Animal[]>([]);
+    const [carregando, setCarregando] = useState(true);
+    const [atualizandoStatusId, setAtualizandoStatusId] = useState<number | null>(null);
+    const [excluindoId, setExcluindoId] = useState<number | null>(null);
 
     useFocusEffect(
         useCallback(() => {
+            setCarregando(true);
             listarAnimais()
                 .then(setAnimais)
-                .catch(() => Alert.alert("Erro", "Não foi possível carregar"));
+                .catch(() => Alert.alert("Erro", "Não foi possível carregar"))
+                .finally(() => setCarregando(false));
         }, [])
     );
     const [modalVisible, setModalVisible] = useState(false);
@@ -42,6 +47,7 @@ export default function VerTodosAnimais() {
         const nomeExcluido = animalSelecionado.nome;
 
         try {
+            setExcluindoId(animalSelecionado.id);
             await excluirAnimal(animalSelecionado.id);
             setAnimais((prev) => prev.filter((a) => a.id !== animalSelecionado.id));
 
@@ -61,6 +67,7 @@ export default function VerTodosAnimais() {
                 visibilityTime: 3000,
             });
         } finally {
+            setExcluindoId(null);
             setModalVisible(false);
             setAnimalSelecionado(null);
         }
@@ -87,33 +94,8 @@ export default function VerTodosAnimais() {
         const novoStatus = statusAtual === "ativo" ? "inativo" : "ativo";
 
         try {
-            try {
-                await atualizarStatusAnimal(animal.id, novoStatus);
-            } catch {
-                await atualizarAnimal(animal.id, {
-                    nome: animal.nome,
-                    identificador: animal.identificador,
-                    status: novoStatus,
-                    producao_media_diaria: animal.producao_media_diaria ?? null,
-                    raca: animal.raca ?? null,
-                    peso: animal.peso ?? null,
-                    descricao: animal.descricao ?? null,
-                    data_nascimento: animal.data_nascimento?.slice(0, 10),
-                    data_ultimo_parto: animal.data_ultimo_parto?.slice(0, 10) || null,
-                    prenha: Number(animal.prenha) === 1,
-                    em_cio: Number(animal.em_cio) === 1,
-                    abortou: Number(animal.abortou) === 1,
-                    nao_emprenha: Number(animal.nao_emprenha) === 1,
-                    mastite: Number(animal.mastite) === 1,
-                    tratamento_mastite: animal.tratamento_mastite ?? null,
-                    doente: Number(animal.doente) === 1,
-                    doenca: animal.doenca ?? null,
-                    descricao_doenca: animal.descricao_doenca ?? null,
-                    data_reproducao: animal.data_reproducao?.slice(0, 10) || animal.data_base_gestacao?.slice(0, 10) || animal.data_cobertura?.slice(0, 10) || null,
-                    data_inseminacao: animal.data_inseminacao?.slice(0, 10) || null,
-                    data_confirmacao_prenhez: animal.data_confirmacao_prenhez?.slice(0, 10) || null,
-                });
-            }
+            setAtualizandoStatusId(animal.id);
+            await atualizarStatusAnimal(animal.id, novoStatus);
             setAnimais((prev) => prev.map((item) => (
                 item.id === animal.id ? { ...item, status: novoStatus } : item
             )));
@@ -124,26 +106,33 @@ export default function VerTodosAnimais() {
                 position: "top",
                 visibilityTime: 2500,
             });
+            return true;
         } catch (err: any) {
             Toast.show({
                 type: "error",
                 text1: "Erro ao atualizar status",
-                text2: err.message || "Não foi possível alterar o status do animal.",
+                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
                 position: "top",
                 visibilityTime: 3000,
             });
+            return false;
+        } finally {
+            setAtualizandoStatusId(null);
         }
     }
 
     async function confirmarAlteracaoStatus() {
         if (!animalStatusSelecionado) return;
-        await alternarStatusAnimal(animalStatusSelecionado);
-        setModalStatusVisible(false);
-        setAnimalStatusSelecionado(null);
+        const alterou = await alternarStatusAnimal(animalStatusSelecionado);
+        if (alterou) {
+            setModalStatusVisible(false);
+            setAnimalStatusSelecionado(null);
+        }
     }
 
     const statusAtualSelecionado = animalStatusSelecionado?.status === "inativo" ? "inativo" : "ativo";
     const novoStatusSelecionado = statusAtualSelecionado === "ativo" ? "inativo" : "ativo";
+    const alterandoStatusSelecionado = atualizandoStatusId === animalStatusSelecionado?.id;
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -173,7 +162,17 @@ export default function VerTodosAnimais() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 10, paddingBottom: insets.bottom + 20 }}>
-                    {animais.length === 0 ? (
+                    {carregando ? (
+                        <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 64, backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <ActivityIndicator size="large" color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151", marginTop: 14 }}>
+                                Carregando animais
+                            </Text>
+                            <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                A API pode levar alguns segundos para responder.
+                            </Text>
+                        </View>
+                    ) : animais.length === 0 ? (
                         <View style={{ alignItems: "center", paddingVertical: 60 }}>
                             <MaterialCommunityIcons name="cow" size={56} color="#d1d5db" />
                             <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>
@@ -189,6 +188,8 @@ export default function VerTodosAnimais() {
                                 onEditar={() => navigation.navigate("editar_animais", { animal })}
                                 onExcluir={() => handleExcluir(animal)}
                                 onAlternarStatus={() => handleAlternarStatus(animal)}
+                                isUpdatingStatus={atualizandoStatusId === animal.id}
+                                disabled={atualizandoStatusId !== null || excluindoId !== null}
                             />
                         ))
                     )}
@@ -196,7 +197,11 @@ export default function VerTodosAnimais() {
                         visible={modalVisible}
                         title="Excluir animal"
                         nomeAnimal={animalSelecionado?.nome || ""}
-                        onCancel={() => setModalVisible(false)}
+                        loading={excluindoId === animalSelecionado?.id}
+                        onCancel={() => {
+                            if (excluindoId !== null) return;
+                            setModalVisible(false);
+                        }}
                         onConfirm={confirmarExclusao}
                     />
                     <DetalhesAnimalModal
@@ -223,20 +228,27 @@ export default function VerTodosAnimais() {
                                 <View style={{ flexDirection: "row", gap: 10 }}>
                                     <TouchableOpacity
                                         onPress={() => {
+                                            if (alterandoStatusSelecionado) return;
                                             setModalStatusVisible(false);
                                             setAnimalStatusSelecionado(null);
                                         }}
                                         activeOpacity={0.75}
-                                        style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                                        disabled={alterandoStatusSelecionado}
+                                        style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center", opacity: alterandoStatusSelecionado ? 0.65 : 1 }}
                                     >
                                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity
                                         onPress={confirmarAlteracaoStatus}
                                         activeOpacity={0.8}
-                                        style={{ flex: 1, backgroundColor: novoStatusSelecionado === "ativo" ? "#16a34a" : "#4b5563", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                                        disabled={alterandoStatusSelecionado}
+                                        style={{ flex: 1, backgroundColor: novoStatusSelecionado === "ativo" ? "#16a34a" : "#4b5563", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: alterandoStatusSelecionado ? 0.78 : 1 }}
                                     >
-                                        <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>
+                                        {alterandoStatusSelecionado ? (
+                                            <ActivityIndicator color="#fff" />
+                                        ) : (
+                                            <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>
+                                        )}
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -248,7 +260,23 @@ export default function VerTodosAnimais() {
     );
 }
 
-function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarStatus }: { animal: Animal; onAbrirDetalhes: () => void; onEditar: () => void; onExcluir: () => void; onAlternarStatus: () => void }) {
+function CardAnimal({
+    animal,
+    onAbrirDetalhes,
+    onEditar,
+    onExcluir,
+    onAlternarStatus,
+    isUpdatingStatus,
+    disabled,
+}: {
+    animal: Animal;
+    onAbrirDetalhes: () => void;
+    onEditar: () => void;
+    onExcluir: () => void;
+    onAlternarStatus: () => void;
+    isUpdatingStatus: boolean;
+    disabled: boolean;
+}) {
 
     const inativo = animal.status === "inativo";
     const vendido = animal.status === "vendido";
@@ -333,9 +361,11 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                         <TouchableOpacity
                             onPress={(event) => {
                                 event.stopPropagation();
+                                if (disabled) return;
                                 onEditar();
                             }}
                             activeOpacity={0.7}
+                            disabled={disabled}
                             style={{
                                 width: 32,
                                 height: 32,
@@ -348,6 +378,7 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                                 shadowOpacity: 0.3,
                                 shadowRadius: 3,
                                 elevation: 2,
+                                opacity: disabled ? 0.55 : 1,
                             }}
                         >
                             <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
@@ -355,9 +386,11 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                         <TouchableOpacity
                             onPress={(event) => {
                                 event.stopPropagation();
+                                if (disabled) return;
                                 onExcluir();
                             }}
                             activeOpacity={0.7}
+                            disabled={disabled}
                             style={{
                                 width: 32,
                                 height: 32,
@@ -370,6 +403,7 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                                 shadowOpacity: 0.3,
                                 shadowRadius: 3,
                                 elevation: 2,
+                                opacity: disabled ? 0.55 : 1,
                             }}
                         >
                             <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
@@ -389,9 +423,11 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                 <TouchableOpacity
                     onPress={(event) => {
                         event.stopPropagation();
+                        if (disabled) return;
                         onAlternarStatus();
                     }}
                     activeOpacity={0.78}
+                    disabled={disabled}
                     style={{
                         marginTop: 10,
                         backgroundColor: inativo ? "#dcfce7" : "#f3f4f6",
@@ -403,12 +439,25 @@ function CardAnimal({ animal, onAbrirDetalhes, onEditar, onExcluir, onAlternarSt
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 6,
+                        minHeight: 42,
+                        opacity: disabled && !isUpdatingStatus ? 0.65 : 1,
                     }}
                 >
-                    <MaterialCommunityIcons name={inativo ? "check-circle" : "pause-circle"} size={16} color={inativo ? "#15803d" : "#4b5563"} />
-                    <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
-                        {inativo ? "Ativar animal" : "Inativar animal"}
-                    </Text>
+                    {isUpdatingStatus ? (
+                        <>
+                            <ActivityIndicator color={inativo ? "#15803d" : "#4b5563"} />
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
+                                Atualizando...
+                            </Text>
+                        </>
+                    ) : (
+                        <>
+                            <MaterialCommunityIcons name={inativo ? "check-circle" : "pause-circle"} size={16} color={inativo ? "#15803d" : "#4b5563"} />
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
+                                {inativo ? "Ativar animal" : "Inativar animal"}
+                            </Text>
+                        </>
+                    )}
                 </TouchableOpacity>
             )}
         </TouchableOpacity>

@@ -8,6 +8,51 @@ console.log("BASE_URL:", BASE_URL);
 
 
 const USUARIO_STORAGE_KEY = "@raizes_digitais_usuario";
+const REQUEST_TIMEOUT_MS = 60000;
+const NETWORK_RETRY_DELAYS_MS = [1500, 3500];
+const NETWORK_ERROR_MESSAGE = "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.";
+
+type ApiFetchInit = RequestInit & {
+    retryUnsafe?: boolean;
+    silentNetworkError?: boolean;
+};
+
+function delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function gerarIdempotencyKey(prefixo: string) {
+    return `${prefixo}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function isNetworkError(error: unknown) {
+    const errorName = typeof error === "object" && error !== null && "name" in error
+        ? String((error as { name?: unknown }).name)
+        : "";
+    const errorText = String(error);
+
+    return (
+        error instanceof TypeError ||
+        errorName === "AbortError" ||
+        errorText.includes("Network request failed") ||
+        errorText.includes("AbortError") ||
+        errorText.includes("Aborted")
+    );
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        return await fetch(url, {
+            ...init,
+            signal: controller.signal,
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
+}
 
 
 
@@ -32,18 +77,49 @@ export async function limparUsuarioLogado() {
     await AsyncStorage.removeItem(USUARIO_STORAGE_KEY);
 }
 
-async function apiFetch(path: string, init: RequestInit = {}) {
+async function apiFetch(path: string, init: ApiFetchInit = {}) {
+    const { retryUnsafe = false, silentNetworkError = false, ...fetchInit } = init;
     const usuario = await getUsuarioLogado();
     const headers = {
-        ...(init.headers || {}),
+        ...(fetchInit.headers || {}),
         ...(usuario?.id ? { "x-usuario-id": String(usuario.id) } : {}),
     };
+    const url = `${BASE_URL}${path}`;
+    const method = String(fetchInit.method || "GET").toUpperCase();
+    const canRetry = method === "GET" || method === "HEAD" || retryUnsafe;
+    const maxAttempts = canRetry ? NETWORK_RETRY_DELAYS_MS.length + 1 : 1;
 
-    return fetch(`${BASE_URL}${path}`, { ...init, headers });
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+            return await fetchWithTimeout(url, { ...fetchInit, headers });
+        } catch (error) {
+            const shouldRetry = canRetry && isNetworkError(error) && attempt < maxAttempts - 1;
+
+            if (!shouldRetry) {
+                if (!silentNetworkError) {
+                    console.error("Falha de rede na API:", {
+                        url,
+                        method,
+                        erro: error,
+                    });
+                }
+                if (isNetworkError(error)) {
+                    throw new Error(NETWORK_ERROR_MESSAGE);
+                }
+                throw error;
+            }
+
+            await delay(NETWORK_RETRY_DELAYS_MS[attempt]);
+        }
+    }
+
+    throw new Error(NETWORK_ERROR_MESSAGE);
 }
 
-export async function listarProducoes() {
-    const response = await apiFetch("/producao");
+export async function listarProducoes(options?: { silentNetworkError?: boolean }) {
+    const response = await apiFetch("/producao", {
+        silentNetworkError: options?.silentNetworkError,
+    });
     return response.json();
 }
 export async function listarProducoesRecentes() {
@@ -87,6 +163,7 @@ export async function atualizarProducao(id: number, dados: {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
+        silentNetworkError: true,
     });
     if (!response.ok) throw new Error("Erro ao atualizar");
     return response.json();
@@ -112,7 +189,7 @@ export async function listarAnimais(): Promise<Animal[]> {
 
     } catch (err) {
         console.error("Falha em listarAnimais:", err);
-        throw new Error("Não foi possível carregar os animais. Verifique a conexão.");
+        throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
 
@@ -162,7 +239,7 @@ export async function criarAnimal(dados: {
 
     } catch (err) {
         console.error("Falha em criarAnimal:", err);
-        throw new Error("Não foi possível cadastrar o animal. Verifique a conexão.");
+        throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
 
@@ -212,7 +289,7 @@ export async function atualizarAnimal(id: number, dados: {
 
     } catch (err) {
         console.error("Falha em atualizarAnimal:", err);
-        throw new Error("Não foi possível atualizar o animal. Verifique a conexão.");
+        throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
 
@@ -230,7 +307,7 @@ export async function excluirAnimal(id: number) {
 
     } catch (err) {
         console.error("Falha em excluirAnimal:", err);
-        throw new Error("Não foi possível excluir o animal. Verifique a conexão.");
+        throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
 
@@ -249,7 +326,7 @@ export async function atualizarStatusAnimal(id: number, status: "ativo" | "inati
         return await response.json();
     } catch (err) {
         console.error("Falha em atualizarStatusAnimal:", err);
-        throw new Error("Não foi possível atualizar o status do animal. Verifique a conexão.");
+        throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
 
@@ -275,9 +352,13 @@ export async function listarCompras(): Promise<Compra[]> {
 
 // CRIAR COMPRA
 export async function criarCompra(dados: Omit<Compra, "id" | "precoTotal">) {
+    const idempotencyKey = gerarIdempotencyKey("compra");
     const res = await apiFetch(`/compras`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            "x-idempotency-key": idempotencyKey,
+        },
         body: JSON.stringify(dados),
     });
     if (!res.ok) {
@@ -830,7 +911,7 @@ export async function criarMovimentacaoRacao(dados: {
 // ============================================
 
 export async function login(email: string, senha: string) {
-    const res = await fetch(`${BASE_URL}/auth/login`, {
+    const res = await apiFetch(`/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, senha }),
@@ -852,7 +933,7 @@ export async function cadastrar(dados: {
     senha: string;
     confirmar_senha: string;
 }) {
-    const res = await fetch(`${BASE_URL}/auth/cadastrar`, {
+    const res = await apiFetch(`/auth/cadastrar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),

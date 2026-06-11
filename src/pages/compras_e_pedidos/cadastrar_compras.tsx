@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
+    ActivityIndicator,
     View,
     Text,
     TextInput,
@@ -17,7 +18,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { CategoriaCompra, FinalidadeTratamento, StatusCompra, TipoRacaoCompra, UnidadeCompraRacao } from "../../interfaces/interfaces";
 import { CATEGORIAS } from "./compras_e_pedidos";
 import Toast from "react-native-toast-message";
-import { criarCompra } from "../../services/api";
+import { criarCompra, listarCompras } from "../../services/api";
 import DateInput from "../../components/DateInput";
 import { toBr, toIso } from "../../utils/formatters";
 
@@ -58,6 +59,8 @@ export default function CadastrarCompra() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const [salvando, setSalvando] = useState(false);
+    const enviandoRef = useRef(false);
 
     const hoje = new Date();
     const dd = String(hoje.getDate()).padStart(2, "0");
@@ -98,7 +101,43 @@ export default function CadastrarCompra() {
         : ITENS_PRODUTO.find((item) => item.key === formData.itemOpcao)?.label || ""
         : formData.itemDescricao.trim();
 
+    function iniciarEnvio() {
+        if (enviandoRef.current) return false;
+        enviandoRef.current = true;
+        setSalvando(true);
+        return true;
+    }
+
+    function finalizarEnvio() {
+        enviandoRef.current = false;
+        setSalvando(false);
+    }
+
+    async function compraFoiCadastrada(params: {
+        item: string;
+        quantidade: number;
+        precoUnitario: number;
+        fornecedor: string;
+        data: string;
+        status: StatusCompra;
+    }) {
+        try {
+            const compras = await listarCompras();
+            return compras.some((compra) => (
+                compra.item === params.item &&
+                Number(compra.quantidade) === params.quantidade &&
+                Number(compra.precoUnitario) === params.precoUnitario &&
+                compra.fornecedor === params.fornecedor &&
+                String(compra.data).slice(0, 10) === params.data &&
+                compra.status === params.status
+            ));
+        } catch {
+            return false;
+        }
+    }
+
     function handleCancelar() {
+        if (salvando || enviandoRef.current) return;
         const temDados = formData.itemDescricao || formData.itemOutro || formData.quantidade || formData.precoUnitario || formData.fornecedor;
         if (temDados) {
             Alert.alert("Cancelar cadastro", "Deseja descartar as informações?", [
@@ -111,6 +150,7 @@ export default function CadastrarCompra() {
     }
 
     function atualizarTipoRacao(tipoRacao: TipoRacaoCompra) {
+        if (salvando || enviandoRef.current) return;
         const pesoSugerido = PESO_SUGERIDO_RACAO[tipoRacao]?.[formData.unidadeCompra];
         setFormData({
             ...formData,
@@ -120,6 +160,7 @@ export default function CadastrarCompra() {
     }
 
     function atualizarUnidadeCompra(unidadeCompra: UnidadeCompraRacao) {
+        if (salvando || enviandoRef.current) return;
         const pesoSugerido = PESO_SUGERIDO_RACAO[formData.tipoRacao]?.[unidadeCompra];
         setFormData({
             ...formData,
@@ -129,8 +170,11 @@ export default function CadastrarCompra() {
     }
 
     async function handleSubmit() {
+        if (!iniciarEnvio()) return;
+
         if (!itemSelecionado || !formData.quantidade || !formData.precoUnitario || !formData.fornecedor.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
+            finalizarEnvio();
             return;
         }
 
@@ -139,38 +183,44 @@ export default function CadastrarCompra() {
 
         if (isNaN(qtd) || qtd <= 0 || isNaN(preco) || preco <= 0) {
             Alert.alert("Atenção", "Quantidade e preço devem ser maiores que 0.");
+            finalizarEnvio();
             return;
         }
         if (formData.categoria === "medicamento" && formData.finalidadeTratamento !== "mastite" && !formData.finalidadeDescricao.trim()) {
             Alert.alert("Atenção", "Informe a finalidade do tratamento.");
+            finalizarEnvio();
             return;
         }
         if (formData.categoria === "racao" && formData.unidadeCompra !== "kg" && (isNaN(pesoPorUnidade) || pesoPorUnidade <= 0)) {
             Alert.alert("Atencao", "Informe o peso por unidade para calcular o estoque em kg.");
+            finalizarEnvio();
             return;
         }
         const dataIso = toIso(formData.data);
         if (!dataIso) {
             Alert.alert("Atenção", "Informe uma data válida (DD/MM/AAAA).");
+            finalizarEnvio();
             return;
         }
+        const compraPayload = {
+            categoria: formData.categoria,
+            item: itemSelecionado,
+            quantidade: qtd,
+            precoUnitario: preco,
+            fornecedor: formData.fornecedor.trim(),
+            data: dataIso,
+            status: formData.status,
+            tipoRacao: formData.categoria === "racao" ? formData.tipoRacao : null,
+            unidadeCompra: formData.categoria === "racao" ? formData.unidadeCompra : null,
+            pesoPorUnidadeKg: formData.categoria === "racao" && formData.unidadeCompra !== "kg" ? pesoPorUnidade : null,
+            quantidadeEstoqueKg: formData.categoria === "racao" ? quantidadeEstoqueKg : null,
+            finalidadeTratamento: formData.categoria === "medicamento" ? formData.finalidadeTratamento : null,
+            finalidadeDescricao: formData.categoria === "medicamento" && formData.finalidadeTratamento === "outro_tratamento" ? formData.finalidadeDescricao.trim() : null,
+            observacoes: formData.observacoes.trim() || null,
+        };
+
         try {
-            await criarCompra({
-                categoria: formData.categoria,
-                item: itemSelecionado,
-                quantidade: qtd,
-                precoUnitario: preco,
-                fornecedor: formData.fornecedor.trim(),
-                data: dataIso,
-                status: formData.status,
-                tipoRacao: formData.categoria === "racao" ? formData.tipoRacao : null,
-                unidadeCompra: formData.categoria === "racao" ? formData.unidadeCompra : null,
-                pesoPorUnidadeKg: formData.categoria === "racao" && formData.unidadeCompra !== "kg" ? pesoPorUnidade : null,
-                quantidadeEstoqueKg: formData.categoria === "racao" ? quantidadeEstoqueKg : null,
-                finalidadeTratamento: formData.categoria === "medicamento" ? formData.finalidadeTratamento : null,
-                finalidadeDescricao: formData.categoria === "medicamento" && formData.finalidadeTratamento === "outro_tratamento" ? formData.finalidadeDescricao.trim() : null,
-                observacoes: formData.observacoes.trim() || null,
-            });
+            await criarCompra(compraPayload);
 
             Toast.show({
                 type: "success",
@@ -180,16 +230,45 @@ export default function CadastrarCompra() {
                 visibilityTime: 3000,
             });
 
-            setTimeout(() => navigation.goBack(), 500);
+            setTimeout(() => {
+                finalizarEnvio();
+                navigation.goBack();
+            }, 500);
         } catch (err) {
             console.error(err);
+            const cadastradaMesmoComErro = await compraFoiCadastrada({
+                item: compraPayload.item,
+                quantidade: compraPayload.quantidade,
+                precoUnitario: compraPayload.precoUnitario,
+                fornecedor: compraPayload.fornecedor,
+                data: compraPayload.data,
+                status: compraPayload.status,
+            });
+
+            if (cadastradaMesmoComErro) {
+                Toast.show({
+                    type: "success",
+                    text1: "Compra cadastrada!",
+                    text2: `${itemSelecionado} foi salvo com sucesso.`,
+                    position: "top",
+                    visibilityTime: 3000,
+                });
+
+                setTimeout(() => {
+                    finalizarEnvio();
+                    navigation.goBack();
+                }, 500);
+                return;
+            }
+
             Toast.show({
                 type: "error",
                 text1: "Erro ao cadastrar",
-                text2: "Não foi possível salvar a compra.",
+                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
                 position: "top",
                 visibilityTime: 3000,
             });
+            finalizarEnvio();
         }
     }
 
@@ -213,7 +292,7 @@ export default function CadastrarCompra() {
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={handleCancelar} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={handleCancelar} disabled={salvando} style={{ padding: 4, opacity: salvando ? 0.65 : 1 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
@@ -245,8 +324,12 @@ export default function CadastrarCompra() {
                                     return (
                                         <TouchableOpacity
                                             key={key}
-                                            onPress={() => setFormData({ ...formData, categoria: key })}
+                                            onPress={() => {
+                                                if (salvando || enviandoRef.current) return;
+                                                setFormData({ ...formData, categoria: key });
+                                            }}
                                             activeOpacity={0.7}
+                                            disabled={salvando}
                                             style={{
                                                 backgroundColor: ativo ? c.bg : "#f9fafb",
                                                 borderWidth: 1,
@@ -254,6 +337,7 @@ export default function CadastrarCompra() {
                                                 borderRadius: 10,
                                                 paddingHorizontal: 14,
                                                 paddingVertical: 8,
+                                                opacity: salvando ? 0.65 : 1,
                                             }}
                                         >
                                             <Text style={{ fontSize: 13, fontWeight: "500", color: ativo ? c.text : "#6b7280" }}>
@@ -280,6 +364,7 @@ export default function CadastrarCompra() {
                                             key={tipo.key}
                                             activeOpacity={0.75}
                                             onPress={() => atualizarTipoRacao(tipo.key)}
+                                            disabled={salvando}
                                             style={{
                                                 backgroundColor: ativo ? tipo.cor : "#f9fafb",
                                                 borderWidth: 1,
@@ -290,6 +375,7 @@ export default function CadastrarCompra() {
                                                 flexDirection: "row",
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
+                                                opacity: salvando ? 0.65 : 1,
                                             }}
                                         >
                                             <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>
@@ -308,7 +394,11 @@ export default function CadastrarCompra() {
                                         <TouchableOpacity
                                             key={item.key}
                                             activeOpacity={0.75}
-                                            onPress={() => setFormData({ ...formData, itemOpcao: item.key, itemOutro: item.key === "outro" ? formData.itemOutro : "" })}
+                                            onPress={() => {
+                                                if (salvando || enviandoRef.current) return;
+                                                setFormData({ ...formData, itemOpcao: item.key, itemOutro: item.key === "outro" ? formData.itemOutro : "" });
+                                            }}
+                                            disabled={salvando}
                                             style={{
                                                 backgroundColor: ativo ? item.cor : "#f9fafb",
                                                 borderWidth: 1,
@@ -319,6 +409,7 @@ export default function CadastrarCompra() {
                                                 flexDirection: "row",
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
+                                                opacity: salvando ? 0.65 : 1,
                                             }}
                                         >
                                             <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>
@@ -332,6 +423,7 @@ export default function CadastrarCompra() {
                                     <TextInput
                                         value={formData.itemOutro}
                                         onChangeText={(v) => setFormData({ ...formData, itemOutro: v })}
+                                        editable={!salvando}
                                         placeholder="Descreva o produto/item"
                                         placeholderTextColor="#9ca3af"
                                         style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -342,6 +434,7 @@ export default function CadastrarCompra() {
                             <TextInput
                                 value={formData.itemDescricao}
                                 onChangeText={(v) => setFormData({ ...formData, itemDescricao: v })}
+                                editable={!salvando}
                                 placeholder="Ex: Ração 25kg, Sal mineral"
                                 placeholderTextColor="#9ca3af"
                                 style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -364,7 +457,8 @@ export default function CadastrarCompra() {
                                                 key={unidade.key}
                                                 onPress={() => atualizarUnidadeCompra(unidade.key)}
                                                 activeOpacity={0.75}
-                                                style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}
+                                                disabled={salvando}
+                                                style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9, opacity: salvando ? 0.65 : 1 }}
                                             >
                                                 <Text style={{ fontSize: 13, fontWeight: "700", color: ativo ? "#fff" : "#6b7280" }}>{unidade.label}</Text>
                                             </TouchableOpacity>
@@ -378,6 +472,7 @@ export default function CadastrarCompra() {
                                     <TextInput
                                         value={formData.pesoPorUnidadeKg}
                                         onChangeText={(v) => setFormData({ ...formData, pesoPorUnidadeKg: v })}
+                                        editable={!salvando}
                                         placeholder="Ex: 60"
                                         placeholderTextColor="#9ca3af"
                                         keyboardType="decimal-pad"
@@ -402,7 +497,11 @@ export default function CadastrarCompra() {
                             </View>
                             <TouchableOpacity
                                 activeOpacity={0.75}
-                                onPress={() => setFormData({ ...formData, finalidadeTratamento: "mastite", finalidadeDescricao: "" })}
+                                onPress={() => {
+                                    if (salvando || enviandoRef.current) return;
+                                    setFormData({ ...formData, finalidadeTratamento: "mastite", finalidadeDescricao: "" });
+                                }}
+                                disabled={salvando}
                                 style={{
                                     backgroundColor: formData.finalidadeTratamento === "mastite" ? "#dc2626" : "#f9fafb",
                                     borderWidth: 1,
@@ -414,6 +513,7 @@ export default function CadastrarCompra() {
                                     alignItems: "center",
                                     justifyContent: "space-between",
                                     marginBottom: 8,
+                                    opacity: salvando ? 0.65 : 1,
                                 }}
                             >
                                 <Text style={{ fontSize: 13, fontWeight: "600", color: formData.finalidadeTratamento === "mastite" ? "#fff" : "#374151" }}>
@@ -423,7 +523,11 @@ export default function CadastrarCompra() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 activeOpacity={0.75}
-                                onPress={() => setFormData({ ...formData, finalidadeTratamento: "outro_tratamento" })}
+                                onPress={() => {
+                                    if (salvando || enviandoRef.current) return;
+                                    setFormData({ ...formData, finalidadeTratamento: "outro_tratamento" });
+                                }}
+                                disabled={salvando}
                                 style={{
                                     backgroundColor: formData.finalidadeTratamento === "outro_tratamento" ? "#4a90e2" : "#f9fafb",
                                     borderWidth: 1,
@@ -434,6 +538,7 @@ export default function CadastrarCompra() {
                                     flexDirection: "row",
                                     alignItems: "center",
                                     justifyContent: "space-between",
+                                    opacity: salvando ? 0.65 : 1,
                                 }}
                             >
                                 <Text style={{ fontSize: 13, fontWeight: "600", color: formData.finalidadeTratamento === "outro_tratamento" ? "#fff" : "#374151" }}>
@@ -445,6 +550,7 @@ export default function CadastrarCompra() {
                                 <TextInput
                                     value={formData.finalidadeDescricao}
                                     onChangeText={(v) => setFormData({ ...formData, finalidadeDescricao: v })}
+                                    editable={!salvando}
                                     placeholder="Digite a finalidade do tratamento"
                                     placeholderTextColor="#9ca3af"
                                     style={{ marginTop: 8, backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -462,6 +568,7 @@ export default function CadastrarCompra() {
                             <TextInput
                                 value={formData.quantidade}
                                 onChangeText={(v) => setFormData({ ...formData, quantidade: v })}
+                                editable={!salvando}
                                 placeholder="0"
                                 placeholderTextColor="#9ca3af"
                                 keyboardType="decimal-pad"
@@ -476,6 +583,7 @@ export default function CadastrarCompra() {
                             <TextInput
                                 value={formData.precoUnitario}
                                 onChangeText={(v) => setFormData({ ...formData, precoUnitario: v })}
+                                editable={!salvando}
                                 placeholder="0.00"
                                 placeholderTextColor="#9ca3af"
                                 keyboardType="decimal-pad"
@@ -501,6 +609,7 @@ export default function CadastrarCompra() {
                         <TextInput
                             value={formData.fornecedor}
                             onChangeText={(v) => setFormData({ ...formData, fornecedor: v })}
+                            editable={!salvando}
                             placeholder="Nome do fornecedor"
                             placeholderTextColor="#9ca3af"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -532,8 +641,12 @@ export default function CadastrarCompra() {
                                 return (
                                     <TouchableOpacity
                                         key={s.key}
-                                        onPress={() => setFormData({ ...formData, status: s.key })}
+                                        onPress={() => {
+                                            if (salvando || enviandoRef.current) return;
+                                            setFormData({ ...formData, status: s.key });
+                                        }}
                                         activeOpacity={0.7}
+                                        disabled={salvando}
                                         style={{
                                             flex: 1,
                                             backgroundColor: ativo ? s.cor : "#f9fafb",
@@ -542,6 +655,7 @@ export default function CadastrarCompra() {
                                             borderRadius: 10,
                                             paddingVertical: 10,
                                             alignItems: "center",
+                                            opacity: salvando ? 0.65 : 1,
                                         }}
                                     >
                                         <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>
@@ -563,6 +677,7 @@ export default function CadastrarCompra() {
                         <TextInput
                             value={formData.observacoes}
                             onChangeText={(v) => setFormData({ ...formData, observacoes: v })}
+                            editable={!salvando}
                             placeholder="Observações adicionais..."
                             placeholderTextColor="#9ca3af"
                             multiline
@@ -576,6 +691,7 @@ export default function CadastrarCompra() {
                         <TouchableOpacity
                             onPress={handleCancelar}
                             activeOpacity={0.7}
+                            disabled={salvando}
                             style={{
                                 flex: 1,
                                 backgroundColor: "#fff",
@@ -584,20 +700,30 @@ export default function CadastrarCompra() {
                                 borderRadius: 14,
                                 paddingVertical: 16,
                                 alignItems: "center",
+                                opacity: salvando ? 0.65 : 1,
                             }}
                         >
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando} style={{ flex: 2 }}>
                             <LinearGradient
                                 colors={["#4a90e2", "#357abd"]}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
-                                style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                                style={{ borderRadius: 14, paddingVertical: 16, minHeight: 54, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, opacity: salvando ? 0.78 : 1 }}
                             >
-                                <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Cadastrar</Text>
+                                {salvando ? (
+                                    <>
+                                        <ActivityIndicator color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvando...</Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Feather name="check" size={18} color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Cadastrar</Text>
+                                    </>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

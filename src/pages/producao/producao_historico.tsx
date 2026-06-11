@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+    ActivityIndicator,
     View,
     Text,
     TextInput,
@@ -28,16 +29,38 @@ export default function ProducaoHistorico() {
     const [allProducoes, setAllProducoes] = useState<Producao[]>([]);
     const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
     const [producaoSelecionada, setProducaoSelecionada] = useState<Producao | null>(null);
+    const [carregando, setCarregando] = useState(true);
+    const [atualizando, setAtualizando] = useState(false);
+    const [excluindo, setExcluindo] = useState(false);
+    const jaCarregouRef = useRef(false);
 
     const [paginaAtual, setPaginaAtual] = useState(1);
     const ITENS_POR_PAGINA = 5;
 
     async function carregarProducoes() {
+        const primeiraCarga = !jaCarregouRef.current;
+        if (primeiraCarga) {
+            setCarregando(true);
+        } else {
+            setAtualizando(true);
+        }
+
         try {
             const data = await listarProducoes();
             setAllProducoes(data);
         } catch (err) {
             console.error("Erro:", err);
+            Toast.show({
+                type: "error",
+                text1: "Erro ao carregar",
+                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+        } finally {
+            jaCarregouRef.current = true;
+            setCarregando(false);
+            setAtualizando(false);
         }
     }
     useFocusEffect(
@@ -58,14 +81,16 @@ export default function ProducaoHistorico() {
     const producoesPaginadas = filteredProductions.slice(inicio, inicio + ITENS_POR_PAGINA);
 
     function abrirModalExclusao(producao: Producao) {
+        if (carregando || atualizando || excluindo) return;
         setProducaoSelecionada(producao);
         setModalExcluirVisible(true);
     }
 
     async function confirmarExclusao() {
-        if (!producaoSelecionada) return;
+        if (!producaoSelecionada || excluindo) return;
 
         try {
+            setExcluindo(true);
             await excluirProducao(producaoSelecionada.id);
             setAllProducoes((prev) => prev.filter((p) => p.id !== producaoSelecionada.id));
             setModalExcluirVisible(false);
@@ -84,10 +109,13 @@ export default function ProducaoHistorico() {
                 text2: err.message || "Não foi possível excluir.",
                 position: "top",
             });
+        } finally {
+            setExcluindo(false);
         }
     }
 
     function handleEdit(prod: Producao) {
+        if (carregando || atualizando || excluindo) return;
         navigation.navigate("ProducaoEdicao", { producao: prod });
     }
 
@@ -112,12 +140,20 @@ export default function ProducaoHistorico() {
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                        <TouchableOpacity onPress={() => navigation.replace("Dashboard")} style={{ padding: 4 }}>
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (!excluindo) navigation.replace("Dashboard");
+                            }}
+                            disabled={excluindo}
+                            style={{ padding: 4, opacity: excluindo ? 0.5 : 1 }}
+                        >
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Histórico</Text>
-                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)" }}>{filteredProductions.length} registros</Text>
+                            <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
+                                {carregando ? "Carregando..." : `${filteredProductions.length} registros`}
+                            </Text>
                         </View>
                     </View>
 
@@ -128,8 +164,10 @@ export default function ProducaoHistorico() {
                             onChangeText={setSearchTerm}
                             placeholder="Buscar por data ou observação..."
                             placeholderTextColor="rgba(255,255,255,0.6)"
+                            editable={!carregando && !excluindo}
                             style={{ flex: 1, paddingVertical: 10, paddingLeft: 10, fontSize: 14, color: "#fff" }}
                         />
+                        {atualizando ? <ActivityIndicator size="small" color="#fff" /> : null}
                     </View>
                 </LinearGradient>
 
@@ -139,7 +177,12 @@ export default function ProducaoHistorico() {
                         <Text style={{ fontSize: 22, fontWeight: "700", color: "#4a90e2" }}>{totalLiters.toLocaleString("pt-BR")} litros</Text>
                     </View>
 
-                    {filteredProductions.length === 0 ? (
+                    {carregando ? (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <ActivityIndicator size="small" color="#4a90e2" />
+                            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>Carregando histórico...</Text>
+                        </View>
+                    ) : filteredProductions.length === 0 ? (
                         <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <Text style={{ fontSize: 14, color: "#6b7280" }}>Nenhum registro encontrado</Text>
                         </View>
@@ -154,10 +197,18 @@ export default function ProducaoHistorico() {
                                             </Text>
                                         </View>
                                         <View style={{ flexDirection: "row", gap: 4 }}>
-                                            <TouchableOpacity onPress={() => handleEdit(prod)} style={{ padding: 8 }}>
+                                            <TouchableOpacity
+                                                onPress={() => handleEdit(prod)}
+                                                disabled={excluindo}
+                                                style={{ padding: 8, opacity: excluindo ? 0.45 : 1 }}
+                                            >
                                                 <Feather name="edit-2" size={18} color="#4a90e2" />
                                             </TouchableOpacity>
-                                            <TouchableOpacity onPress={() => abrirModalExclusao(prod)} style={{ padding: 8 }}>
+                                            <TouchableOpacity
+                                                onPress={() => abrirModalExclusao(prod)}
+                                                disabled={excluindo}
+                                                style={{ padding: 8, opacity: excluindo ? 0.45 : 1 }}
+                                            >
                                                 <Feather name="trash-2" size={18} color="#ef4444" />
                                             </TouchableOpacity>
                                         </View>
@@ -188,11 +239,11 @@ export default function ProducaoHistorico() {
                         <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 12, paddingVertical: 8 }}>
                             <TouchableOpacity
                                 onPress={() => setPaginaAtual((p) => Math.max(1, p - 1))}
-                                disabled={paginaAtual === 1}
+                                disabled={paginaAtual === 1 || carregando || excluindo}
                                 style={{
                                     padding: 10,
                                     borderRadius: 8,
-                                    backgroundColor: paginaAtual === 1 ? "#e5e7eb" : "#4a90e2",
+                                    backgroundColor: paginaAtual === 1 || carregando || excluindo ? "#e5e7eb" : "#4a90e2",
                                 }}
                             >
                                 <Feather name="chevron-left" size={18} color="#fff" />
@@ -204,11 +255,11 @@ export default function ProducaoHistorico() {
 
                             <TouchableOpacity
                                 onPress={() => setPaginaAtual((p) => Math.min(totalPaginas, p + 1))}
-                                disabled={paginaAtual === totalPaginas}
+                                disabled={paginaAtual === totalPaginas || carregando || excluindo}
                                 style={{
                                     padding: 10,
                                     borderRadius: 8,
-                                    backgroundColor: paginaAtual === totalPaginas ? "#e5e7eb" : "#4a90e2",
+                                    backgroundColor: paginaAtual === totalPaginas || carregando || excluindo ? "#e5e7eb" : "#4a90e2",
                                 }}
                             >
                                 <Feather name="chevron-right" size={18} color="#fff" />
@@ -222,7 +273,9 @@ export default function ProducaoHistorico() {
                 visible={modalExcluirVisible}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setModalExcluirVisible(false)}
+                onRequestClose={() => {
+                    if (!excluindo) setModalExcluirVisible(false);
+                }}
             >
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 24 }}>
                     <View style={{ width: "100%", maxWidth: 360, backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
@@ -238,21 +291,33 @@ export default function ProducaoHistorico() {
                         <View style={{ flexDirection: "row", gap: 10 }}>
                             <TouchableOpacity
                                 onPress={() => {
+                                    if (excluindo) return;
                                     setModalExcluirVisible(false);
                                     setProducaoSelecionada(null);
                                 }}
+                                disabled={excluindo}
                                 activeOpacity={0.75}
-                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 12, paddingVertical: 14, alignItems: "center", opacity: excluindo ? 0.55 : 1 }}
                             >
                                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={confirmarExclusao}
+                                disabled={excluindo}
                                 activeOpacity={0.8}
-                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 14, minHeight: 48, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6, opacity: excluindo ? 0.78 : 1 }}
                             >
-                                <Feather name="trash-2" size={16} color="#fff" />
-                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>
+                                {excluindo ? (
+                                    <>
+                                        <ActivityIndicator size="small" color="#fff" />
+                                        <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluindo...</Text>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Feather name="trash-2" size={16} color="#fff" />
+                                        <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

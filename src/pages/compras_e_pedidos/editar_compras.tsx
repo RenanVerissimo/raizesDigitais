@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+    ActivityIndicator,
     View, Text, TextInput, TouchableOpacity, ScrollView,
     StatusBar, Alert, KeyboardAvoidingView, Platform,
 } from "react-native";
@@ -58,6 +59,7 @@ export default function EditarCompra() {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const compraOriginal: Compra = route.params.compra;
+    const [salvando, setSalvando] = useState(false);
 
     const [formData, setFormData] = useState({
         categoria: compraOriginal.categoria as CategoriaCompra,
@@ -100,10 +102,12 @@ export default function EditarCompra() {
     ];
 
     function handleCancelar() {
+       if (salvando) return;
        navigation.goBack();
     }
 
     function atualizarTipoRacao(tipoRacao: TipoRacaoCompra) {
+        if (salvando) return;
         const pesoSugerido = PESO_SUGERIDO_RACAO[tipoRacao]?.[formData.unidadeCompra];
         setFormData({
             ...formData,
@@ -113,6 +117,7 @@ export default function EditarCompra() {
     }
 
     function atualizarUnidadeCompra(unidadeCompra: UnidadeCompraRacao) {
+        if (salvando) return;
         const pesoSugerido = PESO_SUGERIDO_RACAO[formData.tipoRacao]?.[unidadeCompra];
         setFormData({
             ...formData,
@@ -122,6 +127,8 @@ export default function EditarCompra() {
     }
 
     async function handleSubmit() {
+        if (salvando) return;
+
         const apenasStatusMudou =
             formData.status !== compraOriginal.status &&
             formData.categoria === compraOriginal.categoria &&
@@ -138,6 +145,7 @@ export default function EditarCompra() {
 
         if (apenasStatusMudou) {
             try {
+                setSalvando(true);
                 await atualizarStatusCompra(compraOriginal.id, formData.status);
                 Toast.show({
                     type: "success",
@@ -146,16 +154,20 @@ export default function EditarCompra() {
                     position: "top",
                     visibilityTime: 3000,
                 });
-                setTimeout(() => navigation.goBack(), 500);
+                setTimeout(() => {
+                    setSalvando(false);
+                    navigation.goBack();
+                }, 500);
             } catch (err) {
                 console.error(err);
                 Toast.show({
                     type: "error",
                     text1: "Erro ao atualizar status",
-                    text2: "Não foi possível alterar o status da compra.",
+                    text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
                     position: "top",
                     visibilityTime: 3000,
                 });
+                setSalvando(false);
             }
             return;
         }
@@ -181,6 +193,7 @@ export default function EditarCompra() {
         }
 
         try {
+            setSalvando(true);
             await atualizarCompra(compraOriginal.id, {
                 categoria: formData.categoria,
                 item: itemSelecionado,
@@ -205,17 +218,20 @@ export default function EditarCompra() {
                 position: "top",
                 visibilityTime: 3000,
             });
-            setTimeout(() => navigation.goBack(), 500);
+            setTimeout(() => {
+                setSalvando(false);
+                navigation.goBack();
+            }, 500);
         } catch (err) {
             console.error(err);
             Toast.show({
                 type: "error",
                 text1: "Erro ao atualizar",
-                text2: "Não foi possível salvar as alterações.",
+                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
                 position: "top",
                 visibilityTime: 3000,
             });
-            navigation.goBack();
+            setSalvando(false);
         }
     }
 
@@ -229,7 +245,7 @@ export default function EditarCompra() {
                     style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={handleCancelar} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={handleCancelar} disabled={salvando} style={{ padding: 4, opacity: salvando ? 0.65 : 1 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
@@ -259,9 +275,13 @@ export default function EditarCompra() {
                                     return (
                                         <TouchableOpacity
                                             key={key}
-                                            onPress={() => setFormData({ ...formData, categoria: key })}
+                                            onPress={() => {
+                                                if (salvando) return;
+                                                setFormData({ ...formData, categoria: key });
+                                            }}
                                             activeOpacity={0.7}
-                                            style={{ backgroundColor: ativo ? c.bg : "#f9fafb", borderWidth: 1, borderColor: ativo ? c.text : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 }}
+                                            disabled={salvando}
+                                            style={{ backgroundColor: ativo ? c.bg : "#f9fafb", borderWidth: 1, borderColor: ativo ? c.text : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, opacity: salvando ? 0.65 : 1 }}
                                         >
                                             <Text style={{ fontSize: 13, fontWeight: "500", color: ativo ? c.text : "#6b7280" }}>{c.label}</Text>
                                         </TouchableOpacity>
@@ -286,6 +306,7 @@ export default function EditarCompra() {
                                             key={tipo.key}
                                             activeOpacity={0.75}
                                             onPress={() => atualizarTipoRacao(tipo.key)}
+                                            disabled={salvando}
                                             style={{
                                                 backgroundColor: ativo ? tipo.cor : "#f9fafb",
                                                 borderWidth: 1,
@@ -296,6 +317,7 @@ export default function EditarCompra() {
                                                 flexDirection: "row",
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
+                                                opacity: salvando ? 0.65 : 1,
                                             }}
                                         >
                                             <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>
@@ -314,7 +336,11 @@ export default function EditarCompra() {
                                         <TouchableOpacity
                                             key={item.key}
                                             activeOpacity={0.75}
-                                            onPress={() => setFormData({ ...formData, itemOpcao: item.key, itemOutro: item.key === "outro" ? formData.itemOutro : "" })}
+                                            onPress={() => {
+                                                if (salvando) return;
+                                                setFormData({ ...formData, itemOpcao: item.key, itemOutro: item.key === "outro" ? formData.itemOutro : "" });
+                                            }}
+                                            disabled={salvando}
                                             style={{
                                                 backgroundColor: ativo ? item.cor : "#f9fafb",
                                                 borderWidth: 1,
@@ -325,6 +351,7 @@ export default function EditarCompra() {
                                                 flexDirection: "row",
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
+                                                opacity: salvando ? 0.65 : 1,
                                             }}
                                         >
                                             <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>
@@ -338,6 +365,7 @@ export default function EditarCompra() {
                                     <TextInput
                                         value={formData.itemOutro}
                                         onChangeText={(v) => setFormData({ ...formData, itemOutro: v })}
+                                        editable={!salvando}
                                         placeholder="Descreva o produto/item"
                                         placeholderTextColor="#9ca3af"
                                         style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -348,6 +376,7 @@ export default function EditarCompra() {
                             <TextInput
                                 value={formData.itemDescricao}
                                 onChangeText={(v) => setFormData({ ...formData, itemDescricao: v })}
+                                editable={!salvando}
                                 placeholder="Ex: Ração 25kg, Sal mineral"
                                 placeholderTextColor="#9ca3af"
                                 style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -370,7 +399,8 @@ export default function EditarCompra() {
                                                 key={unidade.key}
                                                 onPress={() => atualizarUnidadeCompra(unidade.key)}
                                                 activeOpacity={0.75}
-                                                style={{ backgroundColor: ativo ? "#f59e0b" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#f59e0b" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }}
+                                                disabled={salvando}
+                                                style={{ backgroundColor: ativo ? "#f59e0b" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#f59e0b" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9, opacity: salvando ? 0.65 : 1 }}
                                             >
                                                 <Text style={{ fontSize: 13, fontWeight: "700", color: ativo ? "#fff" : "#6b7280" }}>{unidade.label}</Text>
                                             </TouchableOpacity>
@@ -384,6 +414,7 @@ export default function EditarCompra() {
                                     <TextInput
                                         value={formData.pesoPorUnidadeKg}
                                         onChangeText={(v) => setFormData({ ...formData, pesoPorUnidadeKg: v })}
+                                        editable={!salvando}
                                         placeholder="Ex: 60"
                                         placeholderTextColor="#9ca3af"
                                         keyboardType="decimal-pad"
@@ -408,7 +439,11 @@ export default function EditarCompra() {
                             </View>
                             <TouchableOpacity
                                 activeOpacity={0.75}
-                                onPress={() => setFormData({ ...formData, finalidadeTratamento: "mastite", finalidadeDescricao: "" })}
+                                onPress={() => {
+                                    if (salvando) return;
+                                    setFormData({ ...formData, finalidadeTratamento: "mastite", finalidadeDescricao: "" });
+                                }}
+                                disabled={salvando}
                                 style={{
                                     backgroundColor: formData.finalidadeTratamento === "mastite" ? "#dc2626" : "#f9fafb",
                                     borderWidth: 1,
@@ -420,6 +455,7 @@ export default function EditarCompra() {
                                     alignItems: "center",
                                     justifyContent: "space-between",
                                     marginBottom: 8,
+                                    opacity: salvando ? 0.65 : 1,
                                 }}
                             >
                                 <Text style={{ fontSize: 13, fontWeight: "600", color: formData.finalidadeTratamento === "mastite" ? "#fff" : "#374151" }}>
@@ -429,7 +465,11 @@ export default function EditarCompra() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 activeOpacity={0.75}
-                                onPress={() => setFormData({ ...formData, finalidadeTratamento: "outro_tratamento" })}
+                                onPress={() => {
+                                    if (salvando) return;
+                                    setFormData({ ...formData, finalidadeTratamento: "outro_tratamento" });
+                                }}
+                                disabled={salvando}
                                 style={{
                                     backgroundColor: formData.finalidadeTratamento === "outro_tratamento" ? "#f59e0b" : "#f9fafb",
                                     borderWidth: 1,
@@ -440,6 +480,7 @@ export default function EditarCompra() {
                                     flexDirection: "row",
                                     alignItems: "center",
                                     justifyContent: "space-between",
+                                    opacity: salvando ? 0.65 : 1,
                                 }}
                             >
                                 <Text style={{ fontSize: 13, fontWeight: "600", color: formData.finalidadeTratamento === "outro_tratamento" ? "#fff" : "#374151" }}>
@@ -451,6 +492,7 @@ export default function EditarCompra() {
                                 <TextInput
                                     value={formData.finalidadeDescricao}
                                     onChangeText={(v) => setFormData({ ...formData, finalidadeDescricao: v })}
+                                    editable={!salvando}
                                     placeholder="Digite a finalidade do tratamento"
                                     placeholderTextColor="#9ca3af"
                                     style={{ marginTop: 8, backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
@@ -469,6 +511,7 @@ export default function EditarCompra() {
                             <TextInput
                                 value={formData.quantidade}
                                 onChangeText={(v) => setFormData({ ...formData, quantidade: v })}
+                                editable={!salvando}
                                 placeholder="0" placeholderTextColor="#9ca3af" keyboardType="decimal-pad"
                                 style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                             />
@@ -481,6 +524,7 @@ export default function EditarCompra() {
                             <TextInput
                                 value={formData.precoUnitario}
                                 onChangeText={(v) => setFormData({ ...formData, precoUnitario: v })}
+                                editable={!salvando}
                                 placeholder="0.00" placeholderTextColor="#9ca3af" keyboardType="decimal-pad"
                                 style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                             />
@@ -503,6 +547,7 @@ export default function EditarCompra() {
                         <TextInput
                             value={formData.fornecedor}
                             onChangeText={(v) => setFormData({ ...formData, fornecedor: v })}
+                            editable={!salvando}
                             placeholder="Nome do fornecedor" placeholderTextColor="#9ca3af"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
@@ -520,9 +565,13 @@ export default function EditarCompra() {
                                 return (
                                     <TouchableOpacity
                                         key={s.key}
-                                        onPress={() => setFormData({ ...formData, status: s.key })}
+                                        onPress={() => {
+                                            if (salvando) return;
+                                            setFormData({ ...formData, status: s.key });
+                                        }}
                                         activeOpacity={0.7}
-                                        style={{ flex: 1, backgroundColor: ativo ? s.cor : "#f3f4f6", paddingVertical: 10, borderRadius: 10, alignItems: "center" }}
+                                        disabled={salvando}
+                                        style={{ flex: 1, backgroundColor: ativo ? s.cor : "#f3f4f6", paddingVertical: 10, borderRadius: 10, alignItems: "center", opacity: salvando ? 0.65 : 1 }}
                                     >
                                         <Text style={{ fontSize: 12, fontWeight: "600", color: ativo ? "#fff" : "#374151" }}>{s.label}</Text>
                                     </TouchableOpacity>
@@ -540,6 +589,7 @@ export default function EditarCompra() {
                         <TextInput
                             value={formData.observacoes}
                             onChangeText={(v) => setFormData({ ...formData, observacoes: v })}
+                            editable={!salvando}
                             placeholder="Detalhes adicionais (opcional)" placeholderTextColor="#9ca3af"
                             multiline numberOfLines={3}
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 80, textAlignVertical: "top" }}
@@ -550,16 +600,27 @@ export default function EditarCompra() {
                     <View style={{ flexDirection: "row", gap: 10, marginTop: 8, marginBottom: insets.bottom + 20 }}>
                         <TouchableOpacity
                             onPress={handleCancelar} activeOpacity={0.7}
-                            style={{ flex: 1, backgroundColor: "#f3f4f6", paddingVertical: 14, borderRadius: 12, alignItems: "center" }}
+                            disabled={salvando}
+                            style={{ flex: 1, backgroundColor: "#f3f4f6", paddingVertical: 14, borderRadius: 12, alignItems: "center", opacity: salvando ? 0.65 : 1 }}
                         >
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>Cancelar</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={handleSubmit} activeOpacity={0.85}
-                            style={{ flex: 1, backgroundColor: "#f59e0b", paddingVertical: 14, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
+                            disabled={salvando}
+                            style={{ flex: 1, backgroundColor: "#f59e0b", paddingVertical: 14, minHeight: 49, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, opacity: salvando ? 0.78 : 1 }}
                         >
-                            <Feather name="check" size={18} color="#fff" />
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvar</Text>
+                            {salvando ? (
+                                <>
+                                    <ActivityIndicator color="#fff" />
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvando...</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Feather name="check" size={18} color="#fff" />
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvar</Text>
+                                </>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>

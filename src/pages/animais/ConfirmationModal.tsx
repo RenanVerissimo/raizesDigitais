@@ -1,5 +1,6 @@
 import React from "react";
 import {
+    ActivityIndicator,
     Modal,
     View,
     Text,
@@ -16,9 +17,10 @@ interface Props {
     nomeAnimal: string;
     onConfirm: () => void;
     onCancel: () => void;
+    loading?: boolean;
 }
 
-export default function ConfirmDeleteModal({ visible, title, nomeAnimal, onConfirm, onCancel }: Props) {
+export default function ConfirmDeleteModal({ visible, title, nomeAnimal, onConfirm, onCancel, loading = false }: Props) {
     const insets = useSafeAreaInsets();
 
     return (
@@ -26,9 +28,9 @@ export default function ConfirmDeleteModal({ visible, title, nomeAnimal, onConfi
             visible={visible}
             transparent
             animationType="fade"
-            onRequestClose={onCancel}
+            onRequestClose={loading ? undefined : onCancel}
         >
-            <TouchableWithoutFeedback onPress={onCancel}>
+            <TouchableWithoutFeedback onPress={loading ? undefined : onCancel}>
                 <View style={styles.overlay}>
                     <TouchableWithoutFeedback>
                         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
@@ -58,9 +60,10 @@ export default function ConfirmDeleteModal({ visible, title, nomeAnimal, onConfi
 
                             <View style={styles.actions}>
                                 <TouchableOpacity
-                                    onPress={onCancel}
+                                    onPress={loading ? undefined : onCancel}
                                     activeOpacity={0.7}
-                                    style={styles.cancelButton}
+                                    disabled={loading}
+                                    style={[styles.cancelButton, loading && styles.disabledButton]}
                                 >
                                     <Text style={styles.cancelText}>Cancelar</Text>
                                 </TouchableOpacity>
@@ -68,10 +71,17 @@ export default function ConfirmDeleteModal({ visible, title, nomeAnimal, onConfi
                                 <TouchableOpacity
                                     onPress={onConfirm}
                                     activeOpacity={0.8}
-                                    style={styles.deleteButton}
+                                    disabled={loading}
+                                    style={[styles.deleteButton, loading && styles.disabledButton]}
                                 >
-                                    <Feather name="trash-2" size={16} color="#fff" />
-                                    <Text style={styles.deleteText}>Excluir</Text>
+                                    {loading ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <>
+                                            <Feather name="trash-2" size={16} color="#fff" />
+                                            <Text style={styles.deleteText}>Excluir</Text>
+                                        </>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -184,5 +194,8 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: "700",
         color: "#fff",
+    },
+    disabledButton: {
+        opacity: 0.65,
     },
 });

@@ -1,5 +1,10 @@
 export function formatarData(data: string, completa: boolean = true): string {
-    const d = new Date(data);
+    const dataTexto = data?.substring(0, 10);
+    const partes = dataTexto?.split("-").map(Number);
+    const d = partes?.length === 3 && partes.every(Boolean)
+        ? new Date(partes[0], partes[1] - 1, partes[2], 12)
+        : new Date(data);
+
     if (isNaN(d.getTime())) return data;
 
     if (completa) {

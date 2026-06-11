@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Alert, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -45,18 +45,24 @@ export default function TodasCompras() {
     const [compras, setCompras] = useState<Compra[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [compraSelecionada, setCompraSelecionada] = useState<Compra | null>(null);
+    const [carregando, setCarregando] = useState(true);
+    const [excluindoId, setExcluindoId] = useState<number | null>(null);
 
     useFocusEffect(useCallback(() => {
+        setCarregando(true);
         listarCompras()
             .then(setCompras)
-            .catch(() => Alert.alert("Erro", "Não foi possível carregar as compras"));
+            .catch(() => Alert.alert("Erro", "Não foi possível carregar as compras"))
+            .finally(() => setCarregando(false));
     }, []));
 
     function handleEditar(compra: Compra) {
+        if (excluindoId !== null) return;
         navigation.navigate("editar_compras", { compra });
     }
 
     function handleExcluir(compra: Compra) {
+        if (excluindoId !== null) return;
         setCompraSelecionada(compra);
         setModalVisible(true);
     }
@@ -66,6 +72,7 @@ export default function TodasCompras() {
         const itemExcluido = compraSelecionada.item;
 
         try {
+            setExcluindoId(compraSelecionada.id);
             await excluirCompra(compraSelecionada.id);
             setCompras((prev) => prev.filter((c) => c.id !== compraSelecionada.id));
             Toast.show({
@@ -79,11 +86,12 @@ export default function TodasCompras() {
             Toast.show({
                 type: "error",
                 text1: "Erro ao excluir",
-                text2: "Não foi possível excluir a compra.",
+                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
                 position: "top",
                 visibilityTime: 3000,
             });
         } finally {
+            setExcluindoId(null);
             setModalVisible(false);
             setCompraSelecionada(null);
         }
@@ -126,7 +134,17 @@ export default function TodasCompras() {
                             </View>
                         </View>
 
-                        {compras.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ padding: 32, alignItems: "center" }}>
+                                <ActivityIndicator size="large" color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151", marginTop: 14 }}>
+                                    Carregando compras
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                    A API pode levar alguns segundos para responder.
+                                </Text>
+                            </View>
+                        ) : compras.length === 0 ? (
                             <View style={{ padding: 32, alignItems: "center" }}>
                                 <Feather name="shopping-cart" size={48} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>Nenhuma compra encontrada</Text>
@@ -160,11 +178,15 @@ export default function TodasCompras() {
                                                 </View>
 
                                                 <View style={{ flexDirection: "row", gap: 6 }}>
-                                                    <TouchableOpacity onPress={() => handleEditar(compra)} activeOpacity={0.7} style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center" }}>
+                                                    <TouchableOpacity onPress={() => handleEditar(compra)} activeOpacity={0.7} disabled={excluindoId !== null} style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center", opacity: excluindoId !== null ? 0.55 : 1 }}>
                                                         <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
                                                     </TouchableOpacity>
-                                                    <TouchableOpacity onPress={() => handleExcluir(compra)} activeOpacity={0.7} style={{ width: 32, height: 32, backgroundColor: "#ef4444", borderRadius: 8, alignItems: "center", justifyContent: "center" }}>
-                                                        <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
+                                                    <TouchableOpacity onPress={() => handleExcluir(compra)} activeOpacity={0.7} disabled={excluindoId !== null} style={{ width: 32, height: 32, backgroundColor: "#ef4444", borderRadius: 8, alignItems: "center", justifyContent: "center", opacity: excluindoId !== null && excluindoId !== compra.id ? 0.55 : 1 }}>
+                                                        {excluindoId === compra.id ? (
+                                                            <ActivityIndicator color="#fff" />
+                                                        ) : (
+                                                            <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
+                                                        )}
                                                     </TouchableOpacity>
                                                 </View>
                                             </View>
@@ -206,7 +228,11 @@ export default function TodasCompras() {
                     visible={modalVisible}
                     title="Excluir compra"
                     nomeAnimal={compraSelecionada?.item || ""}
-                    onCancel={() => setModalVisible(false)}
+                    loading={excluindoId === compraSelecionada?.id}
+                    onCancel={() => {
+                        if (excluindoId !== null) return;
+                        setModalVisible(false);
+                    }}
                     onConfirm={confirmarExclusao}
                 />
             </ScrollView>
