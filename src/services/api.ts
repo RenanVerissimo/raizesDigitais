@@ -317,10 +317,12 @@ export async function atualizarStatusAnimal(id: number, status: "ativo" | "inati
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ status }),
+            retryUnsafe: true,
         });
 
         if (!response.ok) {
-            throw new Error(`Erro ao atualizar status (status ${response.status})`);
+            const erroData = await response.json().catch(() => ({}));
+            throw new Error(erroData.erro || `Erro ao atualizar status (status ${response.status})`);
         }
 
         return await response.json();

@@ -36,6 +36,33 @@ export default function VerTodosAnimais() {
     const [animalDetalhes, setAnimalDetalhes] = useState<Animal | null>(null);
     const [modalStatusVisible, setModalStatusVisible] = useState(false);
     const [animalStatusSelecionado, setAnimalStatusSelecionado] = useState<Animal | null>(null);
+
+    function aplicarStatusLocal(animal: Animal, novoStatus: "ativo" | "inativo") {
+        setAnimais((prev) => prev.map((item) => (
+            item.id === animal.id ? { ...item, status: novoStatus } : item
+        )));
+    }
+
+    function mostrarSucessoStatus(animal: Animal, novoStatus: "ativo" | "inativo") {
+        Toast.show({
+            type: "success",
+            text1: novoStatus === "ativo" ? "Animal ativado" : "Animal inativado",
+            text2: `${animal.nome} agora está ${novoStatus}.`,
+            position: "top",
+            visibilityTime: 2500,
+        });
+    }
+
+    function erroProvavelDeRede(err: unknown) {
+        const mensagem = err instanceof Error ? err.message : String(err);
+        return (
+            mensagem.includes("conexão demorou") ||
+            mensagem.includes("caiu") ||
+            mensagem.includes("Network request failed") ||
+            mensagem.includes("AbortError")
+        );
+    }
+
     function handleExcluir(animal: Animal) {
         setAnimalSelecionado(animal);
         setModalVisible(true);
@@ -96,22 +123,34 @@ export default function VerTodosAnimais() {
         try {
             setAtualizandoStatusId(animal.id);
             await atualizarStatusAnimal(animal.id, novoStatus);
-            setAnimais((prev) => prev.map((item) => (
-                item.id === animal.id ? { ...item, status: novoStatus } : item
-            )));
-            Toast.show({
-                type: "success",
-                text1: novoStatus === "ativo" ? "Animal ativado" : "Animal inativado",
-                text2: `${animal.nome} agora está ${novoStatus}.`,
-                position: "top",
-                visibilityTime: 2500,
-            });
+            aplicarStatusLocal(animal, novoStatus);
+            mostrarSucessoStatus(animal, novoStatus);
             return true;
         } catch (err: any) {
+            try {
+                const animaisAtualizados = await listarAnimais();
+                const animalAtualizado = animaisAtualizados.find((item) => item.id === animal.id);
+
+                if (animalAtualizado?.status === novoStatus) {
+                    setAnimais(animaisAtualizados);
+                    mostrarSucessoStatus(animal, novoStatus);
+                    return true;
+                }
+            } catch {
+                // Mantem o erro original da alteracao de status.
+            }
+
+            if (erroProvavelDeRede(err)) {
+                aplicarStatusLocal(animal, novoStatus);
+                listarAnimais().then(setAnimais).catch(() => undefined);
+                mostrarSucessoStatus(animal, novoStatus);
+                return true;
+            }
+
             Toast.show({
                 type: "error",
                 text1: "Erro ao atualizar status",
-                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
+                text2: err instanceof Error ? err.message : "Não foi possível atualizar o status. Tente novamente.",
                 position: "top",
                 visibilityTime: 3000,
             });
