@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -25,6 +25,7 @@ export default function MovimentarRacao() {
     const racaoIdInicial = route.params?.racaoId ? String(route.params.racaoId) : "";
     const unidadeCompra = route.params?.unidadeCompra || null;
     const pesoPorUnidadeKg = route.params?.pesoPorUnidadeKg ? Number(route.params.pesoPorUnidadeKg) : null;
+    const [salvando, setSalvando] = useState(false);
 
     const [formData, setFormData] = useState({
         racaoId: racaoIdInicial || (racoes[0]?.id ? String(racoes[0].id) : ""),
@@ -42,6 +43,8 @@ export default function MovimentarRacao() {
     }
 
     async function handleSubmit() {
+        if (salvando) return;
+
         const quantidade = parseFloat(formData.quantidade || "0");
         const data = toIso(formData.data);
         const motivo = "Consumo";
@@ -59,6 +62,7 @@ export default function MovimentarRacao() {
         const observacoes = formData.observacoes.trim() || null;
 
         try {
+            setSalvando(true);
             await criarMovimentacaoRacao({
                 racaoId: Number(formData.racaoId),
                 tipo: formData.tipo,
@@ -73,6 +77,8 @@ export default function MovimentarRacao() {
             setTimeout(() => navigation.goBack(), 500);
         } catch (err: any) {
             Toast.show({ type: "error", text1: "Erro", text2: err.message || "Nao foi possivel movimentar.", position: "top" });
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -111,6 +117,7 @@ export default function MovimentarRacao() {
                                         return (
                                             <TouchableOpacity
                                                 key={r.id}
+                                                disabled={salvando}
                                                 onPress={() => setFormData({
                                                     ...formData,
                                                     racaoId: String(r.id),
@@ -141,6 +148,7 @@ export default function MovimentarRacao() {
                                 return (
                                     <TouchableOpacity
                                         key={tipo.key}
+                                        disabled={salvando}
                                         onPress={() => setFormData({
                                             ...formData,
                                             tipo: tipo.key,
@@ -183,13 +191,19 @@ export default function MovimentarRacao() {
                     <Campo icone="edit-3" label="Observações" valor={formData.observacoes} onChange={(v: string) => setFormData({ ...formData, observacoes: v })} placeholder="Opcional" multiline />
 
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
-                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>
+                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} disabled={salvando} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando || racoes.length === 0} style={{ flex: 2, opacity: salvando || racoes.length === 0 ? 0.78 : 1 }}>
                             <LinearGradient colors={["#4a90e2", "#357abd"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
-                                <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Registrar</Text>
+                                {salvando ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Feather name="check" size={18} color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Registrar</Text>
+                                    </>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

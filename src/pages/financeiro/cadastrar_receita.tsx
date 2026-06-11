@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from "react";
 import {
+    ActivityIndicator,
     View, Text, TextInput, TouchableOpacity, ScrollView,
     StatusBar, KeyboardAvoidingView, Platform,
 } from "react-native";
@@ -36,6 +37,7 @@ export default function CadastrarReceita() {
     const [animais, setAnimais] = useState<Animal[]>([]);
     const [dropdownAnimaisAberto, setDropdownAnimaisAberto] = useState(false);
     const [buscaAnimal, setBuscaAnimal] = useState("");
+    const [salvando, setSalvando] = useState(false);
     const [formData, setFormData] = useState({
         tipoReceita: "leite" as TipoReceita,
         origemAnimal: "cadastrado" as OrigemAnimal,
@@ -74,6 +76,8 @@ export default function CadastrarReceita() {
     }
 
     async function handleSubmit() {
+        if (salvando) return;
+
         const dataIso = toIso(formData.data);
         if (!dataIso) {
             Toast.show({ type: "info", text1: "Atenção", text2: "Informe uma data válida (DD/MM/AAAA).", position: "top", visibilityTime: 3000 });
@@ -86,6 +90,7 @@ export default function CadastrarReceita() {
         }
 
         try {
+            setSalvando(true);
             if (formData.tipoReceita === "leite") {
                 const litros = parseDecimal(formData.litros);
                 const preco = parseDecimal(formData.precoPorLitro);
@@ -161,6 +166,8 @@ export default function CadastrarReceita() {
                 position: "top",
                 visibilityTime: 3000,
             });
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -397,13 +404,19 @@ export default function CadastrarReceita() {
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
-                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>
+                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} disabled={salvando} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando} style={{ flex: 2, opacity: salvando ? 0.78 : 1 }}>
                             <LinearGradient colors={["#4a90e2", "#357abd"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
-                                <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Cadastrar</Text>
+                                {salvando ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Feather name="check" size={18} color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Cadastrar</Text>
+                                    </>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -52,9 +52,12 @@ export default function TodasComprasRacao() {
     const navigation = useNavigation<any>();
     const [comprasRacao, setComprasRacao] = useState<Compra[]>([]);
     const [compraParaExcluir, setCompraParaExcluir] = useState<Compra | null>(null);
+    const [carregando, setCarregando] = useState(true);
+    const [excluindo, setExcluindo] = useState(false);
 
     async function carregarCompras() {
         try {
+            setCarregando(true);
             const compras = await listarCompras();
             const concluidas = compras
                 .filter((compra) => compra.categoria === "racao" && compra.status === "concluido")
@@ -67,6 +70,8 @@ export default function TodasComprasRacao() {
                 text2: err.message || "Não foi possível carregar as compras de ração.",
                 position: "top",
             });
+        } finally {
+            setCarregando(false);
         }
     }
 
@@ -84,8 +89,10 @@ export default function TodasComprasRacao() {
 
     async function excluirCompraSelecionada() {
         if (!compraParaExcluir) return;
+        if (excluindo) return;
 
         try {
+            setExcluindo(true);
             await excluirCompra(compraParaExcluir.id);
             setComprasRacao((prev) => prev.filter((item) => item.id !== compraParaExcluir.id));
             setCompraParaExcluir(null);
@@ -101,13 +108,15 @@ export default function TodasComprasRacao() {
                 text2: err.message || "Não foi possível excluir a compra.",
                 position: "top",
             });
+        } finally {
+            setExcluindo(false);
         }
     }
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
             <StatusBar barStyle="light-content" />
-            <Modal transparent visible={!!compraParaExcluir} animationType="fade" onRequestClose={() => setCompraParaExcluir(null)}>
+            <Modal transparent visible={!!compraParaExcluir} animationType="fade" onRequestClose={() => !excluindo && setCompraParaExcluir(null)}>
                 <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.45)", justifyContent: "center", padding: 24 }}>
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: "#fee2e2" }}>
                         <View style={{ alignItems: "center" }}>
@@ -124,16 +133,18 @@ export default function TodasComprasRacao() {
                             <TouchableOpacity
                                 activeOpacity={0.75}
                                 onPress={() => setCompraParaExcluir(null)}
-                                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#f3f4f6", alignItems: "center" }}
+                                disabled={excluindo}
+                                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#f3f4f6", alignItems: "center", opacity: excluindo ? 0.65 : 1 }}
                             >
                                 <Text style={{ fontSize: 14, fontWeight: "800", color: "#374151" }}>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 activeOpacity={0.75}
                                 onPress={excluirCompraSelecionada}
-                                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#ef4444", alignItems: "center" }}
+                                disabled={excluindo}
+                                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center", minHeight: 45, opacity: excluindo ? 0.78 : 1 }}
                             >
-                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>
+                                {excluindo ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -161,7 +172,12 @@ export default function TodasComprasRacao() {
 
                 <View style={{ padding: 20, paddingBottom: insets.bottom + 24 }}>
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        {comprasRacao.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ paddingVertical: 34, alignItems: "center" }}>
+                                <ActivityIndicator color="#4a90e2" />
+                                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>Carregando compras de ração</Text>
+                            </View>
+                        ) : comprasRacao.length === 0 ? (
                             <View style={{ paddingVertical: 34, alignItems: "center" }}>
                                 <Feather name="shopping-bag" size={44} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>Nenhuma compra de ração concluída</Text>
@@ -185,6 +201,7 @@ export default function TodasComprasRacao() {
                                                 <TouchableOpacity
                                                     activeOpacity={0.75}
                                                     onPress={() => editarCompra(compra)}
+                                                    disabled={excluindo}
                                                     style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#f59e0b", alignItems: "center", justifyContent: "center" }}
                                                 >
                                                     <Feather name="edit-2" size={15} color="#fff" />
@@ -192,6 +209,7 @@ export default function TodasComprasRacao() {
                                                 <TouchableOpacity
                                                     activeOpacity={0.75}
                                                     onPress={() => confirmarExclusao(compra)}
+                                                    disabled={excluindo}
                                                     style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#ef4444", alignItems: "center", justifyContent: "center" }}
                                                 >
                                                     <Feather name="trash-2" size={15} color="#fff" />

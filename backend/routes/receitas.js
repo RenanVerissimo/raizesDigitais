@@ -11,6 +11,7 @@ async function ensureReceitasSchema() {
         { name: "animal_identificador", sql: "ADD COLUMN animal_identificador VARCHAR(80) NULL AFTER animal_nome" },
         { name: "animal_peso", sql: "ADD COLUMN animal_peso DECIMAL(10,2) NULL AFTER animal_identificador" },
         { name: "valor_animal", sql: "ADD COLUMN valor_animal DECIMAL(10,2) NULL AFTER animal_peso" },
+        { name: "idempotency_key", sql: "ADD COLUMN idempotency_key VARCHAR(80) NULL AFTER observacoes" },
     ];
 
     const [columns] = await pool.query(`
@@ -26,6 +27,21 @@ async function ensureReceitasSchema() {
         if (!existingColumns.has(column.name)) {
             await pool.query(`ALTER TABLE receitas ${column.sql}`);
         }
+    }
+
+    const [indexes] = await pool.query(`
+        SELECT INDEX_NAME
+        FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'receitas'
+          AND INDEX_NAME = 'ux_receitas_usuario_idempotency'
+    `);
+
+    if (indexes.length === 0) {
+        await pool.query(`
+            CREATE UNIQUE INDEX ux_receitas_usuario_idempotency
+            ON receitas (usuario_id, idempotency_key)
+        `);
     }
 }
 
@@ -165,13 +181,29 @@ router.post("/", async (req, res) => {
         await ensureReceitasSchema();
         const usuarioId = await requireUsuario(req, res, ["receitas"]);
         if (!usuarioId) return;
+        const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body.idempotencyKey || "").trim() || null;
+
+        if (idempotencyKey) {
+            const [receitasExistentes] = await pool.query(
+                "SELECT id FROM receitas WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                [usuarioId, idempotencyKey]
+            );
+
+            if (receitasExistentes.length > 0) {
+                return res.status(200).json({
+                    id: receitasExistentes[0].id,
+                    mensagem: "Receita já cadastrada",
+                    duplicada: true,
+                });
+            }
+        }
 
         const receita = await prepararReceita(usuarioId, req.body);
 
         const [result] = await pool.query(
             `INSERT INTO receitas
-             (usuario_id, tipo_receita, data, litros, preco_por_litro, valor_total, animal_id, animal_nome, animal_identificador, animal_peso, valor_animal, comprador, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (usuario_id, tipo_receita, data, litros, preco_por_litro, valor_total, animal_id, animal_nome, animal_identificador, animal_peso, valor_animal, comprador, observacoes, idempotency_key)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 usuarioId,
                 receita.tipo,
@@ -186,6 +218,7 @@ router.post("/", async (req, res) => {
                 receita.valorAnimalFinal,
                 receita.comprador,
                 receita.observacoes,
+                idempotencyKey,
             ]
         );
 
@@ -213,6 +246,23 @@ router.post("/", async (req, res) => {
             mensagem: "Receita cadastrada",
         });
     } catch (err) {
+        const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body.idempotencyKey || "").trim() || null;
+        if (err?.code === "ER_DUP_ENTRY" && idempotencyKey) {
+            const usuarioId = await requireUsuario(req, res, ["receitas"]);
+            if (!usuarioId) return;
+            const [receitasExistentes] = await pool.query(
+                "SELECT id FROM receitas WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                [usuarioId, idempotencyKey]
+            );
+
+            if (receitasExistentes.length > 0) {
+                return res.status(200).json({
+                    id: receitasExistentes[0].id,
+                    mensagem: "Receita já cadastrada",
+                    duplicada: true,
+                });
+            }
+        }
         console.error(err);
         res.status(err.status || 500).json({ erro: err.message || "Erro ao cadastrar receita" });
     }

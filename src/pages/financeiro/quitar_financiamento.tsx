@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,12 +26,16 @@ export default function QuitarFinanciamento() {
     const [desconto, setDesconto] = useState("");
     const [valorPago, setValorPago] = useState("");
     const [modalConfirmacaoVisible, setModalConfirmacaoVisible] = useState(false);
+    const [carregando, setCarregando] = useState(true);
+    const [salvando, setSalvando] = useState(false);
 
     useFocusEffect(
         useCallback(() => {
+            setCarregando(true);
             listarFinanciamentos()
                 .then((dados) => setFinanciamentos(dados.filter((item) => item.status === "ativo")))
-                .catch((error: any) => Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel carregar os financiamentos.", position: "top", visibilityTime: 3000 }));
+                .catch((error: any) => Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel carregar os financiamentos.", position: "top", visibilityTime: 3000 }))
+                .finally(() => setCarregando(false));
         }, [])
     );
 
@@ -81,8 +85,10 @@ export default function QuitarFinanciamento() {
 
     async function confirmarQuitacao() {
         if (!financiamentoSelecionado) return;
+        if (salvando) return;
 
         try {
+            setSalvando(true);
             await quitarFinanciamento(financiamentoSelecionado.id, {
                 valorQuitacao: valorPagoFinal,
                 descontoQuitacao: descontoNumero,
@@ -102,6 +108,8 @@ export default function QuitarFinanciamento() {
         } catch (error: any) {
             setModalConfirmacaoVisible(false);
             Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel quitar o financiamento.", position: "top", visibilityTime: 3000 });
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -139,7 +147,14 @@ export default function QuitarFinanciamento() {
                             Financiamento
                         </Text>
 
-                        {financiamentos.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ alignItems: "center", paddingVertical: 22 }}>
+                                <ActivityIndicator color="#4a90e2" />
+                                <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8, textAlign: "center" }}>
+                                    Carregando financiamentos
+                                </Text>
+                            </View>
+                        ) : financiamentos.length === 0 ? (
                             <View style={{ alignItems: "center", paddingVertical: 22 }}>
                                 <Feather name="file-text" size={40} color="#d1d5db" />
                                 <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8, textAlign: "center" }}>
@@ -229,11 +244,12 @@ export default function QuitarFinanciamento() {
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             activeOpacity={0.7}
+                            disabled={salvando}
                             style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}
                         >
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleQuitar} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleQuitar} activeOpacity={0.85} disabled={carregando || salvando} style={{ flex: 2, opacity: carregando || salvando ? 0.65 : 1 }}>
                             <LinearGradient colors={["#16a34a", "#15803d"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
                                 <Feather name="check" size={18} color="#fff" />
                                 <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Quitar</Text>
@@ -243,7 +259,7 @@ export default function QuitarFinanciamento() {
                 </View>
             </ScrollView>
 
-            <Modal visible={modalConfirmacaoVisible} transparent animationType="fade" onRequestClose={() => setModalConfirmacaoVisible(false)}>
+            <Modal visible={modalConfirmacaoVisible} transparent animationType="fade" onRequestClose={() => !salvando && setModalConfirmacaoVisible(false)}>
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
                     <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
                         <View style={{ alignItems: "center", marginBottom: 12 }}>
@@ -263,11 +279,11 @@ export default function QuitarFinanciamento() {
                             <ResumoLinha label="Desconto" valor={formatarMoeda(descontoNumero)} />
                         </View>
                         <View style={{ flexDirection: "row", gap: 10 }}>
-                            <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
+                            <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} disabled={salvando} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={confirmarQuitacao} activeOpacity={0.8} style={{ flex: 1, backgroundColor: "#16a34a", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
-                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>
+                            <TouchableOpacity onPress={confirmarQuitacao} activeOpacity={0.8} disabled={salvando} style={{ flex: 1, backgroundColor: "#16a34a", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: salvando ? 0.78 : 1 }}>
+                                {salvando ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>

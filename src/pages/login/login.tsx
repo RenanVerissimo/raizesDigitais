@@ -88,6 +88,8 @@ function InputField({
     secureTextEntry,
     rightIcon,
     onRightIconPress,
+    onRightIconPressIn,
+    onRightIconPressOut,
     autoCapitalize,
 }: InputFieldProps) {
     const [focused, setFocused] = useState(false);
@@ -115,7 +117,7 @@ function InputField({
                     onChangeText={onChangeText}
                     placeholder={placeholder}
                     placeholderTextColor={colors.mutedForeground}
-                    secureTextEntry={secureTextEntry}
+                    secureTextEntry={secureTextEntry ?? false}
                     keyboardType={keyboardType ?? "default"}
                     autoCapitalize={autoCapitalize ?? "none"}
                     autoCorrect={false}
@@ -125,9 +127,11 @@ function InputField({
                     onBlur={() => setFocused(false)}
                     style={[styles.input, { color: colors.foreground, paddingRight: rightIcon ? 44 : 16, borderWidth: 0, outlineStyle: "none" as any }]}
                 />
-                {rightIcon && onRightIconPress && (
+                {rightIcon && (onRightIconPress || onRightIconPressIn || onRightIconPressOut) && (
                     <TouchableOpacity
                         onPress={onRightIconPress}
+                        onPressIn={onRightIconPressIn}
+                        onPressOut={onRightIconPressOut}
                         style={styles.rightIconBtn}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
@@ -325,7 +329,8 @@ export default function LoginScreen() {
                                     onChangeText={(v) => setLoginData({ ...loginData, password: v })}
                                     placeholder="••••••••" secureTextEntry={!showPassword}
                                     rightIcon={showPassword ? "eye-off" : "eye"}
-                                    onRightIconPress={() => setShowPassword(!showPassword)} />
+                                    onRightIconPressIn={() => setShowPassword(true)}
+                                    onRightIconPressOut={() => setShowPassword(false)} />
                                 <View style={styles.rememberRow}>
                                     <TouchableOpacity>
                                         <Text style={[styles.forgotText, { color: colors.primary }]}>Esqueceu a senha?</Text>
@@ -361,12 +366,14 @@ export default function LoginScreen() {
                                     onChangeText={(v) => setRegisterData({ ...registerData, password: v })}
                                     placeholder="••••••••" secureTextEntry={!showPassword}
                                     rightIcon={showPassword ? "eye-off" : "eye"}
-                                    onRightIconPress={() => setShowPassword(!showPassword)} />
+                                    onRightIconPressIn={() => setShowPassword(true)}
+                                    onRightIconPressOut={() => setShowPassword(false)} />
                                 <InputField label="Confirmar Senha" icon="lock" value={registerData.confirmPassword}
                                     onChangeText={(v) => setRegisterData({ ...registerData, confirmPassword: v })}
                                     placeholder="••••••••" secureTextEntry={!showConfirmPassword}
                                     rightIcon={showConfirmPassword ? "eye-off" : "eye"}
-                                    onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)} />
+                                    onRightIconPressIn={() => setShowConfirmPassword(true)}
+                                    onRightIconPressOut={() => setShowConfirmPassword(false)} />
                                 <TouchableOpacity style={styles.submitButton} onPress={handleRegisterSubmit} activeOpacity={0.85} disabled={isLoading}>
                                     <LinearGradient colors={["#3b82f6", "#2563eb"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitGradient}>
                                         {isLoading ? <ActivityIndicator color="#fff" /> : (

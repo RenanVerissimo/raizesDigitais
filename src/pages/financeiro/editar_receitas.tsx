@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import DateInput from "../../components/DateInput";
 import {
+    ActivityIndicator,
     View, Text, TextInput, TouchableOpacity, ScrollView,
     StatusBar, KeyboardAvoidingView, Platform,
 } from "react-native";
@@ -24,6 +25,7 @@ export default function EditarReceita() {
     const receita: Receita = route.params?.receita;
     const vendaAnimal = receita?.tipoReceita === "animal";
     const animalCadastrado = vendaAnimal && receita?.animalId != null;
+    const [salvando, setSalvando] = useState(false);
 
     const [formData, setFormData] = useState({
         comprador: receita?.comprador ?? "",
@@ -61,6 +63,8 @@ export default function EditarReceita() {
     }
 
     async function handleSubmit() {
+        if (salvando) return;
+
         const dataIso = toIso(formData.data);
         if (!dataIso) {
             Toast.show({ type: "info", text1: "Atenção", text2: "Informe uma data válida (DD/MM/AAAA).", position: "top", visibilityTime: 3000 });
@@ -68,6 +72,7 @@ export default function EditarReceita() {
         }
 
         try {
+            setSalvando(true);
             if (vendaAnimal) {
                 const valorAnimal = parseDecimal(formData.valorAnimal);
                 const animalPeso = !animalCadastrado && formData.animalPeso.trim() ? parseDecimal(formData.animalPeso) : null;
@@ -140,6 +145,8 @@ export default function EditarReceita() {
                 position: "top",
                 visibilityTime: 3000,
             });
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -383,6 +390,7 @@ export default function EditarReceita() {
                         <TouchableOpacity
                             onPress={handleCancelar}
                             activeOpacity={0.85}
+                            disabled={salvando}
                             style={{
                                 flex: 1,
                                 backgroundColor: "#fff",
@@ -391,6 +399,7 @@ export default function EditarReceita() {
                                 borderRadius: 12,
                                 paddingVertical: 14,
                                 alignItems: "center",
+                                opacity: salvando ? 0.65 : 1,
                             }}
                         >
                             <Text style={{ fontSize: 15, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
@@ -398,6 +407,7 @@ export default function EditarReceita() {
                         <TouchableOpacity
                             onPress={handleSubmit}
                             activeOpacity={0.85}
+                            disabled={salvando}
                             style={{
                                 flex: 2,
                                 backgroundColor: "#f59e0b",
@@ -407,10 +417,17 @@ export default function EditarReceita() {
                                 flexDirection: "row",
                                 justifyContent: "center",
                                 gap: 8,
+                                opacity: salvando ? 0.78 : 1,
                             }}
                         >
-                            <Feather name="check" size={18} color="#fff" />
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvar Alterações</Text>
+                            {salvando ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <>
+                                    <Feather name="check" size={18} color="#fff" />
+                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Salvar Alterações</Text>
+                                </>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>

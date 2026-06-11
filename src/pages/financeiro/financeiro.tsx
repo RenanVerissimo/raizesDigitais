@@ -1,10 +1,10 @@
 ﻿import React, { useCallback, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Dimensions } from "react-native";
+import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar, Dimensions } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { VictoryPie } from "victory-native";
+import { VictoryLabel, VictoryPie } from "victory-native";
 import { listarCompras, listarReceitas } from "../../services/api";
 import { Compra } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
@@ -86,9 +86,11 @@ export default function Financeiro() {
     const [periodoReceitaDespesa, setPeriodoReceitaDespesa] = useState<PeriodoGrafico>("6M");
     const [periodoFluxoCaixa, setPeriodoFluxoCaixa] = useState<PeriodoGrafico>("6M");
     const [periodoCategorias, setPeriodoCategorias] = useState<PeriodoGrafico>("6M");
+    const [carregando, setCarregando] = useState(true);
 
     async function carregarDadosFinanceiros() {
         try {
+            setCarregando(true);
             // listarCompras() busca os dados da tabela/página compras para separar despesas concluídas e pendentes.
             const [receitasDados, comprasDados] = await Promise.all([
                 listarReceitas(),
@@ -110,6 +112,8 @@ export default function Financeiro() {
             setDespesasPendentes(comprasPendentes);
         } catch (error: any) {
             Toast.show({ type: "error", text1: "Erro", text2: error.message || "Não foi possível carregar os dados financeiros.", position: "top", visibilityTime: 3000 });
+        } finally {
+            setCarregando(false);
         }
     }
 
@@ -327,6 +331,7 @@ export default function Financeiro() {
             };
         });
 
+    const dadosMedicamentosComValor = dadosGraficoMedicamentos.filter((grupo) => grupo.valor > 0);
     const valorMaximoMedicamentos = Math.max(...dadosGraficoMedicamentos.map((grupo) => grupo.valor), 1);
 
     function renderReceitasRecentes() {
@@ -348,7 +353,14 @@ export default function Financeiro() {
                     )}
                 </View>
 
-                {receitas.length === 0 ? (
+                {carregando ? (
+                    <View style={{ alignItems: "center", paddingVertical: 18 }}>
+                        <ActivityIndicator color="#4a90e2" />
+                        <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>
+                            Carregando receitas
+                        </Text>
+                    </View>
+                ) : receitas.length === 0 ? (
                     <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 16 }}>
                         Nenhuma receita registrada
                     </Text>
@@ -469,6 +481,14 @@ export default function Financeiro() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
+                    {carregando && (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9", alignItems: "center" }}>
+                            <ActivityIndicator color="#4a90e2" />
+                            <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>
+                                Carregando dados financeiros
+                            </Text>
+                        </View>
+                    )}
 
                     {/* Saldo Total */}
                     <View style={{
@@ -681,33 +701,56 @@ export default function Financeiro() {
 
                             <VictoryPie
                                 width={CHART_WIDTH - 36}
-                                height={220}
+                                height={230}
                                 data={dadosCategorias.map((d) => ({
                                     x: CATEGORIA_LABEL[d.categoria].label,
                                     y: d.valor,
+                                    label: `${d.percentual.toFixed(1)}%`,
                                 }))}
                                 colorScale={dadosCategorias.map((d) => CATEGORIA_LABEL[d.categoria].cor)}
-                                innerRadius={48}
+                                radius={92}
+                                innerRadius={38}
+                                labelRadius={68}
                                 padAngle={2}
-                                labels={() => ""}
-                                style={{ data: { stroke: "#fff", strokeWidth: 2 } }}
+                                labels={({ datum }: any) => datum.label}
+                                labelComponent={
+                                    <VictoryLabel
+                                        textAnchor="middle"
+                                        verticalAnchor="middle"
+                                    />
+                                }
+                                style={{
+                                    data: { stroke: "#fff", strokeWidth: 2 },
+                                    labels: { fill: "#fff", fontSize: 10, fontWeight: "900" },
+                                }}
                             />
 
-                            <View style={{ gap: 9 }}>
+                            <View style={{ gap: 10 }}>
                                 {dadosCategorias.map((d) => {
                                     const cfg = CATEGORIA_LABEL[d.categoria];
+                                    const larguraBarra = `${Math.max(d.percentual, d.valor > 0 ? 8 : 0)}%` as `${number}%`;
                                     return (
-                                        <View key={d.categoria} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                            <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: cfg.cor }} />
-                                            <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: "600", color: "#374151" }}>
-                                                {cfg.label}
-                                            </Text>
-                                            <Text style={{ fontSize: 12, color: "#6b7280" }}>
-                                                {d.percentual.toFixed(1)}%
-                                            </Text>
-                                            <Text style={{ minWidth: 86, textAlign: "right", fontSize: 12, fontWeight: "800", color: "#0a0a0a" }}>
-                                                {formatarMoeda(d.valor)}
-                                            </Text>
+                                        <View key={d.categoria} style={{ gap: 6 }}>
+                                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                                                <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                                    <View style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: cfg.cor }} />
+                                                    <Text numberOfLines={1} style={{ flex: 1, fontSize: 12, fontWeight: "800", color: "#374151" }}>
+                                                        {cfg.label}
+                                                    </Text>
+                                                </View>
+                                                <Text style={{ fontSize: 12, fontWeight: "900", color: "#0f172a" }}>
+                                                    {d.percentual.toFixed(1)}% - {formatarMoeda(d.valor)}
+                                                </Text>
+                                            </View>
+                                            <View style={{ height: 22, borderRadius: 999, backgroundColor: "#f3f4f6", overflow: "hidden" }}>
+                                                <View style={{ width: larguraBarra, height: "100%", backgroundColor: cfg.cor, borderRadius: 999, justifyContent: "center", paddingHorizontal: 8 }}>
+                                                    {d.percentual >= 18 && (
+                                                        <Text numberOfLines={1} style={{ fontSize: 10, fontWeight: "900", color: "#fff" }}>
+                                                            {d.percentual.toFixed(1)}%
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                            </View>
                                         </View>
                                     );
                                 })}
@@ -716,42 +759,49 @@ export default function Financeiro() {
                     )}
                     {/* Gastos com Medicamentos */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#e5e7eb", marginBottom: insets.bottom + 20 }}>
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <Feather name="plus-circle" size={16} color="#ef4444" />
-                                <View>
-                                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Gastos com Medicamentos</Text>
-                                    <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>Por tipo de produto</Text>
-                                </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                            <Feather name="plus-circle" size={16} color="#ef4444" />
+                            <View>
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Gastos com Medicamentos</Text>
+                                <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>Por tipo de produto</Text>
                             </View>
-                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#ef4444" }}>
-                                R$ {totalMedicamentos.toFixed(2)}
-                            </Text>
                         </View>
-                        <View style={{ gap: 8, marginTop: 12 }}>
-                            {dadosGraficoMedicamentos.length === 0 ? (
+
+                        <View style={{ gap: 8 }}>
+                            {dadosMedicamentosComValor.length === 0 ? (
                                 <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 18 }}>
                                     Nenhuma compra concluída em Medicamentos.
                                 </Text>
                             ) : (
-                                dadosGraficoMedicamentos.map((dados) => (
+                                dadosMedicamentosComValor.map((dados) => (
                                     <View key={dados.chave} style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                                         <Text style={{ width: 96, fontSize: 11, color: "#6b7280" }} numberOfLines={1}>
                                             {dados.label}
                                         </Text>
-                                        <View style={{ flex: 1, height: 22, backgroundColor: "#f3f4f6", borderRadius: 4, overflow: "hidden", flexDirection: "row", alignItems: "center" }}>
+                                        <View style={{ flex: 1, height: 18, backgroundColor: "#f3f4f6", borderRadius: 999, overflow: "hidden", flexDirection: "row", alignItems: "center" }}>
                                             <View style={{
-                                                width: `${Math.min((dados.valor / valorMaximoMedicamentos) * 100, 100)}%`,
+                                                width: `${Math.min((dados.valor / valorMaximoMedicamentos) * 100, 100)}%` as `${number}%`,
                                                 height: "100%",
                                                 backgroundColor: dados.cor,
+                                                borderRadius: 999,
                                             }} />
                                         </View>
-                                        <Text style={{ width: 86, fontSize: 11, fontWeight: "600", color: dados.cor, textAlign: "right" }}>
+                                        <Text style={{ width: 76, fontSize: 11, fontWeight: "700", color: dados.cor, textAlign: "right" }}>
                                             R$ {dados.valor.toFixed(0)}
                                         </Text>
                                     </View>
                                 ))
                             )}
+                        </View>
+
+                        <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#f1f5f9", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#ef4444" }} />
+                                <Text style={{ fontSize: 11, color: "#6b7280", fontWeight: "700" }}>Total em medicamentos</Text>
+                            </View>
+                            <Text style={{ fontSize: 14, fontWeight: "900", color: "#0f172a" }}>
+                                {formatarMoeda(totalMedicamentos)}
+                            </Text>
                         </View>
                         <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 10 }}>
                             Considera compras concluídas na categoria Medicamentos.

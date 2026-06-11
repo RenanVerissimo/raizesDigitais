@@ -9,13 +9,20 @@ import { excluirCompra, listarCompras } from "../../services/api";
 import { CategoriaCompra, Compra, StatusCompra } from "../../interfaces/interfaces";
 import { toBr } from "../../utils/formatters";
 import ConfirmDeleteModal from "../animais/ConfirmationModal";
-import { CATEGORIAS } from "./compras_e_pedidos";
+import { CATEGORIAS, CATEGORIAS_COMPRA_VISIVEIS } from "./compras_e_pedidos";
 
 const STATUS_CONFIG: Record<StatusCompra, { label: string; bg: string; text: string; iconColor: string; icon: any }> = {
     pendente: { label: "Pendente", bg: "#fef9c3", text: "#a16207", iconColor: "#ca8a04", icon: "clock" },
     concluido: { label: "Concluído", bg: "#dcfce7", text: "#15803d", iconColor: "#16a34a", icon: "check-circle" },
     cancelado: { label: "Cancelado", bg: "#fee2e2", text: "#b91c1c", iconColor: "#dc2626", icon: "x-circle" },
 };
+
+type CategoriaFiltroCompra = "todas" | Exclude<CategoriaCompra, "manutencao">;
+
+const FILTROS_CATEGORIA_COMPRA: { key: CategoriaFiltroCompra; label: string }[] = [
+    { key: "todas", label: "Todas" },
+    ...CATEGORIAS_COMPRA_VISIVEIS.map((key) => ({ key, label: CATEGORIAS[key].label })),
+];
 
 const FINALIDADE_LABEL: Record<string, { label: string; bg: string; text: string }> = {
     mastite: { label: "Mastite", bg: "#fee2e2", text: "#b91c1c" },
@@ -47,6 +54,11 @@ export default function TodasCompras() {
     const [compraSelecionada, setCompraSelecionada] = useState<Compra | null>(null);
     const [carregando, setCarregando] = useState(true);
     const [excluindoId, setExcluindoId] = useState<number | null>(null);
+    const [filtroCategoria, setFiltroCategoria] = useState<CategoriaFiltroCompra>("todas");
+    const comprasFiltradas = filtroCategoria === "todas"
+        ? compras
+        : compras.filter((compra) => compra.categoria === filtroCategoria);
+    const filtroAtivoLabel = filtroCategoria === "todas" ? "todas as categorias" : CATEGORIAS[filtroCategoria].label.toLowerCase();
 
     useFocusEffect(useCallback(() => {
         setCarregando(true);
@@ -114,7 +126,8 @@ export default function TodasCompras() {
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>Todas as Compras</Text>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                {compras.length} {compras.length === 1 ? "compra" : "compras"}
+                                {comprasFiltradas.length} {comprasFiltradas.length === 1 ? "compra" : "compras"}
+                                {filtroCategoria !== "todas" ? ` de ${filtroAtivoLabel}` : ""}
                             </Text>
                         </View>
                     </View>
@@ -134,6 +147,38 @@ export default function TodasCompras() {
                             </View>
                         </View>
 
+                        <View style={{ gap: 8 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "700", color: "#374151" }}>Filtrar por categoria</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                <View style={{ flexDirection: "row", gap: 8 }}>
+                                    {FILTROS_CATEGORIA_COMPRA.map((filtro) => {
+                                        const ativo = filtroCategoria === filtro.key;
+                                        const cor = filtro.key === "todas" ? { bg: "#eff6ff", text: "#2563eb" } : CATEGORIAS[filtro.key];
+
+                                        return (
+                                            <TouchableOpacity
+                                                key={filtro.key}
+                                                onPress={() => setFiltroCategoria(filtro.key)}
+                                                activeOpacity={0.75}
+                                                style={{
+                                                    backgroundColor: ativo ? cor.bg : "#f9fafb",
+                                                    borderWidth: 1,
+                                                    borderColor: ativo ? cor.text : "#e5e7eb",
+                                                    borderRadius: 10,
+                                                    paddingHorizontal: 14,
+                                                    paddingVertical: 8,
+                                                }}
+                                            >
+                                                <Text style={{ fontSize: 13, fontWeight: "700", color: ativo ? cor.text : "#6b7280" }}>
+                                                    {filtro.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </ScrollView>
+                        </View>
+
                         {carregando ? (
                             <View style={{ padding: 32, alignItems: "center" }}>
                                 <ActivityIndicator size="large" color="#4a90e2" />
@@ -144,15 +189,17 @@ export default function TodasCompras() {
                                     A API pode levar alguns segundos para responder.
                                 </Text>
                             </View>
-                        ) : compras.length === 0 ? (
+                        ) : comprasFiltradas.length === 0 ? (
                             <View style={{ padding: 32, alignItems: "center" }}>
                                 <Feather name="shopping-cart" size={48} color="#d1d5db" />
-                                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>Nenhuma compra encontrada</Text>
+                                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>
+                                    Nenhuma compra encontrada em {filtroAtivoLabel}
+                                </Text>
                             </View>
                         ) : (
                             <View style={{ gap: 12 }}>
-                                {compras.map((compra) => {
-                                    const cat = CATEGORIAS[compra.categoria as CategoriaCompra];
+                                {comprasFiltradas.map((compra) => {
+                                    const cat = CATEGORIAS[compra.categoria as CategoriaCompra] ?? CATEGORIAS.outros;
                                     const status = STATUS_CONFIG[compra.status];
                                     const finalidade = compra.finalidadeTratamento ? FINALIDADE_LABEL[compra.finalidadeTratamento] : null;
 

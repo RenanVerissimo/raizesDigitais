@@ -29,6 +29,10 @@ export const CATEGORIAS: Record<CategoriaCompra, { label: string; bg: string; te
     outros: { label: "Outros", bg: "#f3f4f6", text: "#374151" },
 };
 
+export const CATEGORIAS_COMPRA_VISIVEIS = (Object.keys(CATEGORIAS) as CategoriaCompra[]).filter(
+    (key): key is Exclude<CategoriaCompra, "manutencao"> => key !== "manutencao"
+);
+
 const STATUS_CONFIG: Record<StatusCompra, { label: string; bg: string; text: string; iconColor: string; icon: any }> = {
     pendente: { label: "Pendente", bg: "#fef9c3", text: "#a16207", iconColor: "#ca8a04", icon: "clock" },
     concluido: { label: "Concluído", bg: "#dcfce7", text: "#15803d", iconColor: "#16a34a", icon: "check-circle" },

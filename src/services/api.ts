@@ -15,6 +15,7 @@ const NETWORK_ERROR_MESSAGE = "A conexão demorou demais ou caiu. Tente novament
 type ApiFetchInit = RequestInit & {
     retryUnsafe?: boolean;
     silentNetworkError?: boolean;
+    timeoutMs?: number;
 };
 
 function delay(ms: number) {
@@ -40,9 +41,9 @@ function isNetworkError(error: unknown) {
     );
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}) {
+async function fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
         return await fetch(url, {
@@ -78,7 +79,7 @@ export async function limparUsuarioLogado() {
 }
 
 async function apiFetch(path: string, init: ApiFetchInit = {}) {
-    const { retryUnsafe = false, silentNetworkError = false, ...fetchInit } = init;
+    const { retryUnsafe = false, silentNetworkError = false, timeoutMs, ...fetchInit } = init;
     const usuario = await getUsuarioLogado();
     const headers = {
         ...(fetchInit.headers || {}),
@@ -91,7 +92,7 @@ async function apiFetch(path: string, init: ApiFetchInit = {}) {
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
-            return await fetchWithTimeout(url, { ...fetchInit, headers });
+            return await fetchWithTimeout(url, { ...fetchInit, headers }, timeoutMs);
         } catch (error) {
             const shouldRetry = canRetry && isNetworkError(error) && attempt < maxAttempts - 1;
 
@@ -318,6 +319,8 @@ export async function atualizarStatusAnimal(id: number, status: "ativo" | "inati
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ status }),
             retryUnsafe: true,
+            silentNetworkError: true,
+            timeoutMs: 90000,
         });
 
         if (!response.ok) {
@@ -327,7 +330,9 @@ export async function atualizarStatusAnimal(id: number, status: "ativo" | "inati
 
         return await response.json();
     } catch (err) {
-        console.error("Falha em atualizarStatusAnimal:", err);
+        if (!(err instanceof Error && err.message === NETWORK_ERROR_MESSAGE)) {
+            console.error("Falha em atualizarStatusAnimal:", err);
+        }
         throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
@@ -404,8 +409,10 @@ export async function atualizarCompra(id: number, dados: Omit<Compra, "id" | "pr
 }
 
 
-export async function listarReceitas(): Promise<Receita[]> {
-    const res = await apiFetch(`/receitas`);
+export async function listarReceitas(options?: { silentNetworkError?: boolean }): Promise<Receita[]> {
+    const res = await apiFetch(`/receitas`, {
+        silentNetworkError: options?.silentNetworkError,
+    });
 
     if (!res.ok) {
         throw new Error("Erro ao listar receitas");
@@ -425,7 +432,7 @@ export async function listarReceitas(): Promise<Receita[]> {
     }));
 }
 
-export async function criarReceita(dados: {
+type CriarReceitaDados = {
     tipoReceita?: "leite" | "animal";
     data: string;
     litros?: number;
@@ -437,19 +444,63 @@ export async function criarReceita(dados: {
     valorAnimal?: number | null;
     comprador: string;
     observacoes?: string | null;
-}) {
-    const res = await apiFetch(`/receitas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-    });
+};
 
-    if (!res.ok) {
-        const erroData = await res.json().catch(() => ({}));
-        throw new Error(erroData.erro || "Erro ao cadastrar receita");
+function receitaCorresponde(dados: CriarReceitaDados, receita: Receita) {
+    const tipo = dados.tipoReceita || "leite";
+    const comprador = String(dados.comprador || "").trim();
+    const observacoes = dados.observacoes || null;
+    const valorTotalEsperado = tipo === "animal"
+        ? Number(dados.valorAnimal || 0)
+        : Number(dados.litros || 0) * Number(dados.precoPorLitro || 0);
+
+    if ((receita.tipoReceita || "leite") !== tipo) return false;
+    if (receita.data !== dados.data) return false;
+    if (String(receita.comprador || "").trim() !== comprador) return false;
+    if ((receita.observacoes || null) !== observacoes) return false;
+    if (Math.abs(Number(receita.valorTotal || 0) - valorTotalEsperado) > 0.01) return false;
+
+    if (tipo === "animal") {
+        if ((dados.animalId ?? null) !== null) return receita.animalId === Number(dados.animalId);
+        return String(receita.animalNome || "").trim() === String(dados.animalNome || "").trim();
     }
 
-    return res.json();
+    return (
+        Math.abs(Number(receita.litros || 0) - Number(dados.litros || 0)) <= 0.01 &&
+        Math.abs(Number(receita.precoPorLitro || 0) - Number(dados.precoPorLitro || 0)) <= 0.01
+    );
+}
+
+export async function criarReceita(dados: CriarReceitaDados) {
+    const idempotencyKey = gerarIdempotencyKey("receita");
+
+    try {
+        const res = await apiFetch(`/receitas`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-idempotency-key": idempotencyKey,
+            },
+            body: JSON.stringify({ ...dados, idempotencyKey }),
+            silentNetworkError: true,
+            timeoutMs: 120000,
+        });
+
+        if (!res.ok) {
+            const erroData = await res.json().catch(() => ({}));
+            throw new Error(erroData.erro || "Erro ao cadastrar receita");
+        }
+
+        return res.json();
+    } catch (err) {
+        if (err instanceof Error && err.message === NETWORK_ERROR_MESSAGE) {
+            const receitas = await listarReceitas({ silentNetworkError: true }).catch(() => []);
+            const receitaConfirmada = receitas.find((receita) => receitaCorresponde(dados, receita));
+            if (receitaConfirmada) return receitaConfirmada;
+        }
+
+        throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
+    }
 }
 
 export async function atualizarReceita(id: number, dados: {
@@ -569,8 +620,10 @@ export async function salvarPrevisaoReceita(dados: {
     };
 }
 
-export async function listarFinanciamentos(): Promise<Financiamento[]> {
-    const res = await apiFetch(`/financiamentos`);
+export async function listarFinanciamentos(options?: { silentNetworkError?: boolean }): Promise<Financiamento[]> {
+    const res = await apiFetch(`/financiamentos`, {
+        silentNetworkError: options?.silentNetworkError,
+    });
 
     if (!res.ok) {
         throw new Error("Erro ao listar financiamentos");
@@ -641,18 +694,31 @@ export async function quitarFinanciamento(id: number, dados: {
     descontoQuitacao: number;
     dataQuitacao: string;
 }) {
-    const res = await apiFetch(`/financiamentos/${id}/quitar`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-    });
+    try {
+        const res = await apiFetch(`/financiamentos/${id}/quitar`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dados),
+            retryUnsafe: true,
+            silentNetworkError: true,
+            timeoutMs: 90000,
+        });
 
-    if (!res.ok) {
-        const erroData = await res.json().catch(() => ({}));
-        throw new Error(erroData.erro || "Erro ao quitar financiamento");
+        if (!res.ok) {
+            const erroData = await res.json().catch(() => ({}));
+            throw new Error(erroData.erro || "Erro ao quitar financiamento");
+        }
+
+        return res.json();
+    } catch (err) {
+        if (err instanceof Error && err.message === NETWORK_ERROR_MESSAGE) {
+            const financiamentos = await listarFinanciamentos({ silentNetworkError: true }).catch(() => []);
+            const financiamentoConfirmado = financiamentos.find((item) => item.id === id && item.status === "quitado");
+            if (financiamentoConfirmado) return { ok: true, confirmadoPorConsulta: true };
+        }
+
+        throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
-
-    return res.json();
 }
 
 export async function quitarParcelaFinanciamento(id: number, dados: {
@@ -663,6 +729,8 @@ export async function quitarParcelaFinanciamento(id: number, dados: {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
+        silentNetworkError: true,
+        timeoutMs: 90000,
     });
 
     if (!res.ok) {
@@ -678,8 +746,10 @@ export async function quitarParcelaFinanciamento(id: number, dados: {
 // ESTOQUE — TANQUES
 // ============================================
 
-export async function listarTanques() {
-    const res = await apiFetch(`/estoque/tanques`);
+export async function listarTanques(options?: { silentNetworkError?: boolean }) {
+    const res = await apiFetch(`/estoque/tanques`, {
+        silentNetworkError: options?.silentNetworkError,
+    });
     if (!res.ok) throw new Error("Erro ao listar tanques");
     const dados = await res.json();
     return dados.map((t: any) => ({
@@ -702,6 +772,8 @@ export async function criarTanque(dados: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
+        silentNetworkError: true,
+        timeoutMs: 90000,
     });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
@@ -722,13 +794,19 @@ export async function atualizarTanque(id: number, dados: {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
+        silentNetworkError: true,
+        timeoutMs: 90000,
     });
     if (!res.ok) throw new Error("Erro ao atualizar tanque");
     return res.json();
 }
 
 export async function excluirTanque(id: number) {
-    const res = await apiFetch(`/estoque/tanques/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/estoque/tanques/${id}`, {
+        method: "DELETE",
+        silentNetworkError: true,
+        timeoutMs: 90000,
+    });
     if (!res.ok) throw new Error("Erro ao excluir tanque");
     return res.json();
 }
@@ -737,8 +815,10 @@ export async function excluirTanque(id: number) {
 // ESTOQUE — MOVIMENTAÇÕES
 // ============================================
 
-export async function listarMovimentacoes() {
-    const res = await apiFetch(`/estoque/movimentacoes`);
+export async function listarMovimentacoes(options?: { silentNetworkError?: boolean }) {
+    const res = await apiFetch(`/estoque/movimentacoes`, {
+        silentNetworkError: options?.silentNetworkError,
+    });
     if (!res.ok) throw new Error("Erro ao listar movimentações");
     const dados = await res.json();
     return dados.map((m: any) => ({
@@ -764,6 +844,8 @@ export async function criarMovimentacao(dados: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
+        silentNetworkError: true,
+        timeoutMs: 90000,
     });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
@@ -787,6 +869,8 @@ export async function atualizarMovimentacao(id: number, dados: {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
+        silentNetworkError: true,
+        timeoutMs: 90000,
     });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
@@ -796,7 +880,11 @@ export async function atualizarMovimentacao(id: number, dados: {
 }
 
 export async function excluirMovimentacao(id: number) {
-    const res = await apiFetch(`/estoque/movimentacoes/${id}`, { method: "DELETE" });
+    const res = await apiFetch(`/estoque/movimentacoes/${id}`, {
+        method: "DELETE",
+        silentNetworkError: true,
+        timeoutMs: 90000,
+    });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
         throw new Error(erro.erro || "Erro ao excluir movimentação");

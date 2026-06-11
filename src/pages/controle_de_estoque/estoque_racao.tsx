@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -118,9 +118,11 @@ export default function EstoqueRacao() {
     const [movimentacoes, setMovimentacoes] = useState<MovimentacaoRacao[]>([]);
     const [comprasRacao, setComprasRacao] = useState<Compra[]>([]);
     const [modalSaidasVisivel, setModalSaidasVisivel] = useState(false);
+    const [carregando, setCarregando] = useState(true);
 
     async function carregarDados() {
         try {
+            setCarregando(true);
             const [racoesDados, movsDados, comprasDados] = await Promise.all([listarRacoes(), listarMovimentacoesRacao(), listarCompras()]);
             const comprasConcluidas = comprasDados
                 .filter((compra) => compra.categoria === "racao" && compra.status === "concluido")
@@ -153,6 +155,8 @@ export default function EstoqueRacao() {
             setComprasRacao(comprasConcluidas);
         } catch (err: any) {
             Toast.show({ type: "error", text1: "Erro ao carregar", text2: err.message || "Não foi possível carregar o estoque.", position: "top" });
+        } finally {
+            setCarregando(false);
         }
     }
 
@@ -198,7 +202,7 @@ export default function EstoqueRacao() {
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
-                        <TouchableOpacity onPress={() => navigation.navigate("movimentar_racao", { racoes })} activeOpacity={0.85} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                        <TouchableOpacity onPress={() => navigation.navigate("movimentar_racao", { racoes })} activeOpacity={0.85} disabled={carregando || racoes.length === 0} style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, opacity: carregando || racoes.length === 0 ? 0.6 : 1 }}>
                             <Feather name="repeat" size={18} color="#fff" />
                             <Text style={{ fontSize: 13, fontWeight: "700", color: "#fff" }}>Movimentar</Text>
                         </TouchableOpacity>
@@ -206,7 +210,7 @@ export default function EstoqueRacao() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16, paddingBottom: insets.bottom + 24 }}>
-                    {(baixoEstoque.length > 0 || vencendo.length > 0) && (
+                    {!carregando && (baixoEstoque.length > 0 || vencendo.length > 0) && (
                         <View style={{ backgroundColor: "#fff7ed", borderWidth: 1, borderColor: "#fed7aa", borderRadius: 14, padding: 14, flexDirection: "row", gap: 10 }}>
                             <Feather name="alert-triangle" size={20} color="#ea580c" />
                             <View style={{ flex: 1 }}>
@@ -218,7 +222,12 @@ export default function EstoqueRacao() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Itens em estoque</Text>
-                        {racoes.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ paddingVertical: 22, alignItems: "center" }}>
+                                <ActivityIndicator color="#4a90e2" />
+                                <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>Carregando estoque de ração</Text>
+                            </View>
+                        ) : racoes.length === 0 ? (
                             <View style={{ paddingVertical: 22, alignItems: "center" }}>
                                 <Feather name="package" size={44} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10, textAlign: "center" }}>Cadastre compras de ração para alimentar este estoque</Text>
@@ -231,7 +240,7 @@ export default function EstoqueRacao() {
                                     const dias = diasAteValidade(racao.validade);
                                     const validadeRuim = dias !== null && dias <= 30;
                                     return (
-                                        <TouchableOpacity key={racao.id} activeOpacity={0.78} onPress={() => abrirMovimentacao(racao)} style={{ backgroundColor: baixo || validadeRuim ? "#fff7ed" : "#fff", paddingHorizontal: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
+                                        <TouchableOpacity key={racao.id} activeOpacity={0.78} disabled={carregando} onPress={() => abrirMovimentacao(racao)} style={{ backgroundColor: baixo || validadeRuim ? "#fff7ed" : "#fff", paddingHorizontal: 12, paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }}>
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
                                                 <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: tipo.bg, alignItems: "center", justifyContent: "center" }}>
                                                     {racao.tipo === "milho" ? (
@@ -273,7 +282,12 @@ export default function EstoqueRacao() {
                                 </TouchableOpacity>
                             )}
                         </View>
-                        {comprasRacao.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ alignItems: "center", paddingVertical: 14 }}>
+                                <ActivityIndicator color="#4a90e2" />
+                                <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>Carregando compras de ração</Text>
+                            </View>
+                        ) : comprasRacao.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma compra de ração concluída</Text>
                         ) : comprasRacao.slice(0, 6).map((compra) => {
                             const tipo = obterTipoCompra(compra);
@@ -298,13 +312,18 @@ export default function EstoqueRacao() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <Text style={{ fontSize: 15, fontWeight: "700", color: "#0a0a0a", marginBottom: 10 }}>Saídas recentes</Text>
-                        {saidasRacao.length > 0 && (
+                        {!carregando && saidasRacao.length > 0 && (
                             <TouchableOpacity onPress={() => setModalSaidasVisivel(true)} activeOpacity={0.75} style={{ alignSelf: "flex-end", flexDirection: "row", alignItems: "center", gap: 4, marginTop: -32, marginBottom: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, backgroundColor: "#eff6ff" }}>
                                 <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563eb" }}>Ver todas</Text>
                                 <Feather name="chevron-right" size={14} color="#2563eb" />
                             </TouchableOpacity>
                         )}
-                        {saidasRacao.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ alignItems: "center", paddingVertical: 14 }}>
+                                <ActivityIndicator color="#4a90e2" />
+                                <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>Carregando saídas</Text>
+                            </View>
+                        ) : saidasRacao.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 12 }}>Nenhuma saída registrada</Text>
                         ) : saidasRecentes.map((m) => <LinhaMovimentacaoRacao key={m.id} movimentacao={m} />)}
                     </View>

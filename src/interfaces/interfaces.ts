@@ -21,6 +21,8 @@ export interface InputFieldProps {
     secureTextEntry?: boolean;
     rightIcon?: React.ComponentProps<typeof Feather>["name"];
     onRightIconPress?: () => void;
+    onRightIconPressIn?: () => void;
+    onRightIconPressOut?: () => void;
     autoCapitalize?: "none" | "sentences" | "words" | "characters";
 }
 

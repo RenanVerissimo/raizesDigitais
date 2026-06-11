@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StatusBar, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -27,6 +27,7 @@ export default function EditarFinanciamento() {
     const insets = useSafeAreaInsets();
     const financiamento = route.params?.financiamento as Financiamento | undefined;
     const [modalConfirmacaoVisible, setModalConfirmacaoVisible] = useState(false);
+    const [salvando, setSalvando] = useState(false);
     const [formData, setFormData] = useState({
         nome: financiamento?.nome || "",
         credor: financiamento?.credor || "",
@@ -86,14 +87,17 @@ export default function EditarFinanciamento() {
     }
 
     function handleSalvar() {
+        if (salvando) return;
         if (!validarFormulario()) return;
         setModalConfirmacaoVisible(true);
     }
 
     async function confirmarEdicao() {
         if (!financiamento) return;
+        if (salvando) return;
 
         try {
+            setSalvando(true);
             await atualizarFinanciamento(financiamento.id, {
                 nome: formData.nome.trim(),
                 credor: formData.credor.trim() || null,
@@ -117,6 +121,8 @@ export default function EditarFinanciamento() {
         } catch (error: any) {
             setModalConfirmacaoVisible(false);
             Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel atualizar o financiamento.", position: "top", visibilityTime: 3000 });
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -166,20 +172,26 @@ export default function EditarFinanciamento() {
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} disabled={salvando} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleSalvar} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSalvar} activeOpacity={0.85} disabled={salvando} style={{ flex: 2, opacity: salvando ? 0.78 : 1 }}>
                             <LinearGradient colors={["#4a90e2", "#357abd"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
-                                <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar alteracoes</Text>
+                                {salvando ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Feather name="check" size={18} color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Salvar alteracoes</Text>
+                                    </>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
                 </View>
             </ScrollView>
 
-            <Modal visible={modalConfirmacaoVisible} transparent animationType="fade" onRequestClose={() => setModalConfirmacaoVisible(false)}>
+            <Modal visible={modalConfirmacaoVisible} transparent animationType="fade" onRequestClose={() => !salvando && setModalConfirmacaoVisible(false)}>
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
                     <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
                         <Text style={{ fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center", marginBottom: 8 }}>
@@ -189,11 +201,11 @@ export default function EditarFinanciamento() {
                             As alteracoes feitas neste financiamento serao salvas e passarao a aparecer nos relatorios e listas do financeiro.
                         </Text>
                         <View style={{ flexDirection: "row", gap: 10 }}>
-                            <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
+                            <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} disabled={salvando} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Revisar</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={confirmarEdicao} activeOpacity={0.8} style={{ flex: 1, backgroundColor: "#4a90e2", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}>
-                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>
+                            <TouchableOpacity onPress={confirmarEdicao} activeOpacity={0.8} disabled={salvando} style={{ flex: 1, backgroundColor: "#4a90e2", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: salvando ? 0.78 : 1 }}>
+                                {salvando ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>

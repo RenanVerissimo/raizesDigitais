@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -14,10 +14,13 @@ export default function TodasMovimentacoes() {
     const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
     const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
     const [movimentacaoSelecionada, setMovimentacaoSelecionada] = useState<Movimentacao | null>(null);
+    const [carregando, setCarregando] = useState(true);
+    const [excluindo, setExcluindo] = useState(false);
 
     async function carregarDados() {
+        setCarregando(true);
         try {
-            const movsDados = await listarMovimentacoes();
+            const movsDados = await listarMovimentacoes({ silentNetworkError: true });
             setMovimentacoes(movsDados);
         } catch (err: any) {
             Toast.show({
@@ -25,7 +28,10 @@ export default function TodasMovimentacoes() {
                 text1: "Erro ao carregar",
                 text2: err.message || "Não foi possível carregar as movimentações.",
                 position: "top",
+                visibilityTime: 3000,
             });
+        } finally {
+            setCarregando(false);
         }
     }
 
@@ -42,8 +48,10 @@ export default function TodasMovimentacoes() {
 
     async function confirmarExclusao() {
         if (!movimentacaoSelecionada) return;
+        if (excluindo) return;
 
         try {
+            setExcluindo(true);
             await excluirMovimentacao(movimentacaoSelecionada.id);
             setMovimentacoes((prev) => prev.filter((item) => item.id !== movimentacaoSelecionada.id));
             setModalExcluirVisible(false);
@@ -56,7 +64,10 @@ export default function TodasMovimentacoes() {
                 text1: "Erro ao excluir",
                 text2: err.message || "Não foi possível excluir.",
                 position: "top",
+                visibilityTime: 3000,
             });
+        } finally {
+            setExcluindo(false);
         }
     }
 
@@ -84,7 +95,17 @@ export default function TodasMovimentacoes() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 10, paddingBottom: insets.bottom + 24 }}>
-                    {movimentacoes.length === 0 ? (
+                    {carregando ? (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <ActivityIndicator size="large" color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151", marginTop: 14 }}>
+                                Carregando movimentações
+                            </Text>
+                            <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                A API pode levar alguns segundos para responder.
+                            </Text>
+                        </View>
+                    ) : movimentacoes.length === 0 ? (
                         <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <Feather name="repeat" size={42} color="#d1d5db" />
                             <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>Nenhuma movimentação registrada</Text>
@@ -158,7 +179,7 @@ export default function TodasMovimentacoes() {
                 visible={modalExcluirVisible}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setModalExcluirVisible(false)}
+                onRequestClose={() => !excluindo && setModalExcluirVisible(false)}
             >
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 24 }}>
                     <View style={{ width: "100%", maxWidth: 360, backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
@@ -174,21 +195,30 @@ export default function TodasMovimentacoes() {
                         <View style={{ flexDirection: "row", gap: 10 }}>
                             <TouchableOpacity
                                 onPress={() => {
+                                    if (excluindo) return;
                                     setModalExcluirVisible(false);
                                     setMovimentacaoSelecionada(null);
                                 }}
                                 activeOpacity={0.75}
-                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+                                disabled={excluindo}
+                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 12, paddingVertical: 14, alignItems: "center", opacity: excluindo ? 0.65 : 1 }}
                             >
                                 <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={confirmarExclusao}
                                 activeOpacity={0.8}
-                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                                disabled={excluindo}
+                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 12, paddingVertical: 14, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6, opacity: excluindo ? 0.78 : 1 }}
                             >
-                                <Feather name="trash-2" size={16} color="#fff" />
-                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>
+                                {excluindo ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Feather name="trash-2" size={16} color="#fff" />
+                                        <Text style={{ fontSize: 14, fontWeight: "800", color: "#fff" }}>Excluir</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar } from "react-native";
+import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,12 +14,15 @@ export default function Financiamentos() {
     const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
     const [financiamentos, setFinanciamentos] = useState<Financiamento[]>([]);
+    const [carregando, setCarregando] = useState(true);
 
     useFocusEffect(
         useCallback(() => {
+            setCarregando(true);
             listarFinanciamentos()
                 .then(setFinanciamentos)
-                .catch((error: any) => Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel carregar os financiamentos.", position: "top", visibilityTime: 3000 }));
+                .catch((error: any) => Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel carregar os financiamentos.", position: "top", visibilityTime: 3000 }))
+                .finally(() => setCarregando(false));
         }, [])
     );
 
@@ -110,6 +113,13 @@ export default function Financiamentos() {
             </LinearGradient>
 
             <View style={{ padding: 20, gap: 16, paddingBottom: insets.bottom + 20 }}>
+                {carregando && (
+                    <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9", alignItems: "center" }}>
+                        <ActivityIndicator color="#4a90e2" />
+                        <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>Carregando financiamentos</Text>
+                    </View>
+                )}
+
                 <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
                     <Text style={{ fontSize: 13, color: "#6b7280", marginBottom: 4 }}>Saldo em aberto</Text>
                     <Text style={{ fontSize: 28, fontWeight: "700", color: "#dc2626" }}>
@@ -130,7 +140,11 @@ export default function Financiamentos() {
                         </Text>
                     </View>
 
-                    {financiamentos.length === 0 ? (
+                    {carregando ? (
+                        <View style={{ alignItems: "center", paddingVertical: 28 }}>
+                            <ActivityIndicator color="#4a90e2" />
+                        </View>
+                    ) : financiamentos.length === 0 ? (
                         <View style={{ alignItems: "center", paddingVertical: 28 }}>
                             <Feather name="bar-chart-2" size={42} color="#d1d5db" />
                             <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>
@@ -233,7 +247,11 @@ export default function Financiamentos() {
                         </TouchableOpacity>
                     </View>
 
-                    {recentes.length === 0 ? (
+                    {carregando ? (
+                        <View style={{ alignItems: "center", paddingVertical: 28 }}>
+                            <ActivityIndicator color="#4a90e2" />
+                        </View>
+                    ) : recentes.length === 0 ? (
                         <View style={{ alignItems: "center", paddingVertical: 28 }}>
                             <Feather name="file-text" size={42} color="#d1d5db" />
                             <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>

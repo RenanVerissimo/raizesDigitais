@@ -16,7 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { CategoriaCompra, FinalidadeTratamento, StatusCompra, TipoRacaoCompra, UnidadeCompraRacao } from "../../interfaces/interfaces";
-import { CATEGORIAS } from "./compras_e_pedidos";
+import { CATEGORIAS, CATEGORIAS_COMPRA_VISIVEIS } from "./compras_e_pedidos";
 import Toast from "react-native-toast-message";
 import { criarCompra, listarCompras } from "../../services/api";
 import DateInput from "../../components/DateInput";
@@ -51,9 +51,7 @@ const PESO_SUGERIDO_RACAO: Partial<Record<TipoRacaoCompra, Partial<Record<Unidad
     nucleo_mineral: { saco: 25 },
 };
 
-const CATEGORIAS_CADASTRO = (Object.keys(CATEGORIAS) as CategoriaCompra[]).filter(
-    (key) => key !== "manutencao"
-);
+const CATEGORIAS_CADASTRO = CATEGORIAS_COMPRA_VISIVEIS;
 
 export default function CadastrarCompra() {
     const insets = useSafeAreaInsets();

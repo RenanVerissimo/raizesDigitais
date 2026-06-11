@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
+import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -51,12 +51,15 @@ export default function Estoque() {
     const [tanques, setTanques] = useState<Tanque[]>([]);
     const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
     const [dicasAberto, setDicasAberto] = useState(true);
+    const [carregando, setCarregando] = useState(true);
+    const [excluindoTanqueId, setExcluindoTanqueId] = useState<number | null>(null);
 
     async function carregarDados() {
+        setCarregando(true);
         try {
             const [tanquesDados, movsDados] = await Promise.all([
-                listarTanques(),
-                listarMovimentacoes(),
+                listarTanques({ silentNetworkError: true }),
+                listarMovimentacoes({ silentNetworkError: true }),
             ]);
             setTanques(tanquesDados);
             setMovimentacoes(movsDados);
@@ -68,6 +71,8 @@ export default function Estoque() {
                 position: "top",
                 visibilityTime: 3000,
             });
+        } finally {
+            setCarregando(false);
         }
     }
 
@@ -90,7 +95,9 @@ export default function Estoque() {
                 text: "Excluir",
                 style: "destructive",
                 onPress: async () => {
+                    if (excluindoTanqueId !== null) return;
                     try {
+                        setExcluindoTanqueId(t.id);
                         await excluirTanque(t.id);
                         setTanques((prev) => prev.filter((x) => x.id !== t.id));
                         Toast.show({
@@ -100,6 +107,7 @@ export default function Estoque() {
                             position: "top",
                             visibilityTime: 3000,
                         });
+                        await carregarDados();
                     } catch (err: any) {
                         Toast.show({
                             type: "error",
@@ -108,6 +116,8 @@ export default function Estoque() {
                             position: "top",
                             visibilityTime: 3000,
                         });
+                    } finally {
+                        setExcluindoTanqueId(null);
                     }
                 },
             },
@@ -139,6 +149,7 @@ export default function Estoque() {
                         <TouchableOpacity
                             activeOpacity={0.85}
                             onPress={() => navigation.navigate("cadastar_tanque")}
+                            disabled={carregando}
                             style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
                         >
                             <Feather name="plus" size={18} color="#fff" />
@@ -147,6 +158,7 @@ export default function Estoque() {
                         <TouchableOpacity
                             activeOpacity={0.85}
                             onPress={() => navigation.navigate("registrar_movimentacao", { tanques })}
+                            disabled={carregando || tanques.length === 0}
                             style={{ flex: 1, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)", borderRadius: 12, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
                         >
                             <Feather name="trending-up" size={18} color="#fff" />
@@ -210,7 +222,17 @@ export default function Estoque() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#f1f5f9", gap: 10 }}>
                         <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>Tanques de Armazenamento</Text>
-                        {tanques.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ padding: 32, alignItems: "center" }}>
+                                <ActivityIndicator size="large" color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151", marginTop: 14 }}>
+                                    Carregando tanques
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                    A API pode levar alguns segundos para responder.
+                                </Text>
+                            </View>
+                        ) : tanques.length === 0 ? (
                             <View style={{ padding: 32, alignItems: "center" }}>
                                 <Feather name="droplet" size={48} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>Nenhum tanque cadastrado</Text>
@@ -239,16 +261,22 @@ export default function Estoque() {
                                                 <TouchableOpacity
                                                     onPress={() => navigation.navigate("cadastar_tanque", { tanque: tank })}
                                                     activeOpacity={0.7}
-                                                    style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
+                                                    disabled={excluindoTanqueId !== null}
+                                                    style={{ width: 32, height: 32, backgroundColor: "#f59e0b", borderRadius: 8, alignItems: "center", justifyContent: "center", opacity: excluindoTanqueId !== null ? 0.65 : 1 }}
                                                 >
                                                     <Feather name="edit-2" size={16} color="#fff" />
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
                                                     onPress={() => handleExcluir(tank)}
                                                     activeOpacity={0.7}
-                                                    style={{ width: 32, height: 32, backgroundColor: "#ef4444", borderRadius: 8, alignItems: "center", justifyContent: "center" }}
+                                                    disabled={excluindoTanqueId !== null}
+                                                    style={{ width: 32, height: 32, backgroundColor: "#ef4444", borderRadius: 8, alignItems: "center", justifyContent: "center", opacity: excluindoTanqueId !== null ? 0.65 : 1 }}
                                                 >
-                                                    <Feather name="trash-2" size={16} color="#fff" />
+                                                    {excluindoTanqueId === tank.id ? (
+                                                        <ActivityIndicator size="small" color="#fff" />
+                                                    ) : (
+                                                        <Feather name="trash-2" size={16} color="#fff" />
+                                                    )}
                                                 </TouchableOpacity>
                                             </View>
                                         </View>
@@ -292,7 +320,12 @@ export default function Estoque() {
                                 <Feather name="chevron-right" size={15} color="#4a90e2" />
                             </TouchableOpacity>
                         </View>
-                        {movimentacoes.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                                <ActivityIndicator color="#4a90e2" />
+                                <Text style={{ fontSize: 13, color: "#6b7280", marginTop: 8 }}>Carregando movimentações</Text>
+                            </View>
+                        ) : movimentacoes.length === 0 ? (
                             <Text style={{ fontSize: 13, color: "#6b7280", textAlign: "center", paddingVertical: 16 }}>
                                 Nenhuma movimentação registrada
                             </Text>

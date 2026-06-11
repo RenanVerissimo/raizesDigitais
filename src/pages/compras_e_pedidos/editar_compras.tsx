@@ -9,7 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { CategoriaCompra, Compra, FinalidadeTratamento, StatusCompra, TipoRacaoCompra, UnidadeCompraRacao } from "../../interfaces/interfaces";
-import { CATEGORIAS } from "./compras_e_pedidos";
+import { CATEGORIAS, CATEGORIAS_COMPRA_VISIVEIS } from "./compras_e_pedidos";
 import Toast from "react-native-toast-message";
 import { atualizarCompra, atualizarStatusCompra } from "../../services/api";
 
@@ -269,7 +269,7 @@ export default function EditarCompra() {
                         </View>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <View style={{ flexDirection: "row", gap: 8 }}>
-                                {(Object.keys(CATEGORIAS) as CategoriaCompra[]).map((key) => {
+                                {CATEGORIAS_COMPRA_VISIVEIS.map((key) => {
                                     const c = CATEGORIAS[key];
                                     const ativo = formData.categoria === key;
                                     return (

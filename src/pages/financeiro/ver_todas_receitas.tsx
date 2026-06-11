@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StatusBar, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -19,13 +19,18 @@ export default function VerTodasReceitas() {
     const [receitas, setReceitas] = useState<Receita[]>([]);
     const [periodo, setPeriodo] = useState<PeriodoReceita>("Mês"); const [modalExcluirVisible, setModalExcluirVisible] = useState(false);
     const [receitaSelecionada, setReceitaSelecionada] = useState<Receita | null>(null);
+    const [carregando, setCarregando] = useState(true);
+    const [excluindo, setExcluindo] = useState(false);
 
     async function carregarReceitas() {
         try {
+            setCarregando(true);
             const dados = await listarReceitas();
             setReceitas(dados);
         } catch (error: any) {
             Toast.show({ type: "error", text1: "Erro", text2: error.message || "Não foi possível carregar as receitas.", position: "top", visibilityTime: 3000 });
+        } finally {
+            setCarregando(false);
         }
     }
 
@@ -78,8 +83,10 @@ export default function VerTodasReceitas() {
 
 async function confirmarExclusaoReceita() {
     if (!receitaSelecionada) return;
+    if (excluindo) return;
     const nomeComprador = receitaSelecionada.comprador;
     try {
+        setExcluindo(true);
         await excluirReceita(receitaSelecionada.id);
         setReceitas((prev) => prev.filter((r) => r.id !== receitaSelecionada.id));
         Toast.show({
@@ -98,6 +105,7 @@ async function confirmarExclusaoReceita() {
             visibilityTime: 3000,
         });
     } finally {
+        setExcluindo(false);
         setModalExcluirVisible(false);
         setReceitaSelecionada(null);
     }
@@ -177,7 +185,14 @@ async function confirmarExclusaoReceita() {
                         </View>
                     </View>
 
-                    {receitasFiltradas.length === 0 ? (
+                    {carregando ? (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <ActivityIndicator color="#4a90e2" />
+                            <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>
+                                Carregando receitas
+                            </Text>
+                        </View>
+                    ) : receitasFiltradas.length === 0 ? (
                         <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <Feather name="dollar-sign" size={48} color="#d1d5db" />
                             <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>
@@ -236,7 +251,7 @@ async function confirmarExclusaoReceita() {
                 </View>
             </ScrollView>
 
-            <Modal visible={modalExcluirVisible} transparent animationType="fade" onRequestClose={() => setModalExcluirVisible(false)}>
+            <Modal visible={modalExcluirVisible} transparent animationType="fade" onRequestClose={() => !excluindo && setModalExcluirVisible(false)}>
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center" }}>
                     <View style={{ width: "85%", backgroundColor: "#fff", borderRadius: 20, padding: 20 }}>
                         <Text style={{ fontSize: 20, fontWeight: "700", color: "#0a0a0a", textAlign: "center", marginBottom: 8 }}>
@@ -250,17 +265,25 @@ async function confirmarExclusaoReceita() {
                             <TouchableOpacity
                                 onPress={() => setModalExcluirVisible(false)}
                                 activeOpacity={0.7}
-                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center" }}
+                                disabled={excluindo}
+                                style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center", opacity: excluindo ? 0.65 : 1 }}
                             >
                                 <Text style={{ fontSize: 15, fontWeight: "600", color: "#374151" }}>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={confirmarExclusaoReceita}
                                 activeOpacity={0.8}
-                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 14, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}
+                                disabled={excluindo}
+                                style={{ flex: 1, backgroundColor: "#ef4444", borderRadius: 14, paddingVertical: 15, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 49, opacity: excluindo ? 0.78 : 1 }}
                             >
-                                <Feather name="trash-2" size={16} color="#fff" />
-                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Excluir</Text>
+                                {excluindo ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Feather name="trash-2" size={16} color="#fff" />
+                                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Excluir</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

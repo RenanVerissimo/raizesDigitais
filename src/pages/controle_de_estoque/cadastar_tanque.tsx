@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +21,7 @@ export default function CadastrarTanque() {
         localizacao: "",
         observacoes: "",
     });
+    const [salvando, setSalvando] = useState(false);
 
     useEffect(() => {
         if (tanqueEdicao) {
@@ -37,12 +38,14 @@ export default function CadastrarTanque() {
     const modoEdicao = !!tanqueEdicao;
 
     function handleCancelar() {
+        if (salvando) return;
         navigation.goBack();
     }
 
     async function handleSubmit() {
+        if (salvando) return;
         if (!formData.nome.trim() || !formData.capacidade || !formData.volumeAtual) {
-            Alert.alert("Atencao", "Preencha os campos obrigatorios marcados com *");
+            Toast.show({ type: "info", text1: "Atenção", text2: "Preencha os campos obrigatórios marcados com *.", position: "top", visibilityTime: 3000 });
             return;
         }
 
@@ -50,19 +53,20 @@ export default function CadastrarTanque() {
         const vol = parseFloat(formData.volumeAtual);
 
         if (isNaN(cap) || cap <= 0) {
-            Alert.alert("Atencao", "Capacidade invalida.");
+            Toast.show({ type: "info", text1: "Atenção", text2: "Capacidade inválida.", position: "top", visibilityTime: 3000 });
             return;
         }
         if (isNaN(vol) || vol < 0) {
-            Alert.alert("Atencao", "Volume atual invalido.");
+            Toast.show({ type: "info", text1: "Atenção", text2: "Volume atual inválido.", position: "top", visibilityTime: 3000 });
             return;
         }
         if (vol > cap) {
-            Alert.alert("Atencao", "Volume atual nao pode exceder a capacidade.");
+            Toast.show({ type: "info", text1: "Atenção", text2: "Volume atual não pode exceder a capacidade.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         try {
+            setSalvando(true);
             const dados = {
                 nome: formData.nome.trim(),
                 capacidade: cap,
@@ -95,6 +99,8 @@ export default function CadastrarTanque() {
                 position: "top",
                 visibilityTime: 3000,
             });
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -109,7 +115,7 @@ export default function CadastrarTanque() {
                     style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={handleCancelar} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={handleCancelar} disabled={salvando} style={{ padding: 4, opacity: salvando ? 0.65 : 1 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
@@ -127,35 +133,41 @@ export default function CadastrarTanque() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
-                    <Campo icone="tag" label="Nome do Tanque *" valor={formData.nome} onChange={(v: string) => setFormData({ ...formData, nome: v })} placeholder="Ex: Tanque 1, Resfriador Principal" />
+                    <Campo icone="tag" label="Nome do Tanque *" valor={formData.nome} onChange={(v: string) => setFormData({ ...formData, nome: v })} placeholder="Ex: Tanque 1, Resfriador Principal" disabled={salvando} />
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
                         <View style={{ flex: 1 }}>
-                            <Campo icone="layers" label="Capacidade (L) *" valor={formData.capacidade} onChange={(v: string) => setFormData({ ...formData, capacidade: v })} placeholder="1000" keyboard="decimal-pad" />
+                            <Campo icone="layers" label="Capacidade (L) *" valor={formData.capacidade} onChange={(v: string) => setFormData({ ...formData, capacidade: v })} placeholder="1000" keyboard="decimal-pad" disabled={salvando} />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Campo icone="droplet" label="Volume Atual (L) *" valor={formData.volumeAtual} onChange={(v: string) => setFormData({ ...formData, volumeAtual: v })} placeholder="0" keyboard="decimal-pad" />
+                            <Campo icone="droplet" label="Volume Atual (L) *" valor={formData.volumeAtual} onChange={(v: string) => setFormData({ ...formData, volumeAtual: v })} placeholder="0" keyboard="decimal-pad" disabled={salvando} />
                         </View>
                     </View>
 
-                    <Campo icone="map-pin" label="Localizacao (Opcional)" valor={formData.localizacao} onChange={(v: string) => setFormData({ ...formData, localizacao: v })} placeholder="Ex: Sala de Ordenha, Deposito" />
-                    <Campo icone="file-text" label="Observacoes (Opcional)" valor={formData.observacoes} onChange={(v: string) => setFormData({ ...formData, observacoes: v })} placeholder="Observacoes adicionais..." />
+                    <Campo icone="map-pin" label="Localizacao (Opcional)" valor={formData.localizacao} onChange={(v: string) => setFormData({ ...formData, localizacao: v })} placeholder="Ex: Sala de Ordenha, Deposito" disabled={salvando} />
+                    <Campo icone="file-text" label="Observacoes (Opcional)" valor={formData.observacoes} onChange={(v: string) => setFormData({ ...formData, observacoes: v })} placeholder="Observacoes adicionais..." disabled={salvando} />
 
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
-                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>
+                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} disabled={salvando} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando} style={{ flex: 2, opacity: salvando ? 0.78 : 1 }}>
                             <LinearGradient
                                 colors={modoEdicao ? ["#f59e0b", "#d97706"] : ["#4a90e2", "#357abd"]}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                             >
-                                <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>
-                                    {modoEdicao ? "Salvar Alteracoes" : "Cadastrar"}
-                                </Text>
+                                {salvando ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Feather name="check" size={18} color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>
+                                            {modoEdicao ? "Salvar Alteracoes" : "Cadastrar"}
+                                        </Text>
+                                    </>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
@@ -165,7 +177,7 @@ export default function CadastrarTanque() {
     );
 }
 
-function Campo({ icone, label, valor, onChange, placeholder, keyboard }: any) {
+function Campo({ icone, label, valor, onChange, placeholder, keyboard, disabled }: any) {
     return (
         <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -178,7 +190,8 @@ function Campo({ icone, label, valor, onChange, placeholder, keyboard }: any) {
                 placeholder={placeholder}
                 placeholderTextColor="#9ca3af"
                 keyboardType={keyboard || "default"}
-                style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
+                editable={!disabled}
+                style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", opacity: disabled ? 0.65 : 1 }}
             />
         </View>
     );

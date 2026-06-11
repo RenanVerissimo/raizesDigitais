@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from "react-native";
+import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,6 +32,7 @@ export default function RegistrarMovimentacao() {
         destinoSaida: "entrega" as "entrega" | "consumo_proprio",
         observacoes: "",
     });
+    const [salvando, setSalvando] = useState(false);
 
     const tanqueSelecionado = tanques.find((t) => String(t.id) === formData.tanqueId);
     const ehConsumoProprio = formData.destinoSaida === "consumo_proprio";
@@ -42,10 +43,12 @@ export default function RegistrarMovimentacao() {
     const mostrarPreviewConsumo = !!tanqueSelecionado && !!formData.consumoProprio && !isNaN(consumoPreview);
 
     function handleCancelar() {
+        if (salvando) return;
         navigation.goBack();
     }
 
     async function handleSubmit() {
+        if (salvando) return;
         const motivo = ehConsumoProprio ? "Consumo próprio" : "Entrega/Venda";
         if (!formData.tanqueId) {
             Toast.show({ type: "error", text1: "Atenção", text2: "Preencha os campos obrigatórios.", position: "top", visibilityTime: 3000 });
@@ -80,6 +83,7 @@ export default function RegistrarMovimentacao() {
         }
 
         try {
+            setSalvando(true);
             await criarMovimentacao({
                 tanqueId: Number(formData.tanqueId),
                 tipo: formData.tipo,
@@ -109,6 +113,8 @@ export default function RegistrarMovimentacao() {
                 position: "top",
                 visibilityTime: 3000,
             });
+        } finally {
+            setSalvando(false);
         }
     }
 
@@ -122,7 +128,7 @@ export default function RegistrarMovimentacao() {
                     style={{ paddingTop: insets.top + 16, paddingHorizontal: 20, paddingBottom: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 14 }}>
-                        <TouchableOpacity onPress={handleCancelar} style={{ padding: 4 }}>
+                        <TouchableOpacity onPress={handleCancelar} disabled={salvando} style={{ padding: 4, opacity: salvando ? 0.65 : 1 }}>
                             <Feather name="arrow-left" size={24} color="#fff" />
                         </TouchableOpacity>
                         <View>
@@ -153,9 +159,13 @@ export default function RegistrarMovimentacao() {
                                         return (
                                             <TouchableOpacity
                                                 key={t.id}
-                                                onPress={() => setFormData({ ...formData, tanqueId: String(t.id) })}
+                                                onPress={() => {
+                                                    if (salvando) return;
+                                                    setFormData({ ...formData, tanqueId: String(t.id) });
+                                                }}
                                                 activeOpacity={0.7}
-                                                style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 }}
+                                                disabled={salvando}
+                                                style={{ backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, opacity: salvando ? 0.65 : 1 }}
                                             >
                                                 <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#0a0a0a" }}>{t.nome}</Text>
                                                 <Text style={{ fontSize: 10, color: ativo ? "rgba(255,255,255,0.85)" : "#6b7280", marginTop: 2 }}>
@@ -185,15 +195,19 @@ export default function RegistrarMovimentacao() {
                                     <TouchableOpacity
                                         key={destino.key}
                                         activeOpacity={0.75}
-                                        onPress={() => setFormData({
-                                            ...formData,
-                                            destinoSaida: destino.key,
-                                            volume: destino.key === "consumo_proprio" ? "" : formData.volume,
-                                            consumoProprio: destino.key === "entrega" ? "" : formData.consumoProprio,
-                                            temperatura: destino.key === "consumo_proprio" ? "" : formData.temperatura,
-                                            comprador: destino.key === "consumo_proprio" ? "" : formData.comprador,
-                                        })}
-                                        style={{ flex: 1, backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}
+                                        onPress={() => {
+                                            if (salvando) return;
+                                            setFormData({
+                                                ...formData,
+                                                destinoSaida: destino.key,
+                                                volume: destino.key === "consumo_proprio" ? "" : formData.volume,
+                                                consumoProprio: destino.key === "entrega" ? "" : formData.consumoProprio,
+                                                temperatura: destino.key === "consumo_proprio" ? "" : formData.temperatura,
+                                                comprador: destino.key === "consumo_proprio" ? "" : formData.comprador,
+                                            });
+                                        }}
+                                        disabled={salvando}
+                                        style={{ flex: 1, backgroundColor: ativo ? "#4a90e2" : "#f9fafb", borderWidth: 1, borderColor: ativo ? "#4a90e2" : "#e5e7eb", borderRadius: 10, paddingVertical: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6, opacity: salvando ? 0.65 : 1 }}
                                     >
                                         <Feather name={destino.icon} size={16} color={ativo ? "#fff" : "#6b7280"} />
                                         <Text style={{ fontSize: 13, fontWeight: "600", color: ativo ? "#fff" : "#6b7280" }}>{destino.label}</Text>
@@ -313,6 +327,7 @@ export default function RegistrarMovimentacao() {
                         <TextInput
                             value={formData.observacoes}
                             onChangeText={(v) => setFormData({ ...formData, observacoes: v })}
+                            editable={!salvando}
                             placeholder="Observações adicionais..."
                             placeholderTextColor="#9ca3af"
                             multiline numberOfLines={3} textAlignVertical="top"
@@ -322,17 +337,23 @@ export default function RegistrarMovimentacao() {
 
                     {/* Botões */}
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
-                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center" }}>
+                        <TouchableOpacity onPress={handleCancelar} activeOpacity={0.7} disabled={salvando} style={{ flex: 1, backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 14, paddingVertical: 16, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando} style={{ flex: 2, opacity: salvando ? 0.78 : 1 }}>
                             <LinearGradient
                                 colors={["#4a90e2", "#357abd"]}
                                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                                 style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                             >
-                                <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Registrar</Text>
+                                {salvando ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <>
+                                        <Feather name="check" size={18} color="#fff" />
+                                        <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Registrar</Text>
+                                    </>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
