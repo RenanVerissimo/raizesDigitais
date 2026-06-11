@@ -45,4 +45,4 @@ yarn-error.*
 .env
 .env*.local
 backend/.env
-src/config.ts
+

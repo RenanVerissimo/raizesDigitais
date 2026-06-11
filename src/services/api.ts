@@ -1,6 +1,7 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
 import { API_URL } from "../config";
+
 const BASE_URL = API_URL;
 
 console.log("BASE_URL:", BASE_URL);
