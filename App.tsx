@@ -10,7 +10,7 @@ import Dashboard from "./src/pages/dashboard/dashboard";
 import LoginScreen from "./src/pages/login/login";
 import EsqueciSenha from "./src/pages/login/esqueci_senha";
 
-import Toast from "react-native-toast-message";
+import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 import ProducaoEdicao from "./src/pages/producao/producao_edicao";
 import Animais from "./src/pages/animais/animais";
 import CadastrarAnimais from "./src/pages/animais/cadastrar_animais";
@@ -44,6 +44,31 @@ import EditarFinanciamento from "./src/pages/financeiro/editar_financiamento";
 
 
 const Stack = createNativeStackNavigator();
+
+const toastConfig = {
+    success: (props: any) => (
+        <BaseToast
+            {...props}
+            text1NumberOfLines={2}
+            text2NumberOfLines={4}
+            style={{ borderLeftColor: "#22c55e", minHeight: 74, width: "92%" }}
+            contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 10 }}
+            text1Style={{ fontSize: 14, fontWeight: "800", color: "#0f172a" }}
+            text2Style={{ fontSize: 12, color: "#475569", lineHeight: 17 }}
+        />
+    ),
+    error: (props: any) => (
+        <ErrorToast
+            {...props}
+            text1NumberOfLines={2}
+            text2NumberOfLines={4}
+            style={{ borderLeftColor: "#ef4444", minHeight: 74, width: "92%" }}
+            contentContainerStyle={{ paddingHorizontal: 14, paddingVertical: 10 }}
+            text1Style={{ fontSize: 14, fontWeight: "800", color: "#0f172a" }}
+            text2Style={{ fontSize: 12, color: "#475569", lineHeight: 17 }}
+        />
+    ),
+};
 
 export default function App() {
     return (
@@ -89,7 +114,7 @@ export default function App() {
                 </Stack.Navigator>
             </NavigationContainer>
             <StatusBar style="light" />
-            <Toast />
+            <Toast config={toastConfig} />
         </SafeAreaProvider>
     );
 }

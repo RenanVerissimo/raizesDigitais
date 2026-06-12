@@ -161,9 +161,14 @@ export default function EsqueciSenha() {
                 senha,
                 confirmar_senha: confirmarSenha,
             });
-            Alert.alert("Sucesso", "Senha redefinida com sucesso. Faça login com a nova senha.", [
-                { text: "OK", onPress: () => navigation.goBack() },
-            ]);
+            Toast.show({
+                type: "success",
+                text1: "Senha alterada com sucesso",
+                text2: "Faça login com a nova senha.",
+                position: "top",
+                visibilityTime: 2200,
+            });
+            setTimeout(() => navigation.goBack(), 900);
         } catch (err: any) {
             Toast.show({
                 type: "error",

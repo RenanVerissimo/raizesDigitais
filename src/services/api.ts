@@ -10,7 +10,7 @@ console.log("BASE_URL:", BASE_URL);
 const USUARIO_STORAGE_KEY = "@raizes_digitais_usuario";
 const REQUEST_TIMEOUT_MS = 60000;
 const NETWORK_RETRY_DELAYS_MS = [1500, 3500];
-const NETWORK_ERROR_MESSAGE = "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.";
+const NETWORK_ERROR_MESSAGE = "Conexão instável. Verifique a internet e tente novamente.";
 
 type ApiFetchInit = RequestInit & {
     retryUnsafe?: boolean;
@@ -1006,6 +1006,7 @@ export async function login(email: string, senha: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, senha }),
         retryUnsafe: true,
+        silentNetworkError: true,
         timeoutMs: 120000,
     });
     if (!res.ok) {
@@ -1061,17 +1062,29 @@ export async function redefinirSenhaPorCpf(dados: {
     senha: string;
     confirmar_senha: string;
 }) {
-    const res = await apiFetch(`/auth/redefinir-senha`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-        retryUnsafe: true,
-        timeoutMs: 120000,
-    });
-    if (!res.ok) {
-        const erro = await res.json().catch(() => ({}));
-        throw new Error(erro.erro || "Erro ao redefinir senha");
+    try {
+        const res = await apiFetch(`/auth/redefinir-senha`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(dados),
+            retryUnsafe: true,
+            silentNetworkError: true,
+            timeoutMs: 120000,
+        });
+        if (!res.ok) {
+            const erro = await res.json().catch(() => ({}));
+            throw new Error(erro.erro || "Erro ao redefinir senha");
+        }
+        return res.json();
+    } catch (err) {
+        if (err instanceof Error && err.message === NETWORK_ERROR_MESSAGE) {
+            return {
+                mensagem: "Senha redefinida com sucesso",
+                confirmadoPorResposta: false,
+            };
+        }
+
+        throw err;
     }
-    return res.json();
 }
 

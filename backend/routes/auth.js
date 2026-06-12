@@ -73,7 +73,8 @@ router.post("/login", async (req, res) => {
     try {
         await ensureUsuariosSchema();
         const body = req.body || {};
-        const { email, senha } = body;
+        const email = String(body.email || "").trim();
+        const senha = String(body.senha || "");
 
         if (!email || !senha) {
             return res.status(400).json({ erro: "E-mail e senha são obrigatórios" });

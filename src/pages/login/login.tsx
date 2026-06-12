@@ -211,6 +211,8 @@ export default function LoginScreen() {
     });
 
     async function handleLoginSubmit() {
+        if (isLoading) return;
+
         if (!loginData.email || !loginData.password) {
             Alert.alert("Atenção", "Preencha todos os campos.");
             return;
@@ -228,6 +230,7 @@ export default function LoginScreen() {
                 text1: "Não foi possível entrar",
                 text2: err.message || "Verifique seu e-mail e senha.",
                 position: "top",
+                visibilityTime: 4200,
             });
         }
     }
