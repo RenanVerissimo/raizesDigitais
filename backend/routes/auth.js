@@ -24,8 +24,9 @@ async function ensureUsuariosSchema() {
 router.post("/cadastrar", async (req, res) => {
     try {
         await ensureUsuariosSchema();
-        const { nome, email, telefone, nome_fazenda, senha, confirmar_senha } = req.body;
-        const cpfRg = somenteNumeros(req.body.cpf_rg);
+        const body = req.body || {};
+        const { nome, email, telefone, nome_fazenda, senha, confirmar_senha } = body;
+        const cpfRg = somenteNumeros(body.cpf_rg);
 
         if (!nome || !email || !cpfRg || !senha) {
             return res.status(400).json({ erro: "Nome, e-mail, CPF/RG e senha são obrigatórios" });
@@ -71,7 +72,8 @@ router.post("/cadastrar", async (req, res) => {
 router.post("/login", async (req, res) => {
     try {
         await ensureUsuariosSchema();
-        const { email, senha } = req.body;
+        const body = req.body || {};
+        const { email, senha } = body;
 
         if (!email || !senha) {
             return res.status(400).json({ erro: "E-mail e senha são obrigatórios" });
@@ -99,7 +101,8 @@ router.post("/login", async (req, res) => {
 router.post("/verificar-cpf", async (req, res) => {
     try {
         await ensureUsuariosSchema();
-        const cpfRg = somenteNumeros(req.body.cpf_rg);
+        const body = req.body || {};
+        const cpfRg = somenteNumeros(body.cpf_rg);
 
         if (!cpfRg) {
             return res.status(400).json({ erro: "Digite somente os números do CPF/RG" });
@@ -121,15 +124,21 @@ router.post("/verificar-cpf", async (req, res) => {
 router.post("/redefinir-senha", async (req, res) => {
     try {
         await ensureUsuariosSchema();
-        const cpfRg = somenteNumeros(req.body.cpf_rg);
-        const { senha, confirmar_senha } = req.body;
+        const body = req.body || {};
+        const cpfRg = somenteNumeros(body.cpf_rg);
+        const senha = String(body.senha || "");
+        const confirmarSenha = String(body.confirmar_senha || body.confirmarSenha || "");
 
         if (!cpfRg || !senha) {
             return res.status(400).json({ erro: "CPF/RG e senha são obrigatórios" });
         }
 
-        if (senha !== confirmar_senha) {
+        if (senha !== confirmarSenha) {
             return res.status(400).json({ erro: "As senhas não coincidem" });
+        }
+
+        if (senha.length < 6) {
+            return res.status(400).json({ erro: "A senha deve ter pelo menos 6 caracteres" });
         }
 
         const [result] = await pool.query("UPDATE usuarios SET senha = ? WHERE cpf_rg = ?", [senha, cpfRg]);

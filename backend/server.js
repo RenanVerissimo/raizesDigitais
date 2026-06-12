@@ -17,6 +17,15 @@ const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+        return res.status(400).json({ erro: "JSON inválido na requisição" });
+    }
+
+    next(err);
+});
 
 app.use("/api/producao", producaoRoutes);
 app.use("/api/animais", animaisRoutes);
