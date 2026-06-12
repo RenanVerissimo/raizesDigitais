@@ -461,6 +461,33 @@ async function ensureRacaoSchema() {
         )
     `);
     await ensureUsuarioColumn("estoque_racao");
+
+    const [columns] = await pool.query(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'movimentacoes_racao'
+    `);
+    const existingColumns = new Set(columns.map((column) => column.COLUMN_NAME));
+
+    if (!existingColumns.has("idempotency_key")) {
+        await pool.query("ALTER TABLE movimentacoes_racao ADD COLUMN idempotency_key VARCHAR(80) NULL AFTER observacoes");
+    }
+
+    const [indexes] = await pool.query(`
+        SELECT INDEX_NAME
+        FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'movimentacoes_racao'
+          AND INDEX_NAME = 'ux_movimentacoes_racao_idempotency'
+    `);
+
+    if (indexes.length === 0) {
+        await pool.query(`
+            CREATE UNIQUE INDEX ux_movimentacoes_racao_idempotency
+            ON movimentacoes_racao (idempotency_key)
+        `);
+    }
 }
 
 async function ensureComprasRacaoSchema() {
@@ -722,12 +749,32 @@ router.post("/racoes/movimentacoes", async (req, res) => {
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
         const { racaoId, tipo, quantidade, data, motivo, destino, observacoes } = req.body;
+        const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body.idempotencyKey || "").trim() || null;
         const qtd = Number(quantidade || 0);
 
         if (!racaoId || !tipo || !data || !motivo) return res.status(400).json({ erro: "Preencha os campos obrigatorios" });
         if (tipo === "entrada") return res.status(400).json({ erro: "Entrada de racao deve ser registrada pela compra concluida" });
         if (!["saida", "ajuste"].includes(tipo)) return res.status(400).json({ erro: "Tipo de movimentacao invalido" });
         if (Number.isNaN(qtd) || qtd < 0 || (tipo !== "ajuste" && qtd <= 0)) return res.status(400).json({ erro: "Quantidade invalida" });
+
+        if (idempotencyKey) {
+            const [movimentacoesExistentes] = await pool.query(
+                `SELECT m.id
+                 FROM movimentacoes_racao m
+                 INNER JOIN estoque_racao r ON r.id = m.racao_id
+                 WHERE m.idempotency_key = ? AND r.usuario_id = ?
+                 LIMIT 1`,
+                [idempotencyKey, usuarioId]
+            );
+
+            if (movimentacoesExistentes.length > 0) {
+                return res.status(200).json({
+                    id: movimentacoesExistentes[0].id,
+                    mensagem: "Movimentacao de racao ja registrada",
+                    duplicada: true,
+                });
+            }
+        }
 
         await conn.beginTransaction();
 
@@ -750,9 +797,9 @@ router.post("/racoes/movimentacoes", async (req, res) => {
         }
 
         const [result] = await conn.query(
-            `INSERT INTO movimentacoes_racao (racao_id, tipo, quantidade, data, motivo, destino, observacoes)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [racaoId, tipo, qtd, data, motivo, destino || null, observacoes || null]
+            `INSERT INTO movimentacoes_racao (racao_id, tipo, quantidade, data, motivo, destino, observacoes, idempotency_key)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [racaoId, tipo, qtd, data, motivo, destino || null, observacoes || null, idempotencyKey]
         );
         await conn.query("UPDATE estoque_racao SET quantidade_atual=? WHERE id=?", [novaQuantidade, racaoId]);
 
@@ -760,6 +807,28 @@ router.post("/racoes/movimentacoes", async (req, res) => {
         res.status(201).json({ id: result.insertId, mensagem: "Movimentacao de racao registrada" });
     } catch (err) {
         await conn.rollback();
+        const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body?.idempotencyKey || "").trim() || null;
+        if (err?.code === "ER_DUP_ENTRY" && idempotencyKey) {
+            const usuarioId = await requireUsuario(req, res);
+            if (!usuarioId) return;
+            const [movimentacoesExistentes] = await pool.query(
+                `SELECT m.id
+                 FROM movimentacoes_racao m
+                 INNER JOIN estoque_racao r ON r.id = m.racao_id
+                 WHERE m.idempotency_key = ? AND r.usuario_id = ?
+                 LIMIT 1`,
+                [idempotencyKey, usuarioId]
+            );
+
+            if (movimentacoesExistentes.length > 0) {
+                return res.status(200).json({
+                    id: movimentacoesExistentes[0].id,
+                    mensagem: "Movimentacao de racao ja registrada",
+                    duplicada: true,
+                });
+            }
+        }
+
         console.error(err);
         res.status(500).json({ erro: "Erro ao movimentar racao" });
     } finally {

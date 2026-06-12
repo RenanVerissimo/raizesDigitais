@@ -4,6 +4,7 @@ import {
     ActivityIndicator,
     View, Text, TextInput, TouchableOpacity, ScrollView,
     StatusBar, KeyboardAvoidingView, Platform,
+    KeyboardTypeOptions, StyleProp, TextStyle, ViewStyle,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,6 +17,45 @@ import { Receita } from "./financeiro";
 
 function parseDecimal(valor: string) {
     return Number(valor.replace(/\./g, "").replace(",", "."));
+}
+
+function CampoReceita({
+    icone,
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    keyboardType,
+    cardStyle,
+    labelStyle,
+    inputStyle,
+}: {
+    icone: keyof typeof Feather.glyphMap;
+    label: string;
+    value: string;
+    onChangeText: (value: string) => void;
+    placeholder: string;
+    keyboardType?: KeyboardTypeOptions;
+    cardStyle: StyleProp<ViewStyle>;
+    labelStyle: StyleProp<TextStyle>;
+    inputStyle: StyleProp<TextStyle>;
+}) {
+    return (
+        <View style={cardStyle}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <Feather name={icone} size={16} color="#f59e0b" />
+                <Text style={labelStyle}>{label}</Text>
+            </View>
+            <TextInput
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
+                placeholderTextColor="#9ca3af"
+                keyboardType={keyboardType}
+                style={inputStyle}
+            />
+        </View>
+    );
 }
 
 export default function EditarReceita() {
@@ -175,36 +215,7 @@ export default function EditarReceita() {
         color: "#0a0a0a",
     };
 
-    const Campo = ({
-        icone,
-        label,
-        value,
-        onChangeText,
-        placeholder,
-        keyboardType,
-    }: {
-        icone: keyof typeof Feather.glyphMap;
-        label: string;
-        value: string;
-        onChangeText: (value: string) => void;
-        placeholder: string;
-        keyboardType?: "default" | "decimal-pad";
-    }) => (
-        <View style={cardStyle}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                <Feather name={icone} size={16} color="#f59e0b" />
-                <Text style={labelStyle}>{label}</Text>
-            </View>
-            <TextInput
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor="#9ca3af"
-                keyboardType={keyboardType}
-                style={inputStyle}
-            />
-        </View>
-    );
+    const estilosCampo = { cardStyle, labelStyle, inputStyle };
 
     return (
         <KeyboardAvoidingView
@@ -283,7 +294,8 @@ export default function EditarReceita() {
                     {vendaAnimal ? (
                         <>
                             {!animalCadastrado && (
-                                <Campo
+                                <CampoReceita
+                                    {...estilosCampo}
                                     icone="bar-chart-2"
                                     label="Peso do animal (kg)"
                                     value={formData.animalPeso}
@@ -293,7 +305,8 @@ export default function EditarReceita() {
                                 />
                             )}
 
-                            <Campo
+                            <CampoReceita
+                                {...estilosCampo}
                                 icone="dollar-sign"
                                 label="Valor da venda *"
                                 value={formData.valorAnimal}
@@ -304,7 +317,8 @@ export default function EditarReceita() {
                         </>
                     ) : (
                         <>
-                            <Campo
+                            <CampoReceita
+                                {...estilosCampo}
                                 icone="droplet"
                                 label="Quantidade (Litros) *"
                                 value={formData.litros}
@@ -313,7 +327,8 @@ export default function EditarReceita() {
                                 keyboardType="decimal-pad"
                             />
 
-                            <Campo
+                            <CampoReceita
+                                {...estilosCampo}
                                 icone="dollar-sign"
                                 label="Preço por Litro (R$) *"
                                 value={formData.precoPorLitro}
@@ -358,7 +373,8 @@ export default function EditarReceita() {
                         />
                     </View>
 
-                    <Campo
+                    <CampoReceita
+                        {...estilosCampo}
                         icone="user"
                         label={vendaAnimal ? "Comprador" : "Comprador *"}
                         value={formData.comprador}

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     View,
@@ -13,7 +13,7 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { criarProducao, atualizarProducao, listarProducoes } from "../../services/api";
+import { criarProducao, atualizarProducao, listarProducoes, listarTanques } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
@@ -26,6 +26,13 @@ function dataLocalTexto(data = new Date()) {
     return `${ano}-${mes}-${dia}`;
 }
 
+type TanqueColeta = {
+    id: number;
+    nome: string;
+    capacidade: number;
+    volumeAtual: number;
+};
+
 export default function ProducaoRegistro() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
@@ -36,12 +43,56 @@ export default function ProducaoRegistro() {
     const [formData, setFormData] = useState({
         date: toBr(producaoEditando?.data ?? dataLocalTexto()),
         dailyProduction: producaoEditando?.producao_diaria?.toString() ?? "",
+        tanqueId: producaoEditando?.tanqueId ? String(producaoEditando.tanqueId) : "",
         notes: producaoEditando?.observacoes ?? "",
     });
+    const [tanques, setTanques] = useState<TanqueColeta[]>([]);
+    const [carregandoTanques, setCarregandoTanques] = useState(true);
     const [salvando, setSalvando] = useState(false);
     const enviandoRef = useRef(false);
 
     const total = parseFloat(formData.dailyProduction) || 0;
+    const tanqueSelecionado = tanques.find((tanque) => String(tanque.id) === formData.tanqueId);
+    const volumeBaseColeta = tanqueSelecionado
+        ? isEditando && Number(producaoEditando?.tanqueId || 0) === tanqueSelecionado.id
+            ? tanqueSelecionado.volumeAtual - Number(producaoEditando?.producao_diaria || 0)
+            : tanqueSelecionado.volumeAtual
+        : 0;
+    const volumeAposColeta = volumeBaseColeta + total;
+
+    useEffect(() => {
+        let ativo = true;
+
+        async function carregarTanques() {
+            try {
+                setCarregandoTanques(true);
+                const dados = await listarTanques({ silentNetworkError: true });
+                if (!ativo) return;
+                setTanques(dados);
+                setFormData((atual) => ({
+                    ...atual,
+                    tanqueId: atual.tanqueId || (dados[0]?.id ? String(dados[0].id) : ""),
+                }));
+            } catch (err: any) {
+                if (!ativo) return;
+                Toast.show({
+                    type: "error",
+                    text1: "Erro ao carregar tanques",
+                    text2: err.message || "Não foi possível carregar os tanques.",
+                    position: "top",
+                    visibilityTime: 3000,
+                });
+            } finally {
+                if (ativo) setCarregandoTanques(false);
+            }
+        }
+
+        carregarTanques();
+
+        return () => {
+            ativo = false;
+        };
+    }, []);
 
     function iniciarEnvio() {
         if (enviandoRef.current) return false;
@@ -70,18 +121,27 @@ export default function ProducaoRegistro() {
     }
 
     function isErroConexaoLenta(error: any) {
-        return String(error?.message || error || "").includes("conexão demorou demais ou caiu");
+        const mensagem = String(error?.message || error || "").toLowerCase();
+        return (
+            mensagem.includes("conexão instável") ||
+            mensagem.includes("conexao instavel") ||
+            mensagem.includes("network request failed") ||
+            mensagem.includes("conexão demorou demais") ||
+            mensagem.includes("conexao demorou demais")
+        );
     }
 
-    function producaoConfere(producao: Producao, params: { date: string; dailyProduction: number; notes: string | null }) {
+    function producaoConfere(producao: Producao, params: { date: string; dailyProduction: number; tanqueId: number; notes: string | null }) {
+        const tanqueConfere = producao.tanqueId === null || producao.tanqueId === undefined || Number(producao.tanqueId) === params.tanqueId;
         return (
             normalizarData(producao.data) === params.date &&
             Math.abs(Number(producao.producao_diaria) - params.dailyProduction) < 0.001 &&
+            tanqueConfere &&
             normalizarObservacao(producao.observacoes) === normalizarObservacao(params.notes)
         );
     }
 
-    async function coletaFoiSalva(params: { date: string; dailyProduction: number; notes: string | null }, producaoId?: number) {
+    async function coletaFoiSalva(params: { date: string; dailyProduction: number; tanqueId: number; notes: string | null }, producaoId?: number) {
         for (let tentativa = 0; tentativa < 3; tentativa++) {
             try {
                 const producoes = await listarProducoes({ silentNetworkError: true });
@@ -122,6 +182,12 @@ export default function ProducaoRegistro() {
             return;
         }
 
+        if (!formData.tanqueId) {
+            Alert.alert("Atenção", "Selecione o tanque que recebeu a coleta.");
+            finalizarEnvio();
+            return;
+        }
+
         const dailyProduction = Number(formData.dailyProduction);
         if (isNaN(dailyProduction) || dailyProduction <= 0) {
             Alert.alert("Atenção", "A produção diária deve ser maior que 0.");
@@ -136,9 +202,16 @@ export default function ProducaoRegistro() {
             return;
         }
 
+        if (tanqueSelecionado && volumeAposColeta > tanqueSelecionado.capacidade) {
+            Alert.alert("Atenção", "A quantidade informada excede a capacidade disponível do tanque selecionado.");
+            finalizarEnvio();
+            return;
+        }
+
         const dados = {
             date: dataIso,
             dailyProduction,
+            tanqueId: Number(formData.tanqueId),
             notes: formData.notes.trim() || null,
         };
 
@@ -155,6 +228,7 @@ export default function ProducaoRegistro() {
                 setFormData({
                     date: toBr(dataLocalTexto()),
                     dailyProduction: "",
+                    tanqueId: formData.tanqueId,
                     notes: "",
                 });
             }
@@ -164,17 +238,7 @@ export default function ProducaoRegistro() {
                 navigation.goBack();
             }, 500);
         } catch (error: any) {
-            if (await coletaFoiSalva(dados, producaoEditando?.id)) {
-                mostrarSucesso();
-
-                setTimeout(() => {
-                    finalizarEnvio();
-                    navigation.goBack();
-                }, 500);
-                return;
-            }
-
-            if (isEditando && isErroConexaoLenta(error)) {
+            if (await coletaFoiSalva(dados, producaoEditando?.id) || isErroConexaoLenta(error)) {
                 mostrarSucesso();
 
                 setTimeout(() => {
@@ -243,6 +307,82 @@ export default function ProducaoRegistro() {
 
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="database" size={16} color="#4a90e2" />
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Tanque da coleta *</Text>
+                        </View>
+                        {carregandoTanques ? (
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <ActivityIndicator size="small" color="#4a90e2" />
+                                <Text style={{ fontSize: 13, color: "#6b7280" }}>Carregando tanques</Text>
+                            </View>
+                        ) : tanques.length === 0 ? (
+                            <Text style={{ fontSize: 13, color: "#9ca3af" }}>
+                                Nenhum tanque cadastrado. Cadastre um tanque no estoque de leite antes de registrar a coleta.
+                            </Text>
+                        ) : (
+                            <>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    <View style={{ flexDirection: "row", gap: 8 }}>
+                                        {tanques.map((tanque) => {
+                                            const ativo = String(tanque.id) === formData.tanqueId;
+                                            const ocupacao = tanque.capacidade > 0 ? (tanque.volumeAtual / tanque.capacidade) * 100 : 0;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={tanque.id}
+                                                    onPress={() => {
+                                                        if (salvando || enviandoRef.current) return;
+                                                        setFormData({ ...formData, tanqueId: String(tanque.id) });
+                                                    }}
+                                                    activeOpacity={0.75}
+                                                    disabled={salvando}
+                                                    style={{
+                                                        minWidth: 132,
+                                                        backgroundColor: ativo ? "#4a90e2" : "#f9fafb",
+                                                        borderWidth: 1,
+                                                        borderColor: ativo ? "#4a90e2" : "#e5e7eb",
+                                                        borderRadius: 10,
+                                                        paddingHorizontal: 14,
+                                                        paddingVertical: 10,
+                                                        opacity: salvando ? 0.65 : 1,
+                                                    }}
+                                                >
+                                                    <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: "700", color: ativo ? "#fff" : "#0a0a0a" }}>
+                                                        {tanque.nome}
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, color: ativo ? "rgba(255,255,255,0.85)" : "#6b7280", marginTop: 2 }}>
+                                                        {tanque.volumeAtual.toFixed(1)} / {tanque.capacidade.toFixed(1)} L
+                                                    </Text>
+                                                    <Text style={{ fontSize: 10, color: ativo ? "rgba(255,255,255,0.85)" : "#9ca3af", marginTop: 2 }}>
+                                                        {ocupacao.toFixed(0)}% ocupado
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </ScrollView>
+                                {tanqueSelecionado && total > 0 ? (
+                                    <View style={{
+                                        marginTop: 12,
+                                        backgroundColor: volumeAposColeta > tanqueSelecionado.capacidade ? "#fef2f2" : "#f0fdf4",
+                                        borderWidth: 1,
+                                        borderColor: volumeAposColeta > tanqueSelecionado.capacidade ? "#fecaca" : "#bbf7d0",
+                                        borderRadius: 10,
+                                        padding: 10,
+                                    }}>
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: volumeAposColeta > tanqueSelecionado.capacidade ? "#b91c1c" : "#15803d" }}>
+                                            Após a coleta: {volumeAposColeta.toFixed(1)} L
+                                        </Text>
+                                        <Text style={{ fontSize: 11, color: volumeAposColeta > tanqueSelecionado.capacidade ? "#b91c1c" : "#166534", marginTop: 2 }}>
+                                            Capacidade do tanque: {tanqueSelecionado.capacidade.toFixed(1)} L
+                                        </Text>
+                                    </View>
+                                ) : null}
+                            </>
+                        )}
+                    </View>
+
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="droplet" size={16} color="#4a90e2" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>Produção diária (litros)</Text>
                         </View>
@@ -282,12 +422,12 @@ export default function ProducaoRegistro() {
                         />
                     </View>
 
-                    <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando} style={{ marginBottom: insets.bottom + 20 }}>
+                    <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} disabled={salvando || carregandoTanques || tanques.length === 0} style={{ marginBottom: insets.bottom + 20 }}>
                         <LinearGradient
                             colors={["#4a90e2", "#357abd"]}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
-                            style={{ borderRadius: 14, paddingVertical: 16, minHeight: 54, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, opacity: salvando ? 0.78 : 1 }}
+                            style={{ borderRadius: 14, paddingVertical: 16, minHeight: 54, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, opacity: salvando || carregandoTanques || tanques.length === 0 ? 0.78 : 1 }}
                         >
                             {salvando ? (
                                 <>

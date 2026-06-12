@@ -415,7 +415,7 @@ export default function PrevisaoReceita() {
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={{ fontSize: 13, fontWeight: "800", color: "#0f172a" }}>Contagem celular</Text>
-                                        <Text style={{ fontSize: 11, color: "#64748b", marginTop: 1 }}>CCS e CBT não são valores em dinheiro</Text>
+                                        
                                     </View>
                                     {celulasConferenciaOk && <Feather name="check-circle" size={18} color="#16a34a" />}
                                 </View>

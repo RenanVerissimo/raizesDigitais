@@ -26,6 +26,8 @@ export interface InputFieldProps {
 
 export interface Producao {
     id: number;
+    tanqueId?: number | null;
+    tanqueNome?: string | null;
     data: string;
     producao_diaria: number | string;
     observacoes: string | null;
