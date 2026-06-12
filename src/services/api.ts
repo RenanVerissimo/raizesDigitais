@@ -1051,7 +1051,7 @@ export async function verificarCpfRecuperacao(cpf_rg: string) {
     });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
-        throw new Error(erro.erro || "CPF/RG digitado está errado");
+        throw new Error(erro.erro || "Recurso de recuperação de senha ainda não está publicado no servidor");
     }
     return res.json();
 }
