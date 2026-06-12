@@ -32,6 +32,10 @@ const colors = {
     mutedForeground: "#94a3b8",
 };
 
+function somenteNumeros(valor: string) {
+    return valor.replace(/\D/g, "");
+}
+
 
 
 function FloatingIcon({ name, source, size, top, left, right, bottom, delay, duration }: FloatingIconProps & { source?: any }) {
@@ -199,6 +203,7 @@ export default function LoginScreen() {
     const [registerData, setRegisterData] = useState({
         name: "",
         email: "",
+        cpfRg: "",
         phone: "",
         farmName: "",
         password: "",
@@ -228,7 +233,7 @@ export default function LoginScreen() {
     }
 
     async function handleRegisterSubmit() {
-        if (!registerData.name || !registerData.email || !registerData.farmName || !registerData.password) {
+        if (!registerData.name || !registerData.email || !registerData.cpfRg || !registerData.farmName || !registerData.password) {
             Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
             return;
         }
@@ -246,6 +251,7 @@ export default function LoginScreen() {
             await cadastrar({
                 nome: registerData.name.trim(),
                 email: registerData.email.trim(),
+                cpf_rg: somenteNumeros(registerData.cpfRg),
                 telefone: registerData.phone.trim() || undefined,
                 nome_fazenda: registerData.farmName.trim(),
                 senha: registerData.password,
@@ -256,6 +262,7 @@ export default function LoginScreen() {
             setRegisterData({
                 name: "",
                 email: "",
+                cpfRg: "",
                 phone: "",
                 farmName: "",
                 password: "",
@@ -327,7 +334,7 @@ export default function LoginScreen() {
                                     rightIcon={showPassword ? "eye-off" : "eye"}
                                     onRightIconPress={() => setShowPassword(!showPassword)} />
                                 <View style={styles.rememberRow}>
-                                    <TouchableOpacity>
+                                    <TouchableOpacity onPress={() => navigation.navigate("EsqueciSenha")} activeOpacity={0.75}>
                                         <Text style={[styles.forgotText, { color: colors.primary }]}>Esqueceu a senha?</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -351,6 +358,9 @@ export default function LoginScreen() {
                                 <InputField label="E-mail" icon="mail" value={registerData.email}
                                     onChangeText={(v) => setRegisterData({ ...registerData, email: v })}
                                     placeholder="seu@email.com" keyboardType="email-address" />
+                                <InputField label="CPF/RG" icon="credit-card" value={registerData.cpfRg}
+                                    onChangeText={(v) => setRegisterData({ ...registerData, cpfRg: somenteNumeros(v) })}
+                                    placeholder="Digite somente os números" keyboardType="numeric" />
                                 <InputField label="Telefone" icon="phone" value={registerData.phone}
                                     onChangeText={(v) => setRegisterData({ ...registerData, phone: v })}
                                     placeholder="(00) 00000-0000" keyboardType="phone-pad" />
@@ -382,7 +392,7 @@ export default function LoginScreen() {
 
                         <View style={styles.versionRow}>
                             <View style={styles.divider} />
-                            <Text style={styles.versionText}>Versão 1.0 - Sistema de Gestão Leiteira</Text>
+                            <Text style={styles.versionText}>Versão 2.0 - Sistema de Gestão Leiteira</Text>
                         </View>
                     </View>
                 </ScrollView>

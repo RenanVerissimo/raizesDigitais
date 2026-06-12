@@ -1005,6 +1005,8 @@ export async function login(email: string, senha: string) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, senha }),
+        retryUnsafe: true,
+        timeoutMs: 120000,
     });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
@@ -1018,6 +1020,7 @@ export async function login(email: string, senha: string) {
 export async function cadastrar(dados: {
     nome: string;
     email: string;
+    cpf_rg: string;
     telefone?: string;
     nome_fazenda?: string;
     senha: string;
@@ -1027,6 +1030,8 @@ export async function cadastrar(dados: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
+        retryUnsafe: true,
+        timeoutMs: 120000,
     });
     if (!res.ok) {
         const erro = await res.json().catch(() => ({}));
@@ -1034,5 +1039,39 @@ export async function cadastrar(dados: {
     }
     const resposta = await res.json();
     return resposta;
+}
+
+export async function verificarCpfRecuperacao(cpf_rg: string) {
+    const res = await apiFetch(`/auth/verificar-cpf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cpf_rg }),
+        retryUnsafe: true,
+        timeoutMs: 120000,
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "CPF/RG digitado está errado");
+    }
+    return res.json();
+}
+
+export async function redefinirSenhaPorCpf(dados: {
+    cpf_rg: string;
+    senha: string;
+    confirmar_senha: string;
+}) {
+    const res = await apiFetch(`/auth/redefinir-senha`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+        retryUnsafe: true,
+        timeoutMs: 120000,
+    });
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao redefinir senha");
+    }
+    return res.json();
 }
 
