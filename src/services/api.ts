@@ -65,6 +65,7 @@ export interface UsuarioLogado {
     email: string;
     telefone?: string | null;
     nome_fazenda?: string | null;
+    token?: string;
 }
 
 export async function getUsuarioLogado() {
@@ -107,6 +108,7 @@ async function apiFetch(path: string, init: ApiFetchInit = {}) {
     const headers = {
         ...(fetchInit.headers || {}),
         ...(usuario?.id ? { "x-usuario-id": String(usuario.id) } : {}),
+        ...(usuario?.token ? { Authorization: `Bearer ${usuario.token}` } : {}),
     };
     const url = `${BASE_URL}${path}`;
     const method = String(fetchInit.method || "GET").toUpperCase();
@@ -1193,7 +1195,7 @@ export async function login(email: string, senha: string) {
     if (!dados.usuario) {
         throw new Error("Resposta de login inválida. Tente novamente.");
     }
-    await salvarUsuarioLogado(dados.usuario);
+    await salvarUsuarioLogado({ ...dados.usuario, token: dados.token });
     return dados;
 }
 

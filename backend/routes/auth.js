@@ -1,9 +1,12 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const router = express.Router();
 const pool = require("../database/conecction");
 
 const SALT_ROUNDS = 10;
+const JWT_EXPIRES_IN = "7d";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function somenteNumeros(valor) {
     return String(valor || "").replace(/\D/g, "");
@@ -112,8 +115,20 @@ router.post("/login", async (req, res) => {
 
         delete usuario.senha;
 
+        if (!JWT_SECRET) {
+            console.error("JWT_SECRET não configurado no ambiente");
+            return res.status(500).json({ erro: "Configuração de autenticação ausente" });
+        }
+
+        const token = jwt.sign(
+            { usuarioId: usuario.id, email: usuario.email },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRES_IN }
+        );
+
         res.json({
             usuario,
+            token,
             mensagem: "Login realizado com sucesso",
         });
     } catch (err) {
