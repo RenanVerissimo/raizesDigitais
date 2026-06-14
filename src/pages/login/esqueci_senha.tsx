@@ -93,6 +93,39 @@ function Campo({
     );
 }
 
+function CampoEstatico({
+    label,
+    icon,
+    value,
+}: {
+    label: string;
+    icon: React.ComponentProps<typeof Feather>["name"];
+    value: string;
+}) {
+    return (
+        <View style={styles.fieldContainer}>
+            <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
+            <View
+                style={[
+                    styles.inputWrapper,
+                    {
+                        borderColor: "transparent",
+                        backgroundColor: "#f8fafc",
+                    },
+                ]}
+            >
+                <Feather
+                    name={icon}
+                    size={18}
+                    color={colors.mutedForeground}
+                    style={styles.inputIcon}
+                />
+                <Text style={[styles.input, { color: colors.foreground }]}>{value}</Text>
+            </View>
+        </View>
+    );
+}
+
 export default function EsqueciSenha() {
     const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
@@ -202,13 +235,21 @@ export default function EsqueciSenha() {
                         <Text style={styles.formTitle}>Esqueceu a senha?</Text>
                         <Text style={styles.formSubtitle}>Digite somente os números do CPF/RG cadastrado</Text>
 
-                        <Campo
-                            label="CPF/RG"
-                            icon="credit-card"
-                            value={cpfRg}
-                            onChangeText={(value) => setCpfRg(somenteNumeros(value))}
-                            placeholder="Digite somente os números"
-                        />
+                        {cpfValidado ? (
+                            <CampoEstatico
+                                label="CPF/RG"
+                                icon="credit-card"
+                                value={cpfRg}
+                            />
+                        ) : (
+                            <Campo
+                                label="CPF/RG"
+                                icon="credit-card"
+                                value={cpfRg}
+                                onChangeText={(value) => setCpfRg(somenteNumeros(value))}
+                                placeholder="Digite somente os números"
+                            />
+                        )}
 
                         {cpfValidado && (
                             <>

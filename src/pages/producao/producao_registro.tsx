@@ -203,7 +203,14 @@ export default function ProducaoRegistro() {
         }
 
         if (tanqueSelecionado && volumeAposColeta > tanqueSelecionado.capacidade) {
-            Alert.alert("Atenção", "A quantidade informada excede a capacidade disponível do tanque selecionado.");
+            const excedente = volumeAposColeta - tanqueSelecionado.capacidade;
+            Toast.show({
+                type: "info",
+                text1: "Capacidade do tanque excedida",
+                text2: `A coleta ultrapassa o tanque em ${excedente.toFixed(1)} L. Após a coleta: ${volumeAposColeta.toFixed(1)} L de ${tanqueSelecionado.capacidade.toFixed(1)} L.`,
+                position: "top",
+                visibilityTime: 4500,
+            });
             finalizarEnvio();
             return;
         }
