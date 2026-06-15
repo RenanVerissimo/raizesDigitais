@@ -1,7 +1,20 @@
 const pool = require("../database/conecction");
+const jwt = require("jsonwebtoken");
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function getUsuarioId(req) {
-    const usuarioId = Number(req.headers["x-usuario-id"] || req.query.usuarioId || req.body.usuarioId);
+    const authorization = String(req.headers.authorization || "");
+    const [type, token] = authorization.split(" ");
+    console.log("JWT recebido no backend?", type === "Bearer" && Boolean(token), req.method, req.originalUrl);
+
+    if (type !== "Bearer" || !token || !JWT_SECRET) {
+        return null;
+    }
+
+    const payload = jwt.verify(token, JWT_SECRET);
+    console.log("JWT validado para usuarioId:", payload.usuarioId);
+    const usuarioId = Number(payload.usuarioId);
     return Number.isFinite(usuarioId) && usuarioId > 0 ? usuarioId : null;
 }
 
@@ -37,7 +50,14 @@ async function requireUsuario(req, res, tables = []) {
         await ensureUsuarioColumn(table);
     }
 
-    const usuarioId = getUsuarioId(req);
+    let usuarioId = null;
+
+    try {
+        usuarioId = getUsuarioId(req);
+    } catch (err) {
+        res.status(401).json({ erro: "Sessão inválida ou expirada. Faça login novamente." });
+        return null;
+    }
     if (!usuarioId) {
         res.status(401).json({ erro: "Usuário não identificado. Faça login novamente." });
         return null;
