@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert, Modal } from "react-native";
+import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar, Alert, Modal } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,6 +21,7 @@ export default function VerTodosAnimais() {
     const [carregando, setCarregando] = useState(true);
     const [atualizandoStatusId, setAtualizandoStatusId] = useState<number | null>(null);
     const [excluindoId, setExcluindoId] = useState<number | null>(null);
+    const [busca, setBusca] = useState("");
 
     useFocusEffect(
         useCallback(() => {
@@ -172,6 +173,13 @@ export default function VerTodosAnimais() {
     const statusAtualSelecionado = animalStatusSelecionado?.status === "inativo" ? "inativo" : "ativo";
     const novoStatusSelecionado = statusAtualSelecionado === "ativo" ? "inativo" : "ativo";
     const alterandoStatusSelecionado = atualizandoStatusId === animalStatusSelecionado?.id;
+    const buscaNormalizada = busca.trim().toLowerCase();
+    const animaisFiltrados = buscaNormalizada
+        ? animais.filter((animal) => (
+            String(animal.nome || "").toLowerCase().includes(buscaNormalizada) ||
+            String(animal.identificador || "").toLowerCase().includes(buscaNormalizada)
+        ))
+        : animais;
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -201,6 +209,25 @@ export default function VerTodosAnimais() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 10, paddingBottom: insets.bottom + 20 }}>
+                    {!carregando && animais.length > 0 && (
+                        <View style={{ backgroundColor: "#fff", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#e5e7eb", flexDirection: "row", alignItems: "center", gap: 10 }}>
+                            <Feather name="search" size={18} color="#9ca3af" />
+                            <TextInput
+                                value={busca}
+                                onChangeText={setBusca}
+                                placeholder="Buscar por nome ou ID"
+                                placeholderTextColor="#9ca3af"
+                                autoCapitalize="none"
+                                style={{ flex: 1, fontSize: 15, color: "#111827", paddingVertical: 2 }}
+                            />
+                            {busca.length > 0 && (
+                                <TouchableOpacity onPress={() => setBusca("")} activeOpacity={0.75} style={{ padding: 2 }}>
+                                    <Feather name="x" size={18} color="#9ca3af" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+
                     {carregando ? (
                         <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 64, backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
                             <ActivityIndicator size="large" color="#4a90e2" />
@@ -218,8 +245,18 @@ export default function VerTodosAnimais() {
                                 Nenhum animal cadastrado
                             </Text>
                         </View>
+                    ) : animaisFiltrados.length === 0 ? (
+                        <View style={{ alignItems: "center", paddingVertical: 48, backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <Feather name="search" size={42} color="#d1d5db" />
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151", marginTop: 10 }}>
+                                Nenhum animal encontrado
+                            </Text>
+                            <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                Tente buscar por outro nome ou ID.
+                            </Text>
+                        </View>
                     ) : (
-                        animais.map((animal) => (
+                        animaisFiltrados.map((animal) => (
                             <CardAnimal
                                 key={animal.id}
                                 animal={animal}

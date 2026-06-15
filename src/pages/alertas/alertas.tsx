@@ -4,10 +4,13 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { listarAnimais } from "../../services/api";
+import Toast from "react-native-toast-message";
+import { atualizarAnimal, listarAnimais } from "../../services/api";
 import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 
-function Secao({ titulo, dados, cor, icone, onSelecionar }: any) {
+type TipoAlertaSolucao = "cio" | "prenhez" | "parto" | "secagem" | "aborto" | "descarte" | "mastite" | "outra_doenca";
+
+function Secao({ titulo, dados, cor, icone, onSelecionar, onSolucionar }: any) {
     if (!dados || dados.length === 0) return null;
 
     return (
@@ -52,7 +55,20 @@ function Secao({ titulo, dados, cor, icone, onSelecionar }: any) {
                             </Text>
                         )}
                     </View>
-                    <Feather name="chevron-right" size={18} color="#d1d5db" />
+                    <View style={{ alignItems: "flex-end", gap: 10 }}>
+                        <TouchableOpacity
+                            onPress={(event: any) => {
+                                event.stopPropagation?.();
+                                onSolucionar(a);
+                            }}
+                            activeOpacity={0.8}
+                            style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 }}
+                        >
+                            <Feather name="check-circle" size={14} color="#16a34a" />
+                            <Text style={{ fontSize: 11, fontWeight: "800", color: "#16a34a" }}>Solucionar</Text>
+                        </TouchableOpacity>
+                        <Feather name="chevron-right" size={18} color="#d1d5db" />
+                    </View>
                 </TouchableOpacity>
             ))}
         </View>
@@ -63,6 +79,8 @@ export default function Alertas() {
     const [animais, setAnimais] = useState<any[]>([]);
     const [animalSelecionado, setAnimalSelecionado] = useState<any | null>(null);
     const [modalMotivosVisivel, setModalMotivosVisivel] = useState(false);
+    const [alertaParaSolucionar, setAlertaParaSolucionar] = useState<any | null>(null);
+    const [solucionando, setSolucionando] = useState(false);
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
 
@@ -79,31 +97,61 @@ export default function Alertas() {
         }
     }
 
+    async function confirmarSolucaoAlerta() {
+        if (!alertaParaSolucionar || solucionando) return;
+
+        try {
+            setSolucionando(true);
+            await atualizarAnimal(alertaParaSolucionar.id, montarDadosSolucao(alertaParaSolucionar));
+            setAlertaParaSolucionar(null);
+            await carregar();
+            Toast.show({
+                type: "success",
+                text1: "Alerta solucionado",
+                text2: "O registro do animal foi atualizado.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+        } catch (error: any) {
+            Toast.show({
+                type: "error",
+                text1: "Erro ao solucionar alerta",
+                text2: error.message || "Tente novamente em alguns instantes.",
+                position: "top",
+                visibilityTime: 3500,
+            });
+        } finally {
+            setSolucionando(false);
+        }
+    }
+
     // --- FILTROS BASEADOS NO SEU JSON ---
 
     // 1. Em Cio: No seu JSON é o campo "em_cio": 1
-    const emCio = animais.filter(a => a.em_cio === 1);
+    const emCio = animais.filter(a => a.em_cio === 1).map(a => ({ ...a, tipoAlerta: "cio" as TipoAlertaSolucao }));
 
     // 2. Vacas Prenhas: No seu JSON é o campo "prenha": 1
-    const vacasPrenhas = animais.filter(a => a.prenha === 1);
+    const vacasPrenhasBase = animais.filter(a => a.prenha === 1);
+    const vacasPrenhas = vacasPrenhasBase.map(a => ({ ...a, tipoAlerta: "prenhez" as TipoAlertaSolucao }));
 
     // 3. Abortos: No seu JSON é o campo "abortou": 1
-    const abortos = animais.filter(a => a.abortou === 1);
+    const abortos = animais.filter(a => a.abortou === 1).map(a => ({ ...a, tipoAlerta: "aborto" as TipoAlertaSolucao }));
 
-    const mastite = animais.filter(a => Number(a.mastite) === 1);
-    const outrasDoencas = animais.filter(a => Number(a.doente) === 1 && a.doenca === "outra");
+    const mastite = animais.filter(a => Number(a.mastite) === 1).map(a => ({ ...a, tipoAlerta: "mastite" as TipoAlertaSolucao }));
+    const outrasDoencas = animais.filter(a => Number(a.doente) === 1 && a.doenca === "outra").map(a => ({ ...a, tipoAlerta: "outra_doenca" as TipoAlertaSolucao }));
     const descarteLeite = animais.map(a => {
         const aviso = calcularAvisoDescarteLeite(a.data_ultimo_parto, a.dias_descarte_leite);
         if (!aviso) return null;
 
         return {
             ...a,
+            tipoAlerta: "descarte" as TipoAlertaSolucao,
             detalheAlerta: aviso.texto,
             fimDescarteLeite: aviso.fimDescarte.toISOString(),
         };
     }).filter(Boolean);
 
-    const proximosPartos = vacasPrenhas.map(a => {
+    const proximosPartos = vacasPrenhasBase.map(a => {
         const dataBaseGestacao = a.data_inseminacao || a.data_reproducao || a.data_base_gestacao || a.data_cobertura;
         if (!dataBaseGestacao) return null;
 
@@ -115,11 +163,12 @@ export default function Alertas() {
 
         return {
             ...a,
+            tipoAlerta: "parto" as TipoAlertaSolucao,
             detalheAlerta: dias === 0 ? "Parto previsto para hoje" : `Faltam ${dias} dias para o parto`,
         };
     }).filter(Boolean);
 
-    const secagem = vacasPrenhas.map(a => {
+    const secagem = vacasPrenhasBase.map(a => {
         const dataBaseGestacao = a.data_inseminacao || a.data_reproducao || a.data_base_gestacao || a.data_cobertura;
         if (!dataBaseGestacao) return null;
 
@@ -131,6 +180,7 @@ export default function Alertas() {
 
         return {
             ...a,
+            tipoAlerta: "secagem" as TipoAlertaSolucao,
             detalheAlerta: dias === 0 ? "Secagem prevista para hoje" : `Faltam ${dias} dias para a secagem`,
         };
     }).filter(Boolean);
@@ -184,21 +234,21 @@ export default function Alertas() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
             >
-                <Secao titulo="Em Cio" dados={emCio} cor="#f59e0b" icone="fire" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Em Cio" dados={emCio} cor="#f59e0b" icone="fire" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
-                <Secao titulo="Confirmado: Prenha" dados={vacasPrenhas} cor="#10b981" icone="check-circle-outline" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Confirmado: Prenha" dados={vacasPrenhas} cor="#10b981" icone="check-circle-outline" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
-                <Secao titulo="Partos nos próximos 10 dias" dados={proximosPartos} cor="#3b82f6" icone="baby-carriage" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Partos nos próximos 10 dias" dados={proximosPartos} cor="#3b82f6" icone="baby-carriage" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
-                <Secao titulo="Secagem nos próximos 10 dias" dados={secagem} cor="#8b5cf6" icone="water-off" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Secagem nos próximos 10 dias" dados={secagem} cor="#8b5cf6" icone="water-off" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
-                <Secao titulo="Atenção: Abortos" dados={abortos} cor="#7f1d1d" icone="alert-octagon" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Atenção: Abortos" dados={abortos} cor="#7f1d1d" icone="alert-octagon" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
-                <Secao titulo="Leite em descarte" dados={descarteLeite} cor="#ea580c" icone="alert-triangle" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Leite em descarte" dados={descarteLeite} cor="#ea580c" icone="alert-triangle" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
-                <Secao titulo="Saúde: Mastite" dados={mastite} cor="#dc2626" icone="medical-bag" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Saúde: Mastite" dados={mastite} cor="#dc2626" icone="medical-bag" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
-                <Secao titulo="Saúde: Outras Doenças" dados={outrasDoencas} cor="#1d4ed8" icone="heart-pulse" onSelecionar={setAnimalSelecionado} />
+                <Secao titulo="Saúde: Outras Doenças" dados={outrasDoencas} cor="#1d4ed8" icone="heart-pulse" onSelecionar={setAnimalSelecionado} onSolucionar={setAlertaParaSolucionar} />
 
                 {emCio.length === 0 && vacasPrenhas.length === 0 && proximosPartos.length === 0 && secagem.length === 0 && descarteLeite.length === 0 && abortos.length === 0 && mastite.length === 0 && outrasDoencas.length === 0 && (
                     <View style={{ alignItems: "center", marginTop: 60 }}>
@@ -216,6 +266,14 @@ export default function Alertas() {
             <MotivosAlertasModal
                 visible={modalMotivosVisivel}
                 onClose={() => setModalMotivosVisivel(false)}
+            />
+            <SolucionarAlertaModal
+                animal={alertaParaSolucionar}
+                salvando={solucionando}
+                onClose={() => {
+                    if (!solucionando) setAlertaParaSolucionar(null);
+                }}
+                onConfirmar={confirmarSolucaoAlerta}
             />
         </View>
     );
@@ -263,6 +321,161 @@ function MotivosAlertasModal({ visible, onClose }: { visible: boolean; onClose: 
             </View>
         </Modal>
     );
+}
+
+function SolucionarAlertaModal({ animal, salvando, onClose, onConfirmar }: { animal: any | null; salvando: boolean; onClose: () => void; onConfirmar: () => void }) {
+    if (!animal) return null;
+
+    const titulo = tituloSolucaoAlerta(animal.tipoAlerta);
+
+    return (
+        <Modal visible={!!animal} transparent animationType="fade" onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 }}>
+                <View style={{ backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" }}>
+                    <View style={{ padding: 18, backgroundColor: "#fef2f2", borderBottomWidth: 1, borderBottomColor: "#fecaca" }}>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 18, fontWeight: "900", color: "#991b1b" }}>Solucionar alerta?</Text>
+                            </View>
+                            <TouchableOpacity onPress={onClose} disabled={salvando} style={{ padding: 4, opacity: salvando ? 0.5 : 1 }}>
+                                <Feather name="x" size={24} color="#7f1d1d" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <View style={{ padding: 18, gap: 12 }}>
+                        <View style={{ backgroundColor: "#f9fafb", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                            <Text style={{ fontSize: 13, color: "#6b7280" }}>Animal</Text>
+                            <Text style={{ fontSize: 16, fontWeight: "800", color: "#111827", marginTop: 2 }}>{animal.nome}</Text>
+                            <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>ID: {animal.identificador}</Text>
+                        </View>
+
+                        <View style={{ backgroundColor: "#fff7ed", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#fed7aa" }}>
+                            <Text style={{ fontSize: 13, fontWeight: "900", color: "#9a3412" }}>{titulo}</Text>
+                            <Text style={{ fontSize: 12, color: "#9a3412", lineHeight: 17, marginTop: 4 }}>
+                                {descricaoSolucaoAlerta(animal.tipoAlerta)}
+                            </Text>
+                        </View>
+
+                        <View style={{ backgroundColor: "#fef2f2", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#fecaca", flexDirection: "row", gap: 8 }}>
+                            <Feather name="alert-triangle" size={16} color="#dc2626" />
+                            <Text style={{ flex: 1, fontSize: 12, color: "#991b1b", lineHeight: 17, fontWeight: "700" }}>
+                                Atenção: essa ação é irreversível. Depois de confirmar, o alerta será removido do animal.
+                            </Text>
+                        </View>
+
+                        <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+                            <TouchableOpacity
+                                onPress={onClose}
+                                disabled={salvando}
+                                activeOpacity={0.85}
+                                style={{ flex: 1, borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, paddingVertical: 13, alignItems: "center", opacity: salvando ? 0.6 : 1 }}
+                            >
+                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#6b7280" }}>Cancelar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={onConfirmar}
+                                disabled={salvando}
+                                activeOpacity={0.85}
+                                style={{ flex: 1.4, backgroundColor: "#dc2626", borderRadius: 12, paddingVertical: 13, alignItems: "center", opacity: salvando ? 0.75 : 1 }}
+                            >
+                                <Text style={{ fontSize: 14, fontWeight: "900", color: "#fff" }}>
+                                    {salvando ? "Solucionando..." : "Sim, solucionar"}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
+function montarDadosSolucao(animal: any) {
+    const dados = {
+        nome: animal.nome,
+        identificador: animal.identificador,
+        status: animal.status || "ativo",
+        producao_media_diaria: animal.producao_media_diaria ?? null,
+        raca: animal.raca || null,
+        peso: animal.peso ?? null,
+        descricao: animal.descricao || null,
+        data_nascimento: dataBanco(animal.data_nascimento) || "",
+        data_ultimo_parto: dataBanco(animal.data_ultimo_parto),
+        dias_descarte_leite: animal.dias_descarte_leite ?? null,
+        prenha: boolAnimal(animal.prenha),
+        em_cio: boolAnimal(animal.em_cio),
+        abortou: boolAnimal(animal.abortou),
+        nao_emprenha: boolAnimal(animal.nao_emprenha),
+        mastite: boolAnimal(animal.mastite),
+        tratamento_mastite: animal.tratamento_mastite || null,
+        doente: boolAnimal(animal.doente),
+        doenca: animal.doenca || null,
+        descricao_doenca: animal.descricao_doenca || null,
+        data_reproducao: dataBanco(animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura),
+        data_inseminacao: dataBanco(animal.data_inseminacao),
+        data_confirmacao_prenhez: dataBanco(animal.data_confirmacao_prenhez),
+    };
+
+    switch (animal.tipoAlerta as TipoAlertaSolucao) {
+        case "cio":
+            dados.em_cio = false;
+            break;
+        case "prenhez":
+        case "parto":
+        case "secagem":
+            dados.prenha = false;
+            dados.data_confirmacao_prenhez = null;
+            break;
+        case "aborto":
+            dados.abortou = false;
+            break;
+        case "descarte":
+            dados.dias_descarte_leite = null;
+            break;
+        case "mastite":
+            dados.mastite = false;
+            dados.tratamento_mastite = null;
+            dados.doente = false;
+            dados.doenca = null;
+            dados.descricao_doenca = null;
+            break;
+        case "outra_doenca":
+            dados.doente = false;
+            dados.doenca = null;
+            dados.descricao_doenca = null;
+            break;
+    }
+
+    return dados;
+}
+
+function tituloSolucaoAlerta(tipo: TipoAlertaSolucao) {
+    const titulos: Record<TipoAlertaSolucao, string> = {
+        cio: "O alerta de cio será removido.",
+        prenhez: "O alerta de prenhez será removido.",
+        parto: "O alerta de parto próximo será removido.",
+        secagem: "O alerta de secagem próxima será removido.",
+        aborto: "O alerta de aborto será removido.",
+        descarte: "O alerta de leite em descarte será removido.",
+        mastite: "O alerta de mastite será removido.",
+        outra_doenca: "O alerta de outra doença será removido.",
+    };
+    return titulos[tipo] || "O alerta será removido.";
+}
+
+function descricaoSolucaoAlerta(tipo: TipoAlertaSolucao) {
+    const descricoes: Record<TipoAlertaSolucao, string> = {
+        cio: "As informações deste alerta serão removidas do animal.",
+        prenhez: "As informações deste alerta serão removidas do animal.",
+        parto: "As informações desta gestação serão removidas do animal.",
+        secagem: "As informações desta gestação serão removidas do animal.",
+        aborto: "As informações deste alerta serão removidas do animal.",
+        descarte: "As informações deste alerta serão removidas do animal.",
+        mastite: "As informações deste alerta serão removidas do animal.",
+        outra_doenca: "As informações deste alerta serão removidas do animal.",
+    };
+    return descricoes[tipo] || "As informações deste alerta serão removidas do animal.";
 }
 
 function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; animal: any | null; onClose: () => void }) {
@@ -388,6 +601,15 @@ function LinhaDetalhe({ label, valor }: { label: string; valor: string }) {
 function detalheValor(valor?: string | number | null) {
     if (valor === null || valor === undefined || valor === "") return "-";
     return String(valor);
+}
+
+function boolAnimal(valor: unknown) {
+    return Number(valor) === 1 || valor === true;
+}
+
+function dataBanco(valor?: string | null) {
+    if (!valor) return null;
+    return String(valor).slice(0, 10);
 }
 
 function boolTexto(valor: unknown) {
