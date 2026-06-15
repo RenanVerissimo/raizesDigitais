@@ -42,6 +42,8 @@ export default function EditarAnimais() {
         naoEmprenha: Number(animal?.nao_emprenha) === 1,
         mastite: Number(animal?.mastite) === 1,
         tratamentoMastite: animal?.tratamento_mastite ?? "",
+        outraDoenca: Number(animal?.doente) === 1 && animal?.doenca === "outra",
+        descricaoDoenca: animal?.descricao_doenca ?? "",
         dataReproducao: toBr(animal?.data_reproducao || animal?.data_base_gestacao || animal?.data_cobertura),
         dataInseminacao: toBr(animal?.data_inseminacao || animal?.data_reproducao || animal?.data_base_gestacao || animal?.data_cobertura),
         dataConfirmacaoPrenhez: toBr(animal?.data_confirmacao_prenhez),
@@ -75,6 +77,8 @@ export default function EditarAnimais() {
                 naoEmprenha: Number(animal.nao_emprenha) === 1,
                 mastite: Number(animal.mastite) === 1,
                 tratamentoMastite: animal.tratamento_mastite ?? "",
+                outraDoenca: Number(animal.doente) === 1 && animal.doenca === "outra",
+                descricaoDoenca: animal.descricao_doenca ?? "",
                 dataReproducao: toBr(animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura),
                 dataInseminacao: toBr(animal.data_inseminacao || animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura),
                 dataConfirmacaoPrenhez: toBr(animal.data_confirmacao_prenhez),
@@ -124,6 +128,11 @@ export default function EditarAnimais() {
             return;
         }
 
+        if (formData.outraDoenca && !formData.descricaoDoenca.trim()) {
+            Alert.alert("Atenção", "Informe qual doença ou condição de saúde foi identificada.");
+            return;
+        }
+
         let diasDescarteLeite: number | null = null;
         if (formData.diasDescarteLeite.trim()) {
             diasDescarteLeite = parseInt(formData.diasDescarteLeite, 10);
@@ -154,9 +163,9 @@ export default function EditarAnimais() {
                 nao_emprenha: formData.naoEmprenha,
                 mastite: formData.mastite,
                 tratamento_mastite: formData.mastite ? formData.tratamentoMastite.trim() : null,
-                doente: formData.mastite,
-                doenca: formData.mastite ? "mastite" : null,
-                descricao_doenca: null,
+                doente: formData.mastite || formData.outraDoenca,
+                doenca: formData.mastite ? "mastite" : formData.outraDoenca ? "outra" : null,
+                descricao_doenca: formData.outraDoenca ? formData.descricaoDoenca.trim() : null,
                 data_reproducao: toIso(formData.dataInseminacao || formData.dataReproducao),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
@@ -339,7 +348,7 @@ export default function EditarAnimais() {
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="alert-triangle" size={16} color="#ea580c" />
                             <Text style={labelStyle}>
-                                Descarte de leite apos o parto <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                Descarte de leite após o parto <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
                         <TextInput
@@ -352,11 +361,11 @@ export default function EditarAnimais() {
                             style={{ ...inputStyle, backgroundColor: "#fff", borderColor: "#fed7aa" }}
                         />
                         <Text style={{ fontSize: 11, color: "#9a3412", lineHeight: 16, marginTop: 8 }}>
-                            Informe por quantos dias o leite deve ser descartado apos o ultimo parto. O aviso ajuda a evitar leite com colostro, antibiotico ou terapia de vaca seca no tanque.
+                            Informe por quantos dias o leite deve ser descartado após o último parto. O aviso ajuda a evitar leite com colostro, antibiótico ou resíduos de terapia de vaca seca no tanque.
                         </Text>
                         {!formData.dataUltimoParto && formData.diasDescarteLeite ? (
                             <Text style={{ fontSize: 11, color: "#dc2626", lineHeight: 16, marginTop: 6 }}>
-                                Para calcular a data final do descarte, informe tambem a data do ultimo parto.
+                                Para calcular a data final do descarte, informe também a data do último parto.
                             </Text>
                         ) : null}
                     </View>
@@ -485,6 +494,53 @@ export default function EditarAnimais() {
                                         onChangeText={(v) => setFormData({ ...formData, tratamentoMastite: v })}
                                         editable={!salvando}
                                         placeholder="Ex: antibiótico, ordenha separada, acompanhamento veterinário..."
+                                        placeholderTextColor="#9ca3af"
+                                        multiline
+                                        numberOfLines={3}
+                                        textAlignVertical="top"
+                                        style={{ ...inputStyle, minHeight: 82 }}
+                                    />
+                                </View>
+                            )}
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    if (salvando) return;
+                                    setFormData({
+                                        ...formData,
+                                        outraDoenca: !formData.outraDoenca,
+                                        descricaoDoenca: formData.outraDoenca ? "" : formData.descricaoDoenca,
+                                    });
+                                }}
+                                disabled={salvando}
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    padding: 12,
+                                    backgroundColor: formData.outraDoenca ? "#dbeafe" : "#f9fafb",
+                                    borderWidth: 1,
+                                    borderColor: formData.outraDoenca ? "#2563eb" : "#e5e7eb",
+                                    borderRadius: 10,
+                                    opacity: salvando ? 0.65 : 1,
+                                }}
+                            >
+                                <Text style={{ color: formData.outraDoenca ? "#2563eb" : "#6b7280", fontWeight: "500" }}>
+                                    Outra doença ou condição
+                                </Text>
+                                {formData.outraDoenca ? <Feather name="check" size={16} color="#2563eb" /> : null}
+                            </TouchableOpacity>
+
+                            {formData.outraDoenca && (
+                                <View style={{ gap: 8 }}>
+                                    <Text style={{ fontSize: 13, fontWeight: "500", color: "#374151" }}>
+                                        Qual doença ou condição foi identificada?
+                                    </Text>
+                                    <TextInput
+                                        value={formData.descricaoDoenca}
+                                        onChangeText={(v) => setFormData({ ...formData, descricaoDoenca: v })}
+                                        editable={!salvando}
+                                        placeholder="Ex: casco inflamado, febre, ferimento, tristeza..."
                                         placeholderTextColor="#9ca3af"
                                         multiline
                                         numberOfLines={3}

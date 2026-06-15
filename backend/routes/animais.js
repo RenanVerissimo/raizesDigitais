@@ -90,6 +90,11 @@ router.post("/", async (req, res) => {
         }
 
         const tratamentoMastite = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
+        const temMastite = Boolean(mastite);
+        const temOutraDoenca = Boolean(doente) && doenca === "outra";
+        const doenteFinal = temMastite || temOutraDoenca;
+        const doencaFinal = temMastite ? "mastite" : temOutraDoenca ? "outra" : null;
+        const descricaoDoencaFinal = temOutraDoenca ? descricao_doenca || null : null;
 
         const [result] = await pool.query(
             `INSERT INTO animais 
@@ -138,11 +143,11 @@ router.post("/", async (req, res) => {
                 em_cio ? 1 : 0,
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
-                mastite ? 1 : 0,
-                mastite ? tratamentoMastite || null : null,
-                mastite ? 1 : 0,
-                mastite ? "mastite" : null,
-                null,
+                temMastite ? 1 : 0,
+                temMastite ? tratamentoMastite || null : null,
+                doenteFinal ? 1 : 0,
+                doencaFinal,
+                descricaoDoencaFinal,
 
                 data_reproducao || null,
                 data_inseminacao || null,
@@ -195,6 +200,11 @@ router.put("/:id", async (req, res) => {
         }
 
         const tratamentoMastite = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
+        const temMastite = Boolean(mastite);
+        const temOutraDoenca = Boolean(doente) && doenca === "outra";
+        const doenteFinal = temMastite || temOutraDoenca;
+        const doencaFinal = temMastite ? "mastite" : temOutraDoenca ? "outra" : null;
+        const descricaoDoencaFinal = temOutraDoenca ? descricao_doenca || null : null;
 
         const [result] = await pool.query(
             `UPDATE animais 
@@ -241,11 +251,11 @@ router.put("/:id", async (req, res) => {
                 em_cio ? 1 : 0,
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
-                mastite ? 1 : 0,
-                mastite ? tratamentoMastite || null : null,
-                mastite ? 1 : 0,
-                mastite ? "mastite" : null,
-                null,
+                temMastite ? 1 : 0,
+                temMastite ? tratamentoMastite || null : null,
+                doenteFinal ? 1 : 0,
+                doencaFinal,
+                descricaoDoencaFinal,
                 data_reproducao || null,
                 data_inseminacao || null,
                 data_confirmacao_prenhez || null,

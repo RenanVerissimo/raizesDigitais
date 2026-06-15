@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
     View,
@@ -12,7 +12,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { criarProducao, atualizarProducao, listarProducoes, listarTanques } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import Toast from "react-native-toast-message";
@@ -60,7 +60,7 @@ export default function ProducaoRegistro() {
         : 0;
     const volumeAposColeta = volumeBaseColeta + total;
 
-    useEffect(() => {
+    useFocusEffect(useCallback(() => {
         let ativo = true;
 
         async function carregarTanques() {
@@ -92,7 +92,7 @@ export default function ProducaoRegistro() {
         return () => {
             ativo = false;
         };
-    }, []);
+    }, []));
 
     function iniciarEnvio() {
         if (enviandoRef.current) return false;
@@ -323,9 +323,21 @@ export default function ProducaoRegistro() {
                                 <Text style={{ fontSize: 13, color: "#6b7280" }}>Carregando tanques</Text>
                             </View>
                         ) : tanques.length === 0 ? (
-                            <Text style={{ fontSize: 13, color: "#9ca3af" }}>
-                                Nenhum tanque cadastrado. Cadastre um tanque no estoque de leite antes de registrar a coleta.
-                            </Text>
+                            <View style={{ gap: 10 }}>
+                                <Text style={{ fontSize: 13, color: "#9ca3af", lineHeight: 19 }}>
+                                    Nenhum tanque cadastrado. Cadastre um tanque no estoque de leite antes de registrar a coleta.
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={() => navigation.navigate("cadastar_tanque")}
+                                    activeOpacity={0.8}
+                                    style={{ flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingVertical: 4 }}
+                                >
+                                    <Feather name="plus-circle" size={15} color="#4a90e2" />
+                                    <Text style={{ fontSize: 13, fontWeight: "700", color: "#4a90e2" }}>
+                                        Cadastrar novo tanque
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         ) : (
                             <>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>

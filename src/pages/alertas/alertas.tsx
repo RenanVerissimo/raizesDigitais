@@ -62,6 +62,7 @@ function Secao({ titulo, dados, cor, icone, onSelecionar }: any) {
 export default function Alertas() {
     const [animais, setAnimais] = useState<any[]>([]);
     const [animalSelecionado, setAnimalSelecionado] = useState<any | null>(null);
+    const [modalMotivosVisivel, setModalMotivosVisivel] = useState(false);
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
 
@@ -153,7 +154,26 @@ export default function Alertas() {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
                         <Feather name="arrow-left" size={24} color="#fff" />
                     </TouchableOpacity>
-                    <View>
+                    <View style={{ flex: 1, paddingRight: 34 }}>
+                        <TouchableOpacity
+                            onPress={() => setModalMotivosVisivel(true)}
+                            activeOpacity={0.75}
+                            style={{
+                                position: "absolute",
+                                right: 0,
+                                top: 0,
+                                width: 28,
+                                height: 28,
+                                borderRadius: 14,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                backgroundColor: "rgba(255,255,255,0.18)",
+                                borderWidth: 1,
+                                borderColor: "rgba(255,255,255,0.28)",
+                            }}
+                        >
+                            <Feather name="info" size={16} color="#fff" />
+                        </TouchableOpacity>
                         <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>🚨 Central de Alertas</Text>
                         <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)" }}>Acompanhe os eventos importantes</Text>
                     </View>
@@ -193,7 +213,55 @@ export default function Alertas() {
                 animal={animalSelecionado}
                 onClose={() => setAnimalSelecionado(null)}
             />
+            <MotivosAlertasModal
+                visible={modalMotivosVisivel}
+                onClose={() => setModalMotivosVisivel(false)}
+            />
         </View>
+    );
+}
+
+function MotivosAlertasModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+    const motivos = [
+        { titulo: "Em cio", descricao: "Animal marcado como em cio no cadastro ou edição." },
+        { titulo: "Prenhez confirmada", descricao: "Animal marcado como prenha." },
+        { titulo: "Parto próximo", descricao: "Prenhez com parto previsto para os próximos 10 dias." },
+        { titulo: "Secagem próxima", descricao: "Prenhez com secagem prevista para os próximos 10 dias." },
+        { titulo: "Aborto", descricao: "Animal marcado com ocorrência de aborto." },
+        { titulo: "Leite em descarte", descricao: "Animal com período de descarte de leite ativo após parto ou tratamento." },
+        { titulo: "Mastite", descricao: "Animal marcado com mastite registrada." },
+        { titulo: "Outras doenças", descricao: "Animal marcado como doente com doença diferente de mastite." },
+    ];
+
+    return (
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 }}>
+                <View style={{ maxHeight: "82%", backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" }}>
+                    <View style={{ padding: 18, borderBottomWidth: 1, borderBottomColor: "#fee2e2", backgroundColor: "#fff5f5" }}>
+                        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 18, fontWeight: "900", color: "#991b1b" }}>Motivos dos alertas</Text>
+                                <Text style={{ fontSize: 12, color: "#7f1d1d", marginTop: 4, lineHeight: 17 }}>
+                                    A central mostra animais que precisam de atenção por reprodução, saúde ou leite em descarte.
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+                                <Feather name="x" size={24} color="#7f1d1d" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 10 }}>
+                        {motivos.map((motivo) => (
+                            <View key={motivo.titulo} style={{ borderWidth: 1, borderColor: "#f3f4f6", borderRadius: 12, padding: 12, backgroundColor: "#fff" }}>
+                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#111827" }}>{motivo.titulo}</Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", lineHeight: 17, marginTop: 4 }}>{motivo.descricao}</Text>
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+            </View>
+        </Modal>
     );
 }
 
