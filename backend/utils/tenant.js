@@ -6,14 +6,12 @@ const JWT_SECRET = process.env.JWT_SECRET;
 function getUsuarioId(req) {
     const authorization = String(req.headers.authorization || "");
     const [type, token] = authorization.split(" ");
-    console.log("JWT recebido no backend?", type === "Bearer" && Boolean(token), req.method, req.originalUrl);
 
     if (type !== "Bearer" || !token || !JWT_SECRET) {
         return null;
     }
 
     const payload = jwt.verify(token, JWT_SECRET);
-    console.log("JWT validado para usuarioId:", payload.usuarioId);
     const usuarioId = Number(payload.usuarioId);
     return Number.isFinite(usuarioId) && usuarioId > 0 ? usuarioId : null;
 }

@@ -275,7 +275,21 @@ export default function LoginScreen() {
             setIsLoading(false);
         } catch (err: any) {
             setIsLoading(false);
-            Alert.alert("Erro", err.message || "Não foi possível criar a conta.");
+            const mensagem = err.message || "Não foi possível criar a conta.";
+            const cpfJaCadastrado = mensagem.toLowerCase().includes("cpf/rg") && mensagem.toLowerCase().includes("cadastrado");
+
+            if (cpfJaCadastrado) {
+                Toast.show({
+                    type: "error",
+                    text1: "CPF/RG já cadastrado",
+                    text2: "Use outro CPF/RG ou recupere a senha dessa conta.",
+                    position: "top",
+                    visibilityTime: 4200,
+                });
+                return;
+            }
+
+            Alert.alert("Erro", mensagem);
         }
     }
 

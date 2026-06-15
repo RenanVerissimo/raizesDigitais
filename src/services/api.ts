@@ -109,7 +109,6 @@ async function apiFetch(path: string, init: ApiFetchInit = {}) {
         ...(fetchInit.headers || {}),
         ...(usuario?.token ? { Authorization: `Bearer ${usuario.token}` } : {}),
     };
-    console.log("JWT enviado na requisicao?", Boolean(usuario?.token), path);
     const url = `${BASE_URL}${path}`;
     const method = String(fetchInit.method || "GET").toUpperCase();
     const canRetry = method === "GET" || method === "HEAD" || retryUnsafe;
@@ -1192,8 +1191,6 @@ export async function login(email: string, senha: string) {
         throw new Error(erro.erro || "Erro ao realizar login");
     }
     const dados = await res.json();
-    console.log("JWT recebido no login?", Boolean(dados.token));
-    console.log("Inicio do JWT recebido:", dados.token?.slice(0, 20));
     if (!dados.usuario) {
         throw new Error("Resposta de login inválida. Tente novamente.");
     }
