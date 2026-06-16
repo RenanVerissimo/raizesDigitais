@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
+import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -177,7 +177,17 @@ export default function Animais() {
                             )}
                         </View>
 
-                        {animais.length === 0 ? (
+                        {carregando ? (
+                            <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 42, backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                                <ActivityIndicator size="large" color="#4a90e2" />
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#374151", marginTop: 14 }}>
+                                    Carregando animais
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
+                                    Buscando os dados do rebanho.
+                                </Text>
+                            </View>
+                        ) : animais.length === 0 ? (
                             <View style={{ alignItems: "center", paddingVertical: 24, backgroundColor: "#fff", borderRadius: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
                                 <MaterialCommunityIcons name="cow" size={48} color="#d1d5db" />
                                 <Text style={{ fontSize: 14, color: "#6b7280", marginTop: 10 }}>Nenhum animal cadastrado ainda</Text>

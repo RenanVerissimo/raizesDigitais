@@ -65,6 +65,12 @@ function formatarMoeda(valor: number) {
     return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function formatarMoedaGrafico(valor: number) {
+    if (valor >= 1000000) return `R$ ${(valor / 1000000).toFixed(1).replace(".", ",")} mi`;
+    if (valor >= 1000) return `R$ ${(valor / 1000).toFixed(1).replace(".", ",")} mil`;
+    return `R$ ${valor.toFixed(0)}`;
+}
+
 function classificarMedicamento(compra: Compra): GrupoMedicamento {
     const item = normalizarTexto(compra.item);
 
@@ -259,7 +265,7 @@ export default function Financeiro() {
 
     const dadosReceitaDespesa = gerarDadosGrafico(periodoReceitaDespesa);
     const dadosFluxoCaixa = gerarDadosGrafico(periodoFluxoCaixa);
-    const larguraGraficoReceitaDespesa = periodoReceitaDespesa === "6M" ? "100%" : Math.max(dadosReceitaDespesa.length * 34, 320);
+    const larguraGraficoReceitaDespesa = periodoReceitaDespesa === "6M" ? "100%" : Math.max(dadosReceitaDespesa.length * 50, 360);
     const valorMaximoReceitaDespesa = Math.max(
         ...dadosReceitaDespesa.map((m) => Math.max(m.receita, m.despesa)),
         1
@@ -618,13 +624,13 @@ export default function Financeiro() {
                         )}
 
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            <View style={{ width: larguraGraficoReceitaDespesa, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", height: 160, gap: 6 }}>
+                            <View style={{ width: larguraGraficoReceitaDespesa, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", minHeight: 196, gap: 6 }}>
                                 {dadosReceitaDespesa.map((m, i) => {
-                                    const alturaR = (m.receita / valorMaximoReceitaDespesa) * 130;
-                                    const alturaD = (m.despesa / valorMaximoReceitaDespesa) * 130;
+                                    const alturaR = (m.receita / valorMaximoReceitaDespesa) * 115;
+                                    const alturaD = (m.despesa / valorMaximoReceitaDespesa) * 115;
                                     return (
-                                        <View key={`${m.label}-${i}`} style={{ flex: 1, minWidth: periodoReceitaDespesa === "6M" ? 0 : 28, alignItems: "center" }}>
-                                            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height: 130 }}>
+                                        <View key={`${m.label}-${i}`} style={{ flex: 1, minWidth: periodoReceitaDespesa === "6M" ? 0 : 44, alignItems: "center" }}>
+                                            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height: 115 }}>
                                                 <View style={{
                                                     width: 12,
                                                     height: Math.max(alturaR, m.receita > 0 ? 4 : 0),
@@ -641,6 +647,24 @@ export default function Financeiro() {
                                                 }} />
                                             </View>
                                             <Text style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>{m.label}</Text>
+                                            <View style={{ marginTop: 4, alignItems: "center", gap: 2, width: "100%" }}>
+                                                <Text
+                                                    numberOfLines={1}
+                                                    adjustsFontSizeToFit
+                                                    minimumFontScale={0.7}
+                                                    style={{ maxWidth: "100%", fontSize: 9, fontWeight: "800", color: "#059669" }}
+                                                >
+                                                    {formatarMoedaGrafico(m.receita)}
+                                                </Text>
+                                                <Text
+                                                    numberOfLines={1}
+                                                    adjustsFontSizeToFit
+                                                    minimumFontScale={0.7}
+                                                    style={{ maxWidth: "100%", fontSize: 9, fontWeight: "800", color: "#dc2626" }}
+                                                >
+                                                    {formatarMoedaGrafico(m.despesa)}
+                                                </Text>
+                                            </View>
                                         </View>
                                     );
                                 })}
@@ -651,9 +675,14 @@ export default function Financeiro() {
                     {/* Fluxo de Caixa - Saldo dos últimos 6 meses */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 18, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                            <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
-                                Fluxo de Caixa (Saldo)
-                            </Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 15, fontWeight: "600", color: "#0a0a0a" }}>
+                                    Fluxo de Caixa (Saldo)
+                                </Text>
+                                <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>
+                                    Saldo = receitas - despesas concluídas
+                                </Text>
+                            </View>
                         </View>
 
                         <View style={{ marginBottom: 12, gap: 10 }}>

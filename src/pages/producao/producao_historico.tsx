@@ -9,7 +9,7 @@ import {
     Modal,
     StatusBar,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -196,20 +196,48 @@ export default function ProducaoHistorico() {
                                                 {formatarData(prod.data)}
                                             </Text>
                                         </View>
-                                        <View style={{ flexDirection: "row", gap: 4 }}>
+                                        <View style={{ flexDirection: "row", gap: 6 }}>
                                             <TouchableOpacity
                                                 onPress={() => handleEdit(prod)}
                                                 disabled={excluindo}
-                                                style={{ padding: 8, opacity: excluindo ? 0.45 : 1 }}
+                                                activeOpacity={0.7}
+                                                style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    backgroundColor: "#f59e0b",
+                                                    borderRadius: 8,
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    shadowColor: "#f59e0b",
+                                                    shadowOffset: { width: 0, height: 1 },
+                                                    shadowOpacity: 0.3,
+                                                    shadowRadius: 3,
+                                                    elevation: 2,
+                                                    opacity: excluindo ? 0.45 : 1,
+                                                }}
                                             >
-                                                <Feather name="edit-2" size={18} color="#4a90e2" />
+                                                <MaterialCommunityIcons name="pencil" size={16} color="#fff" />
                                             </TouchableOpacity>
                                             <TouchableOpacity
                                                 onPress={() => abrirModalExclusao(prod)}
                                                 disabled={excluindo}
-                                                style={{ padding: 8, opacity: excluindo ? 0.45 : 1 }}
+                                                activeOpacity={0.7}
+                                                style={{
+                                                    width: 32,
+                                                    height: 32,
+                                                    backgroundColor: "#ef4444",
+                                                    borderRadius: 8,
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    shadowColor: "#ef4444",
+                                                    shadowOffset: { width: 0, height: 1 },
+                                                    shadowOpacity: 0.3,
+                                                    shadowRadius: 3,
+                                                    elevation: 2,
+                                                    opacity: excluindo ? 0.45 : 1,
+                                                }}
                                             >
-                                                <Feather name="trash-2" size={18} color="#ef4444" />
+                                                <MaterialCommunityIcons name="trash-can" size={16} color="#fff" />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
