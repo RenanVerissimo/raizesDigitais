@@ -497,8 +497,19 @@ export default function Dashboard() {
                         }}
                     >
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
-                            <View style={{ backgroundColor: "#eff6ff", padding: 9, borderRadius: 10 }}>
-                                <Feather name="star" size={20} color="#4a90e2" />
+                            <View
+                                style={{
+                                    backgroundColor: "#fffbeb",
+                                    padding: 9,
+                                    borderRadius: 10,
+                                    shadowColor: "#f59e0b",
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.35,
+                                    shadowRadius: 5,
+                                    elevation: 4,
+                                }}
+                            >
+                                <MaterialCommunityIcons name="star" size={21} color="#f59e0b" />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ fontSize: 16, fontWeight: "700", color: "#0a0a0a" }}>
