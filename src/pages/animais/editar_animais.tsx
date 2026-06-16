@@ -200,6 +200,7 @@ export default function EditarAnimais() {
         backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9",
     };
     const labelStyle = { fontSize: 14, fontWeight: "500" as const, color: "#0a0a0a" };
+    const animalEstaInativo = animal?.status === "inativo";
 
     return (
         <KeyboardAvoidingView
@@ -267,6 +268,66 @@ export default function EditarAnimais() {
                             style={inputStyle}
                         />
                     </View>
+
+                    {animalEstaInativo && (
+                        <View style={{ backgroundColor: "#f9fafb", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#e5e7eb" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                <MaterialCommunityIcons name="pause-circle" size={16} color="#4b5563" />
+                                <Text style={labelStyle}>Status do animal</Text>
+                            </View>
+                            <Text style={{ fontSize: 12, color: "#6b7280", lineHeight: 18, marginBottom: 12 }}>
+                                Use esta opção apenas para corrigir um animal inativado por engano.
+                            </Text>
+                            <View style={{ flexDirection: "row", gap: 10 }}>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (salvando) return;
+                                        setFormData({ ...formData, status: "inativo" });
+                                    }}
+                                    activeOpacity={0.78}
+                                    disabled={salvando}
+                                    style={{
+                                        flex: 1,
+                                        minHeight: 48,
+                                        borderRadius: 12,
+                                        borderWidth: 1,
+                                        borderColor: formData.status === "inativo" ? "#9ca3af" : "#e5e7eb",
+                                        backgroundColor: formData.status === "inativo" ? "#e5e7eb" : "#fff",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        opacity: salvando ? 0.65 : 1,
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 13, fontWeight: "800", color: formData.status === "inativo" ? "#374151" : "#6b7280" }}>
+                                        Manter inativo
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (salvando) return;
+                                        setFormData({ ...formData, status: "ativo" });
+                                    }}
+                                    activeOpacity={0.78}
+                                    disabled={salvando}
+                                    style={{
+                                        flex: 1,
+                                        minHeight: 48,
+                                        borderRadius: 12,
+                                        borderWidth: 1,
+                                        borderColor: formData.status === "ativo" ? "#86efac" : "#e5e7eb",
+                                        backgroundColor: formData.status === "ativo" ? "#dcfce7" : "#fff",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        opacity: salvando ? 0.65 : 1,
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 13, fontWeight: "800", color: formData.status === "ativo" ? "#15803d" : "#6b7280" }}>
+                                        Reativar animal
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
 
                     {/* Produção Média */}
                     <View style={cardStyle}>

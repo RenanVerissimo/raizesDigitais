@@ -12,6 +12,8 @@ import { calcularIdade } from "../../utils/idade";
 import { calcularAvisoDescarteLeite } from "../../utils/alerts";
 import Toast from "react-native-toast-message";
 
+type FiltroStatusAnimal = "ativos" | "inativos" | "todos";
+
 
 
 export default function VerTodosAnimais() {
@@ -22,6 +24,7 @@ export default function VerTodosAnimais() {
     const [atualizandoStatusId, setAtualizandoStatusId] = useState<number | null>(null);
     const [excluindoId, setExcluindoId] = useState<number | null>(null);
     const [busca, setBusca] = useState("");
+    const [filtroStatus, setFiltroStatus] = useState<FiltroStatusAnimal>("ativos");
 
     useFocusEffect(
         useCallback(() => {
@@ -101,25 +104,14 @@ export default function VerTodosAnimais() {
         }
     }
 
-    function handleAlternarStatus(animal: Animal) {
-        if (animal.status === "vendido") {
-            Toast.show({
-                type: "info",
-                text1: "Animal vendido",
-                text2: "Esse animal foi marcado como vendido pela receita registrada.",
-                position: "top",
-                visibilityTime: 2500,
-            });
-            return;
-        }
-
+    function handleInativarStatus(animal: Animal) {
+        if (animal.status === "inativo" || animal.status === "vendido") return;
         setAnimalStatusSelecionado(animal);
         setModalStatusVisible(true);
     }
 
-    async function alternarStatusAnimal(animal: Animal) {
-        const statusAtual = animal.status === "inativo" ? "inativo" : "ativo";
-        const novoStatus = statusAtual === "ativo" ? "inativo" : "ativo";
+    async function inativarAnimal(animal: Animal) {
+        const novoStatus = "inativo";
 
         try {
             setAtualizandoStatusId(animal.id);
@@ -163,23 +155,31 @@ export default function VerTodosAnimais() {
 
     async function confirmarAlteracaoStatus() {
         if (!animalStatusSelecionado) return;
-        const alterou = await alternarStatusAnimal(animalStatusSelecionado);
+        const alterou = await inativarAnimal(animalStatusSelecionado);
         if (alterou) {
             setModalStatusVisible(false);
             setAnimalStatusSelecionado(null);
         }
     }
 
-    const statusAtualSelecionado = animalStatusSelecionado?.status === "inativo" ? "inativo" : "ativo";
-    const novoStatusSelecionado = statusAtualSelecionado === "ativo" ? "inativo" : "ativo";
+    const novoStatusSelecionado = "inativo";
     const alterandoStatusSelecionado = atualizandoStatusId === animalStatusSelecionado?.id;
     const buscaNormalizada = busca.trim().toLowerCase();
+    const totalAtivos = animais.filter((animal) => animal.status !== "inativo" && animal.status !== "vendido").length;
+    const totalInativos = animais.length - totalAtivos;
+    const animaisPorStatus = animais.filter((animal) => {
+        const inativoOuVendido = animal.status === "inativo" || animal.status === "vendido";
+
+        if (filtroStatus === "ativos") return !inativoOuVendido;
+        if (filtroStatus === "inativos") return inativoOuVendido;
+        return true;
+    });
     const animaisFiltrados = buscaNormalizada
-        ? animais.filter((animal) => (
+        ? animaisPorStatus.filter((animal) => (
             String(animal.nome || "").toLowerCase().includes(buscaNormalizada) ||
             String(animal.identificador || "").toLowerCase().includes(buscaNormalizada)
         ))
-        : animais;
+        : animaisPorStatus;
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -210,22 +210,45 @@ export default function VerTodosAnimais() {
 
                 <View style={{ padding: 20, gap: 10, paddingBottom: insets.bottom + 20 }}>
                     {!carregando && animais.length > 0 && (
-                        <View style={{ backgroundColor: "#fff", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#e5e7eb", flexDirection: "row", alignItems: "center", gap: 10 }}>
-                            <Feather name="search" size={18} color="#9ca3af" />
-                            <TextInput
-                                value={busca}
-                                onChangeText={setBusca}
-                                placeholder="Buscar por nome ou ID"
-                                placeholderTextColor="#9ca3af"
-                                autoCapitalize="none"
-                                style={{ flex: 1, fontSize: 15, color: "#111827", paddingVertical: 2 }}
-                            />
-                            {busca.length > 0 && (
-                                <TouchableOpacity onPress={() => setBusca("")} activeOpacity={0.75} style={{ padding: 2 }}>
-                                    <Feather name="x" size={18} color="#9ca3af" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
+                        <>
+                            <View style={{ backgroundColor: "#fff", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#e5e7eb", flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                <Feather name="search" size={18} color="#9ca3af" />
+                                <TextInput
+                                    value={busca}
+                                    onChangeText={setBusca}
+                                    placeholder="Buscar por nome ou ID"
+                                    placeholderTextColor="#9ca3af"
+                                    autoCapitalize="none"
+                                    style={{ flex: 1, fontSize: 15, color: "#111827", paddingVertical: 2 }}
+                                />
+                                {busca.length > 0 && (
+                                    <TouchableOpacity onPress={() => setBusca("")} activeOpacity={0.75} style={{ padding: 2 }}>
+                                        <Feather name="x" size={18} color="#9ca3af" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            <View style={{ backgroundColor: "#fff", borderRadius: 14, padding: 6, borderWidth: 1, borderColor: "#e5e7eb", flexDirection: "row", gap: 6 }}>
+                                <BotaoFiltroStatus
+                                    label="Ativos"
+                                    count={totalAtivos}
+                                    active={filtroStatus === "ativos"}
+                                    onPress={() => setFiltroStatus("ativos")}
+                                />
+                                <BotaoFiltroStatus
+                                    label="Inativos"
+                                    count={totalInativos}
+                                    active={filtroStatus === "inativos"}
+                                    onPress={() => setFiltroStatus("inativos")}
+                                />
+                                <BotaoFiltroStatus
+                                    label="Todos"
+                                    count={animais.length}
+                                    active={filtroStatus === "todos"}
+                                    onPress={() => setFiltroStatus("todos")}
+                                />
+                            </View>
+                        </>
                     )}
 
                     {carregando ? (
@@ -252,7 +275,7 @@ export default function VerTodosAnimais() {
                                 Nenhum animal encontrado
                             </Text>
                             <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 4, textAlign: "center" }}>
-                                Tente buscar por outro nome ou ID.
+                                Tente buscar por outro nome, ID ou filtro de status.
                             </Text>
                         </View>
                     ) : (
@@ -263,7 +286,7 @@ export default function VerTodosAnimais() {
                                 onAbrirDetalhes={() => setAnimalDetalhes(animal)}
                                 onEditar={() => navigation.navigate("editar_animais", { animal })}
                                 onExcluir={() => handleExcluir(animal)}
-                                onAlternarStatus={() => handleAlternarStatus(animal)}
+                                onInativarStatus={() => handleInativarStatus(animal)}
                                 isUpdatingStatus={atualizandoStatusId === animal.id}
                                 disabled={atualizandoStatusId !== null || excluindoId !== null}
                             />
@@ -289,17 +312,17 @@ export default function VerTodosAnimais() {
                         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
                             <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
                                 <View style={{ alignItems: "center", marginBottom: 12 }}>
-                                    <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: novoStatusSelecionado === "ativo" ? "#dcfce7" : "#f3f4f6", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-                                        <MaterialCommunityIcons name={novoStatusSelecionado === "ativo" ? "check-circle" : "pause-circle"} size={28} color={novoStatusSelecionado === "ativo" ? "#15803d" : "#4b5563"} />
+                                    <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: "#f3f4f6", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                                        <MaterialCommunityIcons name="pause-circle" size={28} color="#4b5563" />
                                     </View>
                                     <Text style={{ fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center" }}>
-                                        {novoStatusSelecionado === "ativo" ? "Ativar animal" : "Inativar animal"}
+                                        Inativar animal
                                     </Text>
                                 </View>
                                 <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
                                     Tem certeza que deseja marcar{" "}
                                     <Text style={{ fontWeight: "800", color: "#0f172a" }}>{animalStatusSelecionado?.nome || "este animal"}</Text>
-                                    {" "}como {novoStatusSelecionado}?
+                                    {" "}como inativo?
                                 </Text>
                                 <View style={{ flexDirection: "row", gap: 10 }}>
                                     <TouchableOpacity
@@ -318,7 +341,7 @@ export default function VerTodosAnimais() {
                                         onPress={confirmarAlteracaoStatus}
                                         activeOpacity={0.8}
                                         disabled={alterandoStatusSelecionado}
-                                        style={{ flex: 1, backgroundColor: novoStatusSelecionado === "ativo" ? "#16a34a" : "#4b5563", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: alterandoStatusSelecionado ? 0.78 : 1 }}
+                                        style={{ flex: 1, backgroundColor: "#4b5563", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: alterandoStatusSelecionado ? 0.78 : 1 }}
                                     >
                                         {alterandoStatusSelecionado ? (
                                             <ActivityIndicator color="#fff" />
@@ -336,12 +359,53 @@ export default function VerTodosAnimais() {
     );
 }
 
+function BotaoFiltroStatus({
+    label,
+    count,
+    active,
+    onPress,
+}: {
+    label: string;
+    count: number;
+    active: boolean;
+    onPress: () => void;
+}) {
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.78}
+            style={{
+                flex: 1,
+                minHeight: 46,
+                borderRadius: 10,
+                backgroundColor: active ? "#e0f2fe" : "#f9fafb",
+                borderWidth: 1,
+                borderColor: active ? "#93c5fd" : "#f3f4f6",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 6,
+            }}
+        >
+            <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={{ fontSize: 12, fontWeight: "900", color: active ? "#1d4ed8" : "#6b7280" }}
+            >
+                {label}
+            </Text>
+            <Text style={{ fontSize: 11, fontWeight: "700", color: active ? "#2563eb" : "#9ca3af", marginTop: 1 }}>
+                {count}
+            </Text>
+        </TouchableOpacity>
+    );
+}
+
 function CardAnimal({
     animal,
     onAbrirDetalhes,
     onEditar,
     onExcluir,
-    onAlternarStatus,
+    onInativarStatus,
     isUpdatingStatus,
     disabled,
 }: {
@@ -349,7 +413,7 @@ function CardAnimal({
     onAbrirDetalhes: () => void;
     onEditar: () => void;
     onExcluir: () => void;
-    onAlternarStatus: () => void;
+    onInativarStatus: () => void;
     isUpdatingStatus: boolean;
     disabled: boolean;
 }) {
@@ -495,20 +559,20 @@ function CardAnimal({
                         : "—"}
                 </Text>
             </View>
-            {!vendido && (
+            {!vendido && !inativo && (
                 <TouchableOpacity
                     onPress={(event) => {
                         event.stopPropagation();
                         if (disabled) return;
-                        onAlternarStatus();
+                        onInativarStatus();
                     }}
                     activeOpacity={0.78}
                     disabled={disabled}
                     style={{
                         marginTop: 10,
-                        backgroundColor: inativo ? "#dcfce7" : "#f3f4f6",
+                        backgroundColor: "#f3f4f6",
                         borderWidth: 1,
-                        borderColor: inativo ? "#bbf7d0" : "#d1d5db",
+                        borderColor: "#d1d5db",
                         borderRadius: 10,
                         paddingVertical: 10,
                         flexDirection: "row",
@@ -521,16 +585,16 @@ function CardAnimal({
                 >
                     {isUpdatingStatus ? (
                         <>
-                            <ActivityIndicator color={inativo ? "#15803d" : "#4b5563"} />
-                            <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
+                            <ActivityIndicator color="#4b5563" />
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: "#4b5563" }}>
                                 Atualizando...
                             </Text>
                         </>
                     ) : (
                         <>
-                            <MaterialCommunityIcons name={inativo ? "check-circle" : "pause-circle"} size={16} color={inativo ? "#15803d" : "#4b5563"} />
-                            <Text style={{ fontSize: 13, fontWeight: "800", color: inativo ? "#15803d" : "#4b5563" }}>
-                                {inativo ? "Ativar animal" : "Inativar animal"}
+                            <MaterialCommunityIcons name="pause-circle" size={16} color="#4b5563" />
+                            <Text style={{ fontSize: 13, fontWeight: "800", color: "#4b5563" }}>
+                                Inativar animal
                             </Text>
                         </>
                     )}
