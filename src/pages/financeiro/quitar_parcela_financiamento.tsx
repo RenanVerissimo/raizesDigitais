@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { Financiamento } from "../../interfaces/interfaces";
-import { listarFinanciamentos, quitarParcelaFinanciamento } from "../../services/api";
+import { listarFinanciamentos, quitarFinanciamento, quitarParcelaFinanciamento } from "../../services/api";
 import { calcularSaldoRestante, calcularValorParcela, formatarData, formatarMoeda } from "../../utils/financiamentos";
 import Toast from "react-native-toast-message";
 
@@ -17,13 +17,17 @@ function hojeIso() {
     return new Date().toISOString().slice(0, 10);
 }
 
+type ModoPagamento = "parcela" | "total";
+
 export default function QuitarParcelaFinanciamento() {
     const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
     const [financiamentos, setFinanciamentos] = useState<Financiamento[]>([]);
     const [dropdownAberto, setDropdownAberto] = useState(false);
     const [financiamentoId, setFinanciamentoId] = useState("");
+    const [modoPagamento, setModoPagamento] = useState<ModoPagamento>("parcela");
     const [valorPago, setValorPago] = useState("");
+    const [desconto, setDesconto] = useState("");
     const [modalConfirmacaoVisible, setModalConfirmacaoVisible] = useState(false);
     const [carregando, setCarregando] = useState(true);
     const [salvando, setSalvando] = useState(false);
@@ -42,49 +46,89 @@ export default function QuitarParcelaFinanciamento() {
     const saldoRestante = financiamentoSelecionado ? calcularSaldoRestante(financiamentoSelecionado) : 0;
     const valorParcela = financiamentoSelecionado ? calcularValorParcela(financiamentoSelecionado) : 0;
     const proximaParcela = financiamentoSelecionado ? financiamentoSelecionado.parcelasPagas + 1 : 0;
+    const descontoNumero = parseDecimal(desconto) || 0;
+    const valorSugeridoQuitacao = Math.max(saldoRestante - descontoNumero, 0);
 
     const valorPagoFinal = useMemo(() => {
         const digitado = parseDecimal(valorPago);
-        return digitado || valorParcela;
-    }, [valorPago, valorParcela]);
+        return digitado || (modoPagamento === "total" ? valorSugeridoQuitacao : valorParcela);
+    }, [modoPagamento, valorPago, valorParcela, valorSugeridoQuitacao]);
 
     function selecionarFinanciamento(financiamento: Financiamento) {
         const parcela = calcularValorParcela(financiamento);
+        const saldo = calcularSaldoRestante(financiamento);
         setFinanciamentoId(String(financiamento.id));
         setDropdownAberto(false);
-        setValorPago(String(parcela.toFixed(2)).replace(".", ","));
+        setDesconto("");
+        setValorPago(String((modoPagamento === "total" ? saldo : parcela).toFixed(2)).replace(".", ","));
     }
 
-    function handleQuitarParcela() {
+    function handleModoPagamento(novoModo: ModoPagamento) {
+        setModoPagamento(novoModo);
+        setDesconto("");
+
+        if (financiamentoSelecionado) {
+            const valor = novoModo === "total" ? saldoRestante : valorParcela;
+            setValorPago(String(valor.toFixed(2)).replace(".", ","));
+        } else {
+            setValorPago("");
+        }
+    }
+
+    function handleDescontoChange(valor: string) {
+        const descontoAtual = parseDecimal(valor) || 0;
+        const final = Math.max(saldoRestante - descontoAtual, 0);
+        setDesconto(valor);
+        setValorPago(String(final.toFixed(2)).replace(".", ","));
+    }
+
+    function handleConfirmarPagamento() {
         if (!financiamentoSelecionado) {
-            Toast.show({ type: "info", text1: "Atencao", text2: "Selecione o financiamento da parcela.", position: "top", visibilityTime: 3000 });
+            Toast.show({ type: "info", text1: "Atencao", text2: "Selecione o financiamento.", position: "top", visibilityTime: 3000 });
+            return;
+        }
+
+        if (modoPagamento === "total" && descontoNumero > saldoRestante) {
+            Toast.show({ type: "info", text1: "Atencao", text2: "O desconto nao pode ser maior que o saldo restante.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         if (!valorPagoFinal || valorPagoFinal <= 0) {
-            Toast.show({ type: "info", text1: "Atencao", text2: "Informe o valor pago da parcela.", position: "top", visibilityTime: 3000 });
+            Toast.show({ type: "info", text1: "Atencao", text2: modoPagamento === "total" ? "Informe o valor pago para quitar tudo." : "Informe o valor pago da parcela.", position: "top", visibilityTime: 3000 });
             return;
         }
 
         setModalConfirmacaoVisible(true);
     }
 
-    async function confirmarQuitacaoParcela() {
+    async function confirmarPagamento() {
         if (!financiamentoSelecionado) return;
         if (salvando) return;
 
         try {
             setSalvando(true);
-            const resposta = await quitarParcelaFinanciamento(financiamentoSelecionado.id, {
-                valorPago: valorPagoFinal,
-                dataPagamento: hojeIso(),
-            });
+            let resposta: any = null;
+
+            if (modoPagamento === "total") {
+                resposta = await quitarFinanciamento(financiamentoSelecionado.id, {
+                    valorQuitacao: valorPagoFinal,
+                    descontoQuitacao: descontoNumero,
+                    dataQuitacao: hojeIso(),
+                });
+            } else {
+                resposta = await quitarParcelaFinanciamento(financiamentoSelecionado.id, {
+                    valorPago: valorPagoFinal,
+                    dataPagamento: hojeIso(),
+                });
+            }
 
             setModalConfirmacaoVisible(false);
             Toast.show({
                 type: "success",
-                text1: resposta?.status === "quitado" ? "Financiamento quitado" : "Parcela quitada",
-                text2: `${financiamentoSelecionado.nome} recebeu o pagamento da parcela ${proximaParcela}.`,
+                text1: modoPagamento === "total" || resposta?.status === "quitado" ? "Financiamento quitado" : "Parcela quitada",
+                text2: modoPagamento === "total"
+                    ? `${financiamentoSelecionado.nome} foi quitado com sucesso.`
+                    : `${financiamentoSelecionado.nome} recebeu o pagamento da parcela ${proximaParcela}.`,
                 position: "top",
                 visibilityTime: 3000,
             });
@@ -92,7 +136,7 @@ export default function QuitarParcelaFinanciamento() {
             setTimeout(() => navigation.navigate("financiamentos"), 500);
         } catch (error: any) {
             setModalConfirmacaoVisible(false);
-            Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel quitar a parcela.", position: "top", visibilityTime: 3000 });
+            Toast.show({ type: "error", text1: "Erro", text2: error.message || "Nao foi possivel registrar o pagamento.", position: "top", visibilityTime: 3000 });
         } finally {
             setSalvando(false);
         }
@@ -116,17 +160,37 @@ export default function QuitarParcelaFinanciamento() {
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                                 <Feather name="credit-card" size={18} color="#fff" />
                                 <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff" }}>
-                                    Quitar Parcela
+                                    Pagar Financiamento
                                 </Text>
                             </View>
                             <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", marginTop: 2 }}>
-                                Registre o pagamento de uma parcela da divida
+                                Escolha entre pagar uma parcela ou quitar tudo
                             </Text>
                         </View>
                     </View>
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16, paddingBottom: insets.bottom + 20 }}>
+                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#0f172a", marginBottom: 12 }}>
+                            Tipo de pagamento
+                        </Text>
+                        <View style={{ flexDirection: "row", backgroundColor: "#f3f4f6", borderRadius: 12, padding: 4, gap: 4 }}>
+                            <BotaoModoPagamento
+                                label="Pagar Parcela"
+                                active={modoPagamento === "parcela"}
+                                onPress={() => handleModoPagamento("parcela")}
+                                disabled={salvando}
+                            />
+                            <BotaoModoPagamento
+                                label="Quitar tudo"
+                                active={modoPagamento === "total"}
+                                onPress={() => handleModoPagamento("total")}
+                                disabled={salvando}
+                            />
+                        </View>
+                    </View>
+
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <Text style={{ fontSize: 14, fontWeight: "700", color: "#0f172a", marginBottom: 12 }}>
                             Financiamento
@@ -159,7 +223,9 @@ export default function QuitarParcelaFinanciamento() {
                                         </Text>
                                         {financiamentoSelecionado && (
                                             <Text style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>
-                                                Proxima parcela {proximaParcela}/{financiamentoSelecionado.quantidadeParcelas}
+                                                {modoPagamento === "total"
+                                                    ? `Restante: ${formatarMoeda(saldoRestante)}`
+                                                    : `Proxima parcela ${proximaParcela}/${financiamentoSelecionado.quantidadeParcelas}`}
                                             </Text>
                                         )}
                                     </View>
@@ -194,26 +260,59 @@ export default function QuitarParcelaFinanciamento() {
                         <>
                             <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#f1f5f9", gap: 10 }}>
                                 <ResumoLinha label="Saldo restante" valor={formatarMoeda(saldoRestante)} destaque />
-                                <ResumoLinha label="Valor estimado da parcela" valor={formatarMoeda(valorParcela)} />
+                                {modoPagamento === "parcela" && (
+                                    <ResumoLinha label="Valor estimado da parcela" valor={formatarMoeda(valorParcela)} />
+                                )}
                                 <ResumoLinha label="Vencimento da parcela" valor={formatarData(financiamentoSelecionado.dataVencimentoParcela)} />
                                 <ResumoLinha label="Parcelas pagas" valor={`${financiamentoSelecionado.parcelasPagas}/${financiamentoSelecionado.quantidadeParcelas}`} />
                             </View>
 
-                            <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#bfdbfe" }}>
-                                <Text style={{ fontSize: 12, color: "#1d4ed8", marginBottom: 4 }}>Parcela que sera quitada</Text>
-                                <Text style={{ fontSize: 26, fontWeight: "800", color: "#2563eb" }}>
-                                    {proximaParcela}/{financiamentoSelecionado.quantidadeParcelas}
-                                </Text>
-                            </View>
+                            {modoPagamento === "parcela" ? (
+                                <>
+                                    <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#bfdbfe" }}>
+                                        <Text style={{ fontSize: 12, color: "#1d4ed8", marginBottom: 4 }}>Parcela que sera quitada</Text>
+                                        <Text style={{ fontSize: 26, fontWeight: "800", color: "#2563eb" }}>
+                                            {proximaParcela}/{financiamentoSelecionado.quantidadeParcelas}
+                                        </Text>
+                                    </View>
 
-                            <Campo
-                                icone="dollar-sign"
-                                label="Valor pago da parcela *"
-                                valor={valorPago}
-                                onChange={setValorPago}
-                                placeholder="Ex: 1500,00"
-                                keyboard="decimal-pad"
-                            />
+                                    <Campo
+                                        icone="dollar-sign"
+                                        label="Valor pago da parcela *"
+                                        valor={valorPago}
+                                        onChange={setValorPago}
+                                        placeholder="Ex: 1500,00"
+                                        keyboard="decimal-pad"
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <Campo
+                                        icone="percent"
+                                        label="Desconto por pagamento antecipado"
+                                        valor={desconto}
+                                        onChange={handleDescontoChange}
+                                        placeholder="Ex: 500,00"
+                                        keyboard="decimal-pad"
+                                    />
+
+                                    <View style={{ backgroundColor: "#ecfdf5", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#bbf7d0" }}>
+                                        <Text style={{ fontSize: 12, color: "#047857", marginBottom: 4 }}>Valor sugerido para quitar tudo</Text>
+                                        <Text style={{ fontSize: 26, fontWeight: "800", color: "#16a34a" }}>
+                                            {formatarMoeda(valorSugeridoQuitacao)}
+                                        </Text>
+                                    </View>
+
+                                    <Campo
+                                        icone="dollar-sign"
+                                        label="Valor pago para quitar tudo *"
+                                        valor={valorPago}
+                                        onChange={setValorPago}
+                                        placeholder="Ex: 15000,00"
+                                        keyboard="decimal-pad"
+                                    />
+                                </>
+                            )}
                         </>
                     )}
 
@@ -226,10 +325,12 @@ export default function QuitarParcelaFinanciamento() {
                         >
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={handleQuitarParcela} activeOpacity={0.85} disabled={carregando || salvando} style={{ flex: 2, opacity: carregando || salvando ? 0.65 : 1 }}>
-                            <LinearGradient colors={["#2563eb", "#1d4ed8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
+                        <TouchableOpacity onPress={handleConfirmarPagamento} activeOpacity={0.85} disabled={carregando || salvando} style={{ flex: 2, opacity: carregando || salvando ? 0.65 : 1 }}>
+                            <LinearGradient colors={modoPagamento === "total" ? ["#16a34a", "#15803d"] : ["#2563eb", "#1d4ed8"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}>
                                 <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Quitar Parcela</Text>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>
+                                    {modoPagamento === "total" ? "Quitar tudo" : "Pagar Parcela"}
+                                </Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
@@ -240,26 +341,32 @@ export default function QuitarParcelaFinanciamento() {
                 <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 }}>
                     <View style={{ width: "100%", backgroundColor: "#fff", borderRadius: 18, padding: 20 }}>
                         <View style={{ alignItems: "center", marginBottom: 12 }}>
-                            <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: "#dbeafe", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
-                                <Feather name="credit-card" size={28} color="#2563eb" />
+                            <View style={{ width: 52, height: 52, borderRadius: 14, backgroundColor: modoPagamento === "total" ? "#dcfce7" : "#dbeafe", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+                                <Feather name={modoPagamento === "total" ? "check-circle" : "credit-card"} size={28} color={modoPagamento === "total" ? "#16a34a" : "#2563eb"} />
                             </View>
                             <Text style={{ fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center" }}>
-                                Confirmar parcela
+                                {modoPagamento === "total" ? "Confirmar quitação" : "Confirmar parcela"}
                             </Text>
                         </View>
                         <Text style={{ fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 20, marginBottom: 18 }}>
-                            Ao confirmar, uma parcela sera marcada como paga neste financiamento.
+                            {modoPagamento === "total"
+                                ? "Ao confirmar, o financiamento sera marcado como quitado."
+                                : "Ao confirmar, uma parcela sera marcada como paga neste financiamento."}
                         </Text>
                         <View style={{ backgroundColor: "#f9fafb", borderRadius: 12, padding: 12, marginBottom: 18, gap: 8 }}>
                             <ResumoLinha label="Financiamento" valor={financiamentoSelecionado?.nome || "-"} />
-                            <ResumoLinha label="Parcela" valor={`${proximaParcela}/${financiamentoSelecionado?.quantidadeParcelas || 0}`} />
+                            {modoPagamento === "parcela" ? (
+                                <ResumoLinha label="Parcela" valor={`${proximaParcela}/${financiamentoSelecionado?.quantidadeParcelas || 0}`} />
+                            ) : (
+                                <ResumoLinha label="Desconto" valor={formatarMoeda(descontoNumero)} />
+                            )}
                             <ResumoLinha label="Valor pago" valor={formatarMoeda(valorPagoFinal || 0)} destaque />
                         </View>
                         <View style={{ flexDirection: "row", gap: 10 }}>
                             <TouchableOpacity onPress={() => setModalConfirmacaoVisible(false)} activeOpacity={0.75} disabled={salvando} style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center", opacity: salvando ? 0.65 : 1 }}>
                                 <Text style={{ fontSize: 15, fontWeight: "700", color: "#374151" }}>Cancelar</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={confirmarQuitacaoParcela} activeOpacity={0.8} disabled={salvando} style={{ flex: 1, backgroundColor: "#2563eb", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: salvando ? 0.78 : 1 }}>
+                            <TouchableOpacity onPress={confirmarPagamento} activeOpacity={0.8} disabled={salvando} style={{ flex: 1, backgroundColor: modoPagamento === "total" ? "#16a34a" : "#2563eb", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: salvando ? 0.78 : 1 }}>
                                 {salvando ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>Confirmar</Text>}
                             </TouchableOpacity>
                         </View>
@@ -278,6 +385,34 @@ function ResumoLinha({ label, valor, destaque }: { label: string; valor: string;
                 {valor}
             </Text>
         </View>
+    );
+}
+
+function BotaoModoPagamento({ label, active, onPress, disabled }: { label: string; active: boolean; onPress: () => void; disabled?: boolean }) {
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.78}
+            disabled={disabled}
+            style={{
+                flex: 1,
+                minHeight: 42,
+                borderRadius: 10,
+                backgroundColor: active ? "#fff" : "transparent",
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: active ? "#000" : "transparent",
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: active ? 0.08 : 0,
+                shadowRadius: 2,
+                elevation: active ? 2 : 0,
+                opacity: disabled ? 0.65 : 1,
+            }}
+        >
+            <Text style={{ fontSize: 13, fontWeight: "800", color: active ? "#2563eb" : "#6b7280" }}>
+                {label}
+            </Text>
+        </TouchableOpacity>
     );
 }
 
