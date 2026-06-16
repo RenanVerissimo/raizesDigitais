@@ -6,15 +6,19 @@ import {
     ScrollView,
     StatusBar,
     RefreshControl,
+    Modal,
+    TextInput,
+    ActivityIndicator,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { getUsuarioLogado, limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes, UsuarioLogado } from "../../services/api";
+import { criarAvaliacaoApp, getUsuarioLogado, limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes, UsuarioLogado } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
+import Toast from "react-native-toast-message";
 
 function formatarDataLocal(data: Date) {
     const ano = data.getFullYear();
@@ -100,6 +104,10 @@ export default function Dashboard() {
 
     const [producoesRecentes, setProducoesRecentes] = useState<Producao[]>([]);
     const [refreshing, setRefreshing] = useState(false);
+    const [modalAvaliacaoVisible, setModalAvaliacaoVisible] = useState(false);
+    const [estrelasAvaliacao, setEstrelasAvaliacao] = useState(0);
+    const [descricaoAvaliacao, setDescricaoAvaliacao] = useState("");
+    const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
 
     async function carregarDados() {
         try {
@@ -176,6 +184,55 @@ export default function Dashboard() {
         setRefreshing(false);
     }
 
+
+    function fecharModalAvaliacao() {
+        if (enviandoAvaliacao) return;
+        setModalAvaliacaoVisible(false);
+        setEstrelasAvaliacao(0);
+        setDescricaoAvaliacao("");
+    }
+
+    async function enviarAvaliacao() {
+        if (enviandoAvaliacao) return;
+
+        if (estrelasAvaliacao === 0 || !descricaoAvaliacao.trim()) {
+            Toast.show({
+                type: "info",
+                text1: "Avaliação completa",
+                text2: "A nota e a descrição são muito importantes para a evolução do app.",
+                position: "top",
+                visibilityTime: 3200,
+            });
+            return;
+        }
+
+        try {
+            setEnviandoAvaliacao(true);
+            await criarAvaliacaoApp({
+                estrelas: estrelasAvaliacao,
+                descricao: descricaoAvaliacao.trim(),
+            });
+
+            Toast.show({
+                type: "success",
+                text1: "Obrigado pela avaliação!",
+                text2: "Sua opinião ajuda a melhorar o Raízes Digitais.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+            fecharModalAvaliacao();
+        } catch (error) {
+            Toast.show({
+                type: "error",
+                text1: "Erro ao enviar",
+                text2: error instanceof Error ? error.message : "Não foi possível registrar a avaliação.",
+                position: "top",
+                visibilityTime: 3000,
+            });
+        } finally {
+            setEnviandoAvaliacao(false);
+        }
+    }
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -424,11 +481,144 @@ export default function Dashboard() {
                         })}
                     </View>
 
-
+                    <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => setModalAvaliacaoVisible(true)}
+                        style={{
+                            backgroundColor: "#fff",
+                            borderRadius: 16,
+                            padding: 16,
+                            borderWidth: 1,
+                            borderColor: "#dbeafe",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                        }}
+                    >
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+                            <View style={{ backgroundColor: "#eff6ff", padding: 9, borderRadius: 10 }}>
+                                <Feather name="star" size={20} color="#4a90e2" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#0a0a0a" }}>
+                                    Avaliação do app
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                                    Conte como está sua experiência
+                                </Text>
+                            </View>
+                        </View>
+                        <Feather name="chevron-right" size={20} color="#4a90e2" />
+                    </TouchableOpacity>
 
                   
                 </View>
             </ScrollView>
+            <Modal visible={modalAvaliacaoVisible} transparent animationType="fade" onRequestClose={fecharModalAvaliacao}>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 20 }}>
+                    <View style={{ backgroundColor: "#fff", borderRadius: 18, overflow: "hidden" }}>
+                        <View style={{ padding: 18, borderBottomWidth: 1, borderBottomColor: "#f1f5f9", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 19, fontWeight: "900", color: "#0f172a" }}>
+                                    Avaliação do app
+                                </Text>
+                                <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 3 }}>
+                                    Sua opinião ajuda a evoluir o Raízes Digitais.
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={fecharModalAvaliacao} disabled={enviandoAvaliacao} style={{ padding: 4, opacity: enviandoAvaliacao ? 0.5 : 1 }}>
+                                <Feather name="x" size={24} color="#6b7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ padding: 18, gap: 16 }}>
+                            <View>
+                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#111827", marginBottom: 10 }}>
+                                    Nota do app
+                                </Text>
+                                <View style={{ flexDirection: "row", justifyContent: "center", gap: 8 }}>
+                                    {[1, 2, 3, 4, 5].map((estrela) => {
+                                        const ativa = estrela <= estrelasAvaliacao;
+                                        return (
+                                            <TouchableOpacity
+                                                key={estrela}
+                                                onPress={() => setEstrelasAvaliacao(estrela)}
+                                                disabled={enviandoAvaliacao}
+                                                activeOpacity={0.75}
+                                                style={{ padding: 3, opacity: enviandoAvaliacao ? 0.6 : 1 }}
+                                            >
+                                                <MaterialCommunityIcons
+                                                    name={ativa ? "star" : "star-outline"}
+                                                    size={34}
+                                                    color={ativa ? "#f59e0b" : "#cbd5e1"}
+                                                />
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            <View>
+                                <Text style={{ fontSize: 14, fontWeight: "800", color: "#111827", marginBottom: 10 }}>
+                                    Descreva sua experiência
+                                </Text>
+                                <TextInput
+                                    value={descricaoAvaliacao}
+                                    onChangeText={setDescricaoAvaliacao}
+                                    editable={!enviandoAvaliacao}
+                                    placeholder="Conte o que está funcionando bem, o que poderia melhorar e quais recursos fariam diferença no seu uso diário..."
+                                    placeholderTextColor="#9ca3af"
+                                    multiline
+                                    textAlignVertical="top"
+                                    maxLength={3000}
+                                    style={{
+                                        minHeight: 150,
+                                        backgroundColor: "#f9fafb",
+                                        borderWidth: 1,
+                                        borderColor: "#e5e7eb",
+                                        borderRadius: 12,
+                                        padding: 12,
+                                        fontSize: 14,
+                                        color: "#111827",
+                                        lineHeight: 20,
+                                    }}
+                                />
+                                <Text style={{ fontSize: 11, color: "#9ca3af", textAlign: "right", marginTop: 6 }}>
+                                    {descricaoAvaliacao.length}/3000
+                                </Text>
+                            </View>
+
+                            <View style={{ flexDirection: "row", gap: 10 }}>
+                                <TouchableOpacity
+                                    onPress={fecharModalAvaliacao}
+                                    disabled={enviandoAvaliacao}
+                                    activeOpacity={0.75}
+                                    style={{ flex: 1, backgroundColor: "#f3f4f6", borderRadius: 14, paddingVertical: 15, alignItems: "center", opacity: enviandoAvaliacao ? 0.65 : 1 }}
+                                >
+                                    <Text style={{ fontSize: 15, fontWeight: "800", color: "#374151" }}>
+                                        Cancelar
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={enviarAvaliacao}
+                                    disabled={enviandoAvaliacao}
+                                    activeOpacity={0.8}
+                                    style={{ flex: 1, backgroundColor: "#4a90e2", borderRadius: 14, paddingVertical: 15, alignItems: "center", justifyContent: "center", minHeight: 49, opacity: enviandoAvaliacao ? 0.78 : 1 }}
+                                >
+                                    {enviandoAvaliacao ? (
+                                        <ActivityIndicator color="#fff" />
+                                    ) : (
+                                        <Text style={{ fontSize: 15, fontWeight: "900", color: "#fff" }}>
+                                            Enviar
+                                        </Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

@@ -66,8 +66,15 @@ function formatarMoeda(valor: number) {
 }
 
 function formatarMoedaGrafico(valor: number) {
-    if (valor >= 1000000) return `R$ ${(valor / 1000000).toFixed(1).replace(".", ",")} mi`;
-    if (valor >= 1000) return `R$ ${(valor / 1000).toFixed(1).replace(".", ",")} mil`;
+    if (valor <= 0) return "R$ 0";
+    if (valor >= 1000000) {
+        const valorCompacto = valor >= 10000000 ? (valor / 1000000).toFixed(0) : (valor / 1000000).toFixed(1).replace(".", ",");
+        return `R$ ${valorCompacto} mi`;
+    }
+    if (valor >= 1000) {
+        const valorCompacto = valor >= 10000 ? (valor / 1000).toFixed(0) : (valor / 1000).toFixed(1).replace(".", ",");
+        return `R$ ${valorCompacto} mil`;
+    }
     return `R$ ${valor.toFixed(0)}`;
 }
 
@@ -84,6 +91,7 @@ function classificarMedicamento(compra: Compra): GrupoMedicamento {
 export default function Financeiro() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
+    const receitaDespesaScrollRef = React.useRef<ScrollView | null>(null);
 
     const [receitas, setReceitas] = useState<Receita[]>([]);
     const [despesas, setDespesas] = useState<DespesaResumo[]>([]);
@@ -265,7 +273,7 @@ export default function Financeiro() {
 
     const dadosReceitaDespesa = gerarDadosGrafico(periodoReceitaDespesa);
     const dadosFluxoCaixa = gerarDadosGrafico(periodoFluxoCaixa);
-    const larguraGraficoReceitaDespesa = periodoReceitaDespesa === "6M" ? "100%" : Math.max(dadosReceitaDespesa.length * 50, 360);
+    const larguraGraficoReceitaDespesa = Math.max(dadosReceitaDespesa.length * 58, CHART_WIDTH - 36);
     const valorMaximoReceitaDespesa = Math.max(
         ...dadosReceitaDespesa.map((m) => Math.max(m.receita, m.despesa)),
         1
@@ -623,13 +631,18 @@ export default function Financeiro() {
                             </View>
                         )}
 
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <ScrollView
+                            ref={receitaDespesaScrollRef}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            onContentSizeChange={() => receitaDespesaScrollRef.current?.scrollToEnd({ animated: false })}
+                        >
                             <View style={{ width: larguraGraficoReceitaDespesa, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", minHeight: 196, gap: 6 }}>
                                 {dadosReceitaDespesa.map((m, i) => {
                                     const alturaR = (m.receita / valorMaximoReceitaDespesa) * 115;
                                     const alturaD = (m.despesa / valorMaximoReceitaDespesa) * 115;
                                     return (
-                                        <View key={`${m.label}-${i}`} style={{ flex: 1, minWidth: periodoReceitaDespesa === "6M" ? 0 : 44, alignItems: "center" }}>
+                                        <View key={`${m.label}-${i}`} style={{ width: 52, alignItems: "center" }}>
                                             <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 2, height: 115 }}>
                                                 <View style={{
                                                     width: 12,
@@ -647,20 +660,20 @@ export default function Financeiro() {
                                                 }} />
                                             </View>
                                             <Text style={{ fontSize: 10, color: "#6b7280", marginTop: 6 }}>{m.label}</Text>
-                                            <View style={{ marginTop: 4, alignItems: "center", gap: 2, width: "100%" }}>
+                                            <View style={{ marginTop: 4, alignItems: "center", gap: 2, width: 52 }}>
                                                 <Text
                                                     numberOfLines={1}
                                                     adjustsFontSizeToFit
-                                                    minimumFontScale={0.7}
-                                                    style={{ maxWidth: "100%", fontSize: 9, fontWeight: "800", color: "#059669" }}
+                                                    minimumFontScale={0.65}
+                                                    style={{ width: 52, fontSize: 9, fontWeight: "800", color: "#059669", textAlign: "center" }}
                                                 >
                                                     {formatarMoedaGrafico(m.receita)}
                                                 </Text>
                                                 <Text
                                                     numberOfLines={1}
                                                     adjustsFontSizeToFit
-                                                    minimumFontScale={0.7}
-                                                    style={{ maxWidth: "100%", fontSize: 9, fontWeight: "800", color: "#dc2626" }}
+                                                    minimumFontScale={0.65}
+                                                    style={{ width: 52, fontSize: 9, fontWeight: "800", color: "#dc2626", textAlign: "center" }}
                                                 >
                                                     {formatarMoedaGrafico(m.despesa)}
                                                 </Text>

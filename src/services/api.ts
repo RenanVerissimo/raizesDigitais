@@ -152,6 +152,21 @@ export async function listarProducoesRecentes() {
     return response.json();
 }
 
+export async function criarAvaliacaoApp(dados: { estrelas: number; descricao: string }) {
+    const response = await apiFetch("/avaliacoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+    });
+
+    if (!response.ok) {
+        const erroData = await response.json().catch(() => ({}));
+        throw new Error(erroData.erro || "Erro ao registrar avaliação");
+    }
+
+    return response.json();
+}
+
 export async function criarProducao(dados: {
     date: string;
     dailyProduction: number;
