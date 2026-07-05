@@ -41,7 +41,7 @@ router.get("/", async (req, res) => {
         await ensureAnimaisSchema();
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
-        const [rows] = await pool.query("SELECT * FROM animais WHERE usuario_id = ? ORDER BY criado_em DESC", [usuarioId]);
+        const [rows] = await pool.query("SELECT animais.*, id_animal AS id FROM animais WHERE usuario_id = ? ORDER BY criado_em DESC", [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -155,7 +155,11 @@ router.post("/", async (req, res) => {
             ]
         );
 
-        res.status(201).json({ id: result.insertId, mensagem: "Animal cadastrado" });
+        res.status(201).json({
+            id: result.insertId,
+            id_animal: result.insertId,
+            mensagem: "Animal cadastrado",
+        });
 
     } catch (err) {
         console.error(err);
@@ -233,7 +237,7 @@ router.put("/:id", async (req, res) => {
                 data_inseminacao = ?,
                 data_confirmacao_prenhez = ?
 
-            WHERE id = ? AND usuario_id = ?`,
+            WHERE id_animal = ? AND usuario_id = ?`,
             [
                 nome,
                 identificador,
@@ -285,7 +289,7 @@ router.patch("/:id/status", async (req, res) => {
 
         const status = normalizarStatusAnimal(req.body.status);
         const [result] = await pool.query(
-            "UPDATE animais SET status = ? WHERE id = ? AND usuario_id = ?",
+            "UPDATE animais SET status = ? WHERE id_animal = ? AND usuario_id = ?",
             [status, req.params.id, usuarioId]
         );
 
@@ -305,7 +309,7 @@ router.delete("/:id", async (req, res) => {
         await ensureAnimaisSchema();
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
-        const [result] = await pool.query("DELETE FROM animais WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
+        const [result] = await pool.query("DELETE FROM animais WHERE id_animal = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Animal não encontrado" });
         res.json({ mensagem: "Animal excluído" });
     } catch (err) {

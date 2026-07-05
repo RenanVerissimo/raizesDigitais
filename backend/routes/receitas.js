@@ -101,7 +101,7 @@ async function prepararReceita(usuarioId, body) {
 
         if (animalId) {
             const [animais] = await pool.query(
-                "SELECT id, nome, identificador, peso FROM animais WHERE id = ? AND usuario_id = ?",
+                "SELECT id_animal AS id, nome, identificador, peso FROM animais WHERE id_animal = ? AND usuario_id = ?",
                 [animalId, usuarioId]
             );
 
@@ -224,7 +224,7 @@ router.post("/", async (req, res) => {
 
         if (receita.tipo === "animal" && receita.animalIdFinal) {
             await pool.query(
-                "UPDATE animais SET status = 'vendido' WHERE id = ? AND usuario_id = ?",
+                "UPDATE animais SET status = 'vendido' WHERE id_animal = ? AND usuario_id = ?",
                 [receita.animalIdFinal, usuarioId]
             );
         }
@@ -306,7 +306,7 @@ router.put("/:id", async (req, res) => {
 
         if (receita.tipo === "animal" && receita.animalIdFinal) {
             await pool.query(
-                "UPDATE animais SET status = 'vendido' WHERE id = ? AND usuario_id = ?",
+                "UPDATE animais SET status = 'vendido' WHERE id_animal = ? AND usuario_id = ?",
                 [receita.animalIdFinal, usuarioId]
             );
         }

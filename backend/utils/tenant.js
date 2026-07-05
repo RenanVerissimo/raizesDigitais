@@ -28,13 +28,14 @@ async function ensureUsuarioColumn(tableName) {
         FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
           AND TABLE_NAME = ?
-          AND COLUMN_NAME = 'usuario_id'
         `,
         [tableName]
     );
+    const columnNames = new Set(columns.map((column) => column.COLUMN_NAME));
 
-    if (columns.length === 0) {
-        await pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN usuario_id INT NULL AFTER id`);
+    if (!columnNames.has("usuario_id")) {
+        const afterColumn = tableName === "animais" && columnNames.has("id_animal") ? "id_animal" : "id";
+        await pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN usuario_id INT NULL AFTER \`${afterColumn}\``);
     }
 
     const primeiroUsuarioId = await getPrimeiroUsuarioId();
