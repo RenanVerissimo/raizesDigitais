@@ -37,7 +37,7 @@ function calcularQuantidadeEstoqueKg(categoria, quantidade, unidadeCompra, pesoP
 async function ensureEstoqueRacaoSchema() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS estoque_racao (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_estoque_racao INT AUTO_INCREMENT PRIMARY KEY,
             nome VARCHAR(120) NOT NULL,
             tipo VARCHAR(40) NOT NULL DEFAULT 'milho',
             unidade VARCHAR(20) NOT NULL DEFAULT 'kg',
@@ -65,12 +65,12 @@ async function aplicarDeltaEstoqueRacao(compra, deltaQuantidade) {
 
     await ensureEstoqueRacaoSchema();
 
-    const [racoes] = await pool.query("SELECT id, quantidade_atual FROM estoque_racao WHERE tipo = ? AND usuario_id = ? ORDER BY id ASC LIMIT 1", [tipoRacao, usuarioId]);
+    const [racoes] = await pool.query("SELECT id_estoque_racao AS id, quantidade_atual FROM estoque_racao WHERE tipo = ? AND usuario_id = ? ORDER BY id_estoque_racao ASC LIMIT 1", [tipoRacao, usuarioId]);
     const novaQuantidade = Math.max(0, (racoes[0] ? Number(racoes[0].quantidade_atual) : 0) + Number(deltaQuantidade));
 
     if (racoes.length > 0) {
         await pool.query(
-            "UPDATE estoque_racao SET quantidade_atual=?, custo_unitario=?, fornecedor=? WHERE id=? AND usuario_id=?",
+            "UPDATE estoque_racao SET quantidade_atual=?, custo_unitario=?, fornecedor=? WHERE id_estoque_racao=? AND usuario_id=?",
             [
                 novaQuantidade,
                 compra.preco_unitario ?? compra.precoUnitario ?? null,
@@ -179,7 +179,8 @@ router.get("/", async (req, res) => {
         if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT 
-                id,
+                id_compra AS id,
+                id_compra,
                 categoria,
                 tipo_racao AS tipoRacao,
                 unidade_compra AS unidadeCompra,
@@ -197,7 +198,7 @@ router.get("/", async (req, res) => {
                 observacoes
             FROM compras
             WHERE usuario_id = ?
-            ORDER BY data DESC, id DESC
+            ORDER BY data DESC, id_compra DESC
         `, [usuarioId]);
         res.json(rows);
     } catch (err) {
@@ -224,13 +225,14 @@ router.post("/", async (req, res) => {
 
         if (idempotencyKey) {
             const [comprasExistentes] = await pool.query(
-                "SELECT id FROM compras WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                "SELECT id_compra AS id FROM compras WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
                 [usuarioId, idempotencyKey]
             );
 
             if (comprasExistentes.length > 0) {
                 return res.status(200).json({
                     id: comprasExistentes[0].id,
+                    id_compra: comprasExistentes[0].id,
                     mensagem: "Compra já cadastrada",
                     duplicada: true,
                 });
@@ -285,20 +287,25 @@ router.post("/", async (req, res) => {
             status: status || "pendente",
         }, Number(quantidadeEstoqueKg));
 
-        res.status(201).json({ id: result.insertId, mensagem: "Compra cadastrada" });
+        res.status(201).json({
+            id: result.insertId,
+            id_compra: result.insertId,
+            mensagem: "Compra cadastrada",
+        });
     } catch (err) {
         const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body.idempotencyKey || "").trim() || null;
         if (err?.code === "ER_DUP_ENTRY" && idempotencyKey) {
             const usuarioId = await requireUsuario(req, res);
             if (!usuarioId) return;
             const [comprasExistentes] = await pool.query(
-                "SELECT id FROM compras WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                "SELECT id_compra AS id FROM compras WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
                 [usuarioId, idempotencyKey]
             );
 
             if (comprasExistentes.length > 0) {
                 return res.status(200).json({
                     id: comprasExistentes[0].id,
+                    id_compra: comprasExistentes[0].id,
                     mensagem: "Compra já cadastrada",
                     duplicada: true,
                 });
@@ -316,11 +323,11 @@ router.patch("/:id/status", async (req, res) => {
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
         const { status } = req.body;
-        const [compras] = await pool.query("SELECT * FROM compras WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
+        const [compras] = await pool.query("SELECT * FROM compras WHERE id_compra = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (compras.length === 0) return res.status(404).json({ erro: "Compra nao encontrada" });
         const compraAntes = compras[0];
         const [result] = await pool.query(
-            "UPDATE compras SET status = ? WHERE id = ? AND usuario_id = ?",
+            "UPDATE compras SET status = ? WHERE id_compra = ? AND usuario_id = ?",
             [status, req.params.id, usuarioId]
         );
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Compra não encontrada" });
@@ -341,10 +348,10 @@ router.delete("/:id", async (req, res) => {
         await ensureComprasSchema();
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
-        const [compras] = await pool.query("SELECT * FROM compras WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
+        const [compras] = await pool.query("SELECT * FROM compras WHERE id_compra = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (compras.length === 0) return res.status(404).json({ erro: "Compra nao encontrada" });
         const compraAntes = compras[0];
-        const [result] = await pool.query("DELETE FROM compras WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
+        const [result] = await pool.query("DELETE FROM compras WHERE id_compra = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Compra não encontrada" });
         const qtdAntes = compraAntes.categoria === "racao" && compraAntes.status === "concluido" ? Number(compraAntes.quantidade_estoque_kg || compraAntes.quantidade) : 0;
         await aplicarDeltaEstoqueRacao(compraAntes, -qtdAntes);
@@ -384,7 +391,7 @@ router.put("/:id", async (req, res) => {
         if (categoria === "racao" && quantidadeEstoqueKg === null) {
             return res.status(400).json({ erro: "Informe a unidade e o peso por unidade da racao" });
         }
-        const [comprasAntes] = await pool.query("SELECT * FROM compras WHERE id = ? AND usuario_id = ?", [id, usuarioId]);
+        const [comprasAntes] = await pool.query("SELECT * FROM compras WHERE id_compra = ? AND usuario_id = ?", [id, usuarioId]);
         if (comprasAntes.length === 0) return res.status(404).json({ erro: "Compra nao encontrada" });
         const compraAntes = comprasAntes[0];
 
@@ -405,7 +412,7 @@ router.put("/:id", async (req, res) => {
                 finalidade_tratamento = ?,
                 finalidade_descricao = ?,
                 observacoes = ?
-             WHERE id = ? AND usuario_id = ?`,
+             WHERE id_compra = ? AND usuario_id = ?`,
             [
                 categoria,
                 tipoRacaoNormalizado,

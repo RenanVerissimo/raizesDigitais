@@ -52,12 +52,12 @@ router.post("/cadastrar", async (req, res) => {
         }
 
         // Verifica se email já existe
-        const [existente] = await pool.query("SELECT id FROM usuarios WHERE email = ?", [email]);
+        const [existente] = await pool.query("SELECT id_usuario AS id FROM usuarios WHERE email = ?", [email]);
         if (existente.length > 0) {
             return res.status(400).json({ erro: "Este e-mail já está cadastrado" });
         }
 
-        const [documentoExistente] = await pool.query("SELECT id FROM usuarios WHERE cpf_rg = ?", [cpfRg]);
+        const [documentoExistente] = await pool.query("SELECT id_usuario AS id FROM usuarios WHERE cpf_rg = ?", [cpfRg]);
         if (documentoExistente.length > 0) {
             return res.status(400).json({ erro: "Este CPF/RG já está cadastrado" });
         }
@@ -72,6 +72,7 @@ router.post("/cadastrar", async (req, res) => {
 
         res.status(201).json({
             id: result.insertId,
+            id_usuario: result.insertId,
             nome,
             email,
             cpf_rg: cpfRg,
@@ -98,7 +99,7 @@ router.post("/login", async (req, res) => {
         }
 
         const [rows] = await pool.query(
-            "SELECT id, nome, email, telefone, nome_fazenda, senha FROM usuarios WHERE email = ? LIMIT 1",
+            "SELECT id_usuario AS id, id_usuario, nome, email, telefone, nome_fazenda, senha FROM usuarios WHERE email = ? LIMIT 1",
             [email]
         );
 
@@ -147,7 +148,7 @@ router.post("/verificar-cpf", async (req, res) => {
             return res.status(400).json({ erro: "Digite somente os números do CPF/RG" });
         }
 
-        const [rows] = await pool.query("SELECT id FROM usuarios WHERE cpf_rg = ? LIMIT 1", [cpfRg]);
+        const [rows] = await pool.query("SELECT id_usuario AS id FROM usuarios WHERE cpf_rg = ? LIMIT 1", [cpfRg]);
 
         if (rows.length === 0) {
             return res.status(404).json({ erro: "CPF/RG digitado está errado" });

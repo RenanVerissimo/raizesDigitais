@@ -14,7 +14,8 @@ router.get("/tanques", async (req, res) => {
         if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT
-                id,
+                id_tanque AS id,
+                id_tanque,
                 nome,
                 capacidade,
                 quantidade_atual AS volumeAtual,
@@ -61,8 +62,8 @@ router.post("/tanques", async (req, res) => {
         );
 
         const [rows] = await pool.query(
-            `SELECT id, nome, capacidade, quantidade_atual AS volumeAtual, temperatura, qualidade, localizacao, observacoes, criado_em AS atualizadoEm
-             FROM tanques WHERE id = ? AND usuario_id = ?`,
+            `SELECT id_tanque AS id, id_tanque, nome, capacidade, quantidade_atual AS volumeAtual, temperatura, qualidade, localizacao, observacoes, criado_em AS atualizadoEm
+             FROM tanques WHERE id_tanque = ? AND usuario_id = ?`,
             [result.insertId, usuarioId]
         );
 
@@ -82,7 +83,7 @@ router.put("/tanques/:id", async (req, res) => {
 
         const [result] = await pool.query(
             `UPDATE tanques SET nome=?, capacidade=?, quantidade_atual=?, temperatura=?, qualidade=?, localizacao=?, observacoes=?
-             WHERE id=? AND usuario_id=?`,
+             WHERE id_tanque=? AND usuario_id=?`,
             [
                 nome,
                 Number(capacidade),
@@ -110,7 +111,7 @@ router.delete("/tanques/:id", async (req, res) => {
     try {
         const usuarioId = await requireUsuario(req, res, ["tanques"]);
         if (!usuarioId) return;
-        const [result] = await pool.query("DELETE FROM tanques WHERE id=? AND usuario_id=?", [req.params.id, usuarioId]);
+        const [result] = await pool.query("DELETE FROM tanques WHERE id_tanque=? AND usuario_id=?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Tanque não encontrado" });
         res.json({ mensagem: "Tanque excluído" });
     } catch (err) {
@@ -130,7 +131,8 @@ router.get("/movimentacoes", async (req, res) => {
         if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT
-                m.id,
+                m.id_movimentacao_estoque AS id,
+                m.id_movimentacao_estoque,
                 m.tanque_id AS tanqueId,
                 t.nome AS tanqueNome,
                 m.tipo,
@@ -142,9 +144,9 @@ router.get("/movimentacoes", async (req, res) => {
                 m.consumo_proprio AS consumoProprio,
                 m.observacoes
             FROM movimentacoes_estoque m
-            INNER JOIN tanques t ON t.id = m.tanque_id
+            INNER JOIN tanques t ON t.id_tanque = m.tanque_id
             WHERE t.usuario_id = ?
-            ORDER BY m.data DESC, m.id DESC
+            ORDER BY m.data DESC, m.id_movimentacao_estoque DESC
         `, [usuarioId]);
         res.json(rows);
     } catch (err) {
@@ -165,7 +167,7 @@ router.post("/movimentacoes", async (req, res) => {
         }
 
         // Busca tanque e valida volume
-        const [tanques] = await pool.query("SELECT * FROM tanques WHERE id=? AND usuario_id=?", [tanqueId, usuarioId]);
+        const [tanques] = await pool.query("SELECT * FROM tanques WHERE id_tanque=? AND usuario_id=?", [tanqueId, usuarioId]);
         if (tanques.length === 0) return res.status(404).json({ erro: "Tanque não encontrado" });
 
         const tanque = tanques[0];
@@ -202,13 +204,14 @@ router.post("/movimentacoes", async (req, res) => {
 
         // Atualiza volume do tanque e, em entregas, registra a temperatura medida.
         if (tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "") {
-            await pool.query("UPDATE tanques SET quantidade_atual=?, temperatura=? WHERE id=?", [novoVolume, Number(temperatura), tanqueId]);
+            await pool.query("UPDATE tanques SET quantidade_atual=?, temperatura=? WHERE id_tanque=?", [novoVolume, Number(temperatura), tanqueId]);
         } else {
-            await pool.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [novoVolume, tanqueId]);
+            await pool.query("UPDATE tanques SET quantidade_atual=? WHERE id_tanque=?", [novoVolume, tanqueId]);
         }
 
         res.status(201).json({
             id: result.insertId,
+            id_movimentacao_estoque: result.insertId,
             tanqueId,
             tanqueNome: tanque.nome,
             tipo,
@@ -238,8 +241,8 @@ router.delete("/movimentacoes/:id", async (req, res, next) => {
         const [movs] = await conn.query(`
             SELECT m.*
             FROM movimentacoes_estoque m
-            INNER JOIN tanques t ON t.id = m.tanque_id
-            WHERE m.id=? AND t.usuario_id=?
+            INNER JOIN tanques t ON t.id_tanque = m.tanque_id
+            WHERE m.id_movimentacao_estoque=? AND t.usuario_id=?
         `, [req.params.id, usuarioId]);
         if (movs.length === 0) {
             await conn.rollback();
@@ -258,8 +261,8 @@ router.delete("/movimentacoes/:id", async (req, res, next) => {
             return res.status(400).json({ erro: mensagem });
         }
 
-        await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [novoVolume, tanque.id]);
-        await conn.query("DELETE FROM movimentacoes_estoque WHERE id=?", [req.params.id]);
+        await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id_tanque=?", [novoVolume, tanque.id_tanque]);
+        await conn.query("DELETE FROM movimentacoes_estoque WHERE id_movimentacao_estoque=?", [req.params.id]);
 
         await conn.commit();
         return res.json({ mensagem: "Movimentação excluída" });
@@ -278,8 +281,8 @@ router.delete("/movimentacoes/:id/legado", async (req, res) => {
         if (!usuarioId) return;
         const [result] = await pool.query(`
             DELETE m FROM movimentacoes_estoque m
-            INNER JOIN tanques t ON t.id = m.tanque_id
-            WHERE m.id=? AND t.usuario_id=?
+            INNER JOIN tanques t ON t.id_tanque = m.tanque_id
+            WHERE m.id_movimentacao_estoque=? AND t.usuario_id=?
         `, [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Movimentação não encontrada" });
         res.json({ mensagem: "Movimentação excluída" });
@@ -296,7 +299,7 @@ function efeitoMovimentacao(mov) {
 }
 
 async function buscarTanquePorId(conn, id, usuarioId) {
-    const [tanques] = await conn.query("SELECT * FROM tanques WHERE id=? AND usuario_id=?", [id, usuarioId]);
+    const [tanques] = await conn.query("SELECT * FROM tanques WHERE id_tanque=? AND usuario_id=?", [id, usuarioId]);
     return tanques[0];
 }
 
@@ -331,8 +334,8 @@ router.put("/movimentacoes/:id", async (req, res) => {
         const [movs] = await conn.query(`
             SELECT m.*
             FROM movimentacoes_estoque m
-            INNER JOIN tanques t ON t.id = m.tanque_id
-            WHERE m.id=? AND t.usuario_id=?
+            INNER JOIN tanques t ON t.id_tanque = m.tanque_id
+            WHERE m.id_movimentacao_estoque=? AND t.usuario_id=?
         `, [req.params.id, usuarioId]);
         if (movs.length === 0) {
             await conn.rollback();
@@ -349,7 +352,7 @@ router.put("/movimentacoes/:id", async (req, res) => {
 
         const volumeAntigoRevertido = Number(tanqueAntigo.quantidade_atual) - efeitoMovimentacao(movAntiga);
         const novaMovimentacao = { tipo, volume: vol, consumoProprio: consumo };
-        const novoVolumeTanqueNovo = Number(tanqueNovo.id) === Number(tanqueAntigo.id)
+        const novoVolumeTanqueNovo = Number(tanqueNovo.id_tanque) === Number(tanqueAntigo.id_tanque)
             ? volumeAntigoRevertido + efeitoMovimentacao(novaMovimentacao)
             : Number(tanqueNovo.quantidade_atual) + efeitoMovimentacao(novaMovimentacao);
 
@@ -363,7 +366,7 @@ router.put("/movimentacoes/:id", async (req, res) => {
         await conn.query(
             `UPDATE movimentacoes_estoque
              SET tanque_id=?, tipo=?, quantidade=?, data=?, motivo=?, comprador=?, temperatura=?, consumo_proprio=?, observacoes=?
-             WHERE id=?`,
+             WHERE id_movimentacao_estoque=?`,
             [
                 tanqueId,
                 tipo,
@@ -378,15 +381,15 @@ router.put("/movimentacoes/:id", async (req, res) => {
             ]
         );
 
-        if (Number(tanqueNovo.id) === Number(tanqueAntigo.id)) {
-            await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [novoVolumeTanqueNovo, tanqueNovo.id]);
+        if (Number(tanqueNovo.id_tanque) === Number(tanqueAntigo.id_tanque)) {
+            await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id_tanque=?", [novoVolumeTanqueNovo, tanqueNovo.id_tanque]);
         } else {
-            await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [volumeAntigoRevertido, tanqueAntigo.id]);
-            await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id=?", [novoVolumeTanqueNovo, tanqueNovo.id]);
+            await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id_tanque=?", [volumeAntigoRevertido, tanqueAntigo.id_tanque]);
+            await conn.query("UPDATE tanques SET quantidade_atual=? WHERE id_tanque=?", [novoVolumeTanqueNovo, tanqueNovo.id_tanque]);
         }
 
         if (tipo === "saida" && temperatura !== null && temperatura !== undefined && temperatura !== "") {
-            await conn.query("UPDATE tanques SET temperatura=? WHERE id=?", [Number(temperatura), tanqueId]);
+            await conn.query("UPDATE tanques SET temperatura=? WHERE id_tanque=?", [Number(temperatura), tanqueId]);
         }
 
         await conn.commit();
@@ -428,7 +431,7 @@ function normalizarTipoRacao(tipoRacao, item) {
 async function ensureRacaoSchema() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS estoque_racao (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_estoque_racao INT AUTO_INCREMENT PRIMARY KEY,
             nome VARCHAR(120) NOT NULL,
             tipo VARCHAR(40) NOT NULL DEFAULT 'milho',
             unidade VARCHAR(20) NOT NULL DEFAULT 'kg',
@@ -446,7 +449,7 @@ async function ensureRacaoSchema() {
 
     await pool.query(`
         CREATE TABLE IF NOT EXISTS movimentacoes_racao (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_movimentacao_racao INT AUTO_INCREMENT PRIMARY KEY,
             racao_id INT NOT NULL,
             tipo VARCHAR(20) NOT NULL,
             quantidade DECIMAL(12,2) NOT NULL,
@@ -456,7 +459,7 @@ async function ensureRacaoSchema() {
             observacoes TEXT NULL,
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT fk_movimentacoes_racao_item
-                FOREIGN KEY (racao_id) REFERENCES estoque_racao(id)
+                FOREIGN KEY (racao_id) REFERENCES estoque_racao(id_estoque_racao)
                 ON DELETE CASCADE
         )
     `);
@@ -550,7 +553,7 @@ async function sincronizarRacoesCompradas(usuarioId) {
 
     for (const [tipo, dados] of agregadas.entries()) {
         const custoUnitario = dados.quantidade > 0 ? dados.valor / dados.quantidade : null;
-        const [racoes] = await pool.query("SELECT id, quantidade_atual, custo_unitario, fornecedor FROM estoque_racao WHERE tipo = ? AND usuario_id = ? ORDER BY id ASC LIMIT 1", [tipo, usuarioId]);
+        const [racoes] = await pool.query("SELECT id_estoque_racao AS id, quantidade_atual, custo_unitario, fornecedor FROM estoque_racao WHERE tipo = ? AND usuario_id = ? ORDER BY id_estoque_racao ASC LIMIT 1", [tipo, usuarioId]);
 
         if (racoes.length === 0) {
             await pool.query(
@@ -568,12 +571,12 @@ async function sincronizarRacoesCompradas(usuarioId) {
 
         if (semMovimentacao && quantidadeAtual === 0) {
             await pool.query(
-                "UPDATE estoque_racao SET quantidade_atual=?, custo_unitario=?, fornecedor=COALESCE(fornecedor, ?) WHERE id=?",
+                "UPDATE estoque_racao SET quantidade_atual=?, custo_unitario=?, fornecedor=COALESCE(fornecedor, ?) WHERE id_estoque_racao=?",
                 [dados.quantidade, custoUnitario, dados.fornecedor, racao.id]
             );
         } else if (racao.custo_unitario === null || racao.fornecedor === null) {
             await pool.query(
-                "UPDATE estoque_racao SET custo_unitario=COALESCE(custo_unitario, ?), fornecedor=COALESCE(fornecedor, ?) WHERE id=?",
+                "UPDATE estoque_racao SET custo_unitario=COALESCE(custo_unitario, ?), fornecedor=COALESCE(fornecedor, ?) WHERE id_estoque_racao=?",
                 [custoUnitario, dados.fornecedor, racao.id]
             );
         }
@@ -587,7 +590,8 @@ router.get("/racoes", async (req, res) => {
         await sincronizarRacoesCompradas(usuarioId);
         const [rows] = await pool.query(`
             SELECT
-                id,
+                id_estoque_racao AS id,
+                id_estoque_racao,
                 nome,
                 tipo,
                 unidade,
@@ -648,7 +652,11 @@ router.post("/racoes", async (req, res) => {
             ]
         );
 
-        res.status(201).json({ id: result.insertId, mensagem: "Racao cadastrada" });
+        res.status(201).json({
+            id: result.insertId,
+            id_estoque_racao: result.insertId,
+            mensagem: "Racao cadastrada",
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ erro: "Erro ao cadastrar racao" });
@@ -673,7 +681,7 @@ router.put("/racoes/:id", async (req, res) => {
         const [result] = await pool.query(
             `UPDATE estoque_racao
              SET nome=?, tipo=?, unidade=?, quantidade_atual=?, estoque_minimo=?, custo_unitario=?, fornecedor=?, localizacao=?, validade=?, observacoes=?
-             WHERE id=? AND usuario_id=?`,
+             WHERE id_estoque_racao=? AND usuario_id=?`,
             [
                 nome,
                 tipo,
@@ -703,7 +711,7 @@ router.delete("/racoes/:id", async (req, res) => {
         await ensureRacaoSchema();
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
-        const [result] = await pool.query("DELETE FROM estoque_racao WHERE id=? AND usuario_id=?", [req.params.id, usuarioId]);
+        const [result] = await pool.query("DELETE FROM estoque_racao WHERE id_estoque_racao=? AND usuario_id=?", [req.params.id, usuarioId]);
         if (result.affectedRows === 0) return res.status(404).json({ erro: "Racao nao encontrada" });
         res.json({ mensagem: "Racao excluida" });
     } catch (err) {
@@ -719,7 +727,8 @@ router.get("/racoes/movimentacoes", async (req, res) => {
         if (!usuarioId) return;
         const [rows] = await pool.query(`
             SELECT
-                m.id,
+                m.id_movimentacao_racao AS id,
+                m.id_movimentacao_racao,
                 m.racao_id AS racaoId,
                 r.nome AS racaoNome,
                 r.unidade,
@@ -730,9 +739,9 @@ router.get("/racoes/movimentacoes", async (req, res) => {
                 m.destino,
                 m.observacoes
             FROM movimentacoes_racao m
-            INNER JOIN estoque_racao r ON r.id = m.racao_id
+            INNER JOIN estoque_racao r ON r.id_estoque_racao = m.racao_id
             WHERE r.usuario_id = ?
-            ORDER BY m.data DESC, m.id DESC
+            ORDER BY m.data DESC, m.id_movimentacao_racao DESC
             LIMIT 20
         `, [usuarioId]);
         res.json(rows);
@@ -759,9 +768,9 @@ router.post("/racoes/movimentacoes", async (req, res) => {
 
         if (idempotencyKey) {
             const [movimentacoesExistentes] = await pool.query(
-                `SELECT m.id
+                `SELECT m.id_movimentacao_racao AS id
                  FROM movimentacoes_racao m
-                 INNER JOIN estoque_racao r ON r.id = m.racao_id
+                 INNER JOIN estoque_racao r ON r.id_estoque_racao = m.racao_id
                  WHERE m.idempotency_key = ? AND r.usuario_id = ?
                  LIMIT 1`,
                 [idempotencyKey, usuarioId]
@@ -770,6 +779,7 @@ router.post("/racoes/movimentacoes", async (req, res) => {
             if (movimentacoesExistentes.length > 0) {
                 return res.status(200).json({
                     id: movimentacoesExistentes[0].id,
+                    id_movimentacao_racao: movimentacoesExistentes[0].id,
                     mensagem: "Movimentacao de racao ja registrada",
                     duplicada: true,
                 });
@@ -778,7 +788,7 @@ router.post("/racoes/movimentacoes", async (req, res) => {
 
         await conn.beginTransaction();
 
-        const [racoes] = await conn.query("SELECT * FROM estoque_racao WHERE id=? AND usuario_id=?", [racaoId, usuarioId]);
+        const [racoes] = await conn.query("SELECT * FROM estoque_racao WHERE id_estoque_racao=? AND usuario_id=?", [racaoId, usuarioId]);
         if (racoes.length === 0) {
             await conn.rollback();
             return res.status(404).json({ erro: "Racao nao encontrada" });
@@ -801,10 +811,14 @@ router.post("/racoes/movimentacoes", async (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [racaoId, tipo, qtd, data, motivo, destino || null, observacoes || null, idempotencyKey]
         );
-        await conn.query("UPDATE estoque_racao SET quantidade_atual=? WHERE id=?", [novaQuantidade, racaoId]);
+        await conn.query("UPDATE estoque_racao SET quantidade_atual=? WHERE id_estoque_racao=?", [novaQuantidade, racaoId]);
 
         await conn.commit();
-        res.status(201).json({ id: result.insertId, mensagem: "Movimentacao de racao registrada" });
+        res.status(201).json({
+            id: result.insertId,
+            id_movimentacao_racao: result.insertId,
+            mensagem: "Movimentacao de racao registrada",
+        });
     } catch (err) {
         await conn.rollback();
         const idempotencyKey = String(req.headers["x-idempotency-key"] || req.body?.idempotencyKey || "").trim() || null;
@@ -812,9 +826,9 @@ router.post("/racoes/movimentacoes", async (req, res) => {
             const usuarioId = await requireUsuario(req, res);
             if (!usuarioId) return;
             const [movimentacoesExistentes] = await pool.query(
-                `SELECT m.id
+                `SELECT m.id_movimentacao_racao AS id
                  FROM movimentacoes_racao m
-                 INNER JOIN estoque_racao r ON r.id = m.racao_id
+                 INNER JOIN estoque_racao r ON r.id_estoque_racao = m.racao_id
                  WHERE m.idempotency_key = ? AND r.usuario_id = ?
                  LIMIT 1`,
                 [idempotencyKey, usuarioId]
@@ -823,6 +837,7 @@ router.post("/racoes/movimentacoes", async (req, res) => {
             if (movimentacoesExistentes.length > 0) {
                 return res.status(200).json({
                     id: movimentacoesExistentes[0].id,
+                    id_movimentacao_racao: movimentacoesExistentes[0].id,
                     mensagem: "Movimentacao de racao ja registrada",
                     duplicada: true,
                 });

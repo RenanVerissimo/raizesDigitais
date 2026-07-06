@@ -151,7 +151,8 @@ router.get("/", async (req, res) => {
 
         const [rows] = await pool.query(`
             SELECT
-                id,
+                id_receita AS id,
+                id_receita,
                 tipo_receita AS tipoReceita,
                 DATE_FORMAT(data, '%Y-%m-%d') AS data,
                 litros,
@@ -166,7 +167,7 @@ router.get("/", async (req, res) => {
                 observacoes
             FROM receitas
             WHERE usuario_id = ?
-            ORDER BY data DESC, id DESC
+            ORDER BY data DESC, id_receita DESC
         `, [usuarioId]);
 
         res.json(rows);
@@ -185,13 +186,14 @@ router.post("/", async (req, res) => {
 
         if (idempotencyKey) {
             const [receitasExistentes] = await pool.query(
-                "SELECT id FROM receitas WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                "SELECT id_receita AS id FROM receitas WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
                 [usuarioId, idempotencyKey]
             );
 
             if (receitasExistentes.length > 0) {
                 return res.status(200).json({
                     id: receitasExistentes[0].id,
+                    id_receita: receitasExistentes[0].id,
                     mensagem: "Receita já cadastrada",
                     duplicada: true,
                 });
@@ -231,6 +233,7 @@ router.post("/", async (req, res) => {
 
         res.status(201).json({
             id: result.insertId,
+            id_receita: result.insertId,
             tipoReceita: receita.tipo,
             data: receita.data,
             litros: receita.litrosNumero,
@@ -251,13 +254,14 @@ router.post("/", async (req, res) => {
             const usuarioId = await requireUsuario(req, res, ["receitas"]);
             if (!usuarioId) return;
             const [receitasExistentes] = await pool.query(
-                "SELECT id FROM receitas WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                "SELECT id_receita AS id FROM receitas WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
                 [usuarioId, idempotencyKey]
             );
 
             if (receitasExistentes.length > 0) {
                 return res.status(200).json({
                     id: receitasExistentes[0].id,
+                    id_receita: receitasExistentes[0].id,
                     mensagem: "Receita já cadastrada",
                     duplicada: true,
                 });
@@ -281,7 +285,7 @@ router.put("/:id", async (req, res) => {
              SET tipo_receita = ?, data = ?, litros = ?, preco_por_litro = ?, valor_total = ?,
                  animal_id = ?, animal_nome = ?, animal_identificador = ?, animal_peso = ?, valor_animal = ?,
                  comprador = ?, observacoes = ?
-             WHERE id = ? AND usuario_id = ?`,
+             WHERE id_receita = ? AND usuario_id = ?`,
             [
                 receita.tipo,
                 receita.data,
@@ -313,6 +317,7 @@ router.put("/:id", async (req, res) => {
 
         res.json({
             id: Number(req.params.id),
+            id_receita: Number(req.params.id),
             tipoReceita: receita.tipo,
             data: receita.data,
             litros: receita.litrosNumero,
@@ -340,7 +345,7 @@ router.delete("/:id", async (req, res) => {
         if (!usuarioId) return;
 
         const [result] = await pool.query(
-            "DELETE FROM receitas WHERE id = ? AND usuario_id = ?",
+            "DELETE FROM receitas WHERE id_receita = ? AND usuario_id = ?",
             [req.params.id, usuarioId]
         );
 

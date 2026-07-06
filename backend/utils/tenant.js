@@ -17,9 +17,24 @@ function getUsuarioId(req) {
 }
 
 async function getPrimeiroUsuarioId() {
-    const [usuarios] = await pool.query("SELECT id FROM usuarios ORDER BY id ASC LIMIT 1");
+    const [usuarios] = await pool.query("SELECT id_usuario AS id FROM usuarios ORDER BY id_usuario ASC LIMIT 1");
     return usuarios[0]?.id || null;
 }
+
+const PRIMARY_KEY_BY_TABLE = {
+    usuarios: "id_usuario",
+    animais: "id_animal",
+    receitas: "id_receita",
+    estoque_racao: "id_estoque_racao",
+    movimentacoes_racao: "id_movimentacao_racao",
+    tanques: "id_tanque",
+    movimentacoes_estoque: "id_movimentacao_estoque",
+    compras: "id_compra",
+    financiamentos: "id_financiamento",
+    previsoes_receita: "id_previsao_receita",
+    producao: "id_producao",
+    avaliacoes_app: "id_avaliacao_app",
+};
 
 async function ensureUsuarioColumn(tableName) {
     const [columns] = await pool.query(
@@ -34,7 +49,8 @@ async function ensureUsuarioColumn(tableName) {
     const columnNames = new Set(columns.map((column) => column.COLUMN_NAME));
 
     if (!columnNames.has("usuario_id")) {
-        const afterColumn = tableName === "animais" && columnNames.has("id_animal") ? "id_animal" : "id";
+        const preferredPrimaryKey = PRIMARY_KEY_BY_TABLE[tableName];
+        const afterColumn = preferredPrimaryKey && columnNames.has(preferredPrimaryKey) ? preferredPrimaryKey : "id";
         await pool.query(`ALTER TABLE \`${tableName}\` ADD COLUMN usuario_id INT NULL AFTER \`${afterColumn}\``);
     }
 

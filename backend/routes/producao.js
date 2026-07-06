@@ -20,7 +20,8 @@ async function ensureProducaoSchema() {
 
 const SELECT_PRODUCAO = `
     SELECT
-        p.id,
+        p.id_producao AS id,
+        p.id_producao,
         p.usuario_id,
         p.tanque_id AS tanqueId,
         t.nome AS tanqueNome,
@@ -31,7 +32,7 @@ const SELECT_PRODUCAO = `
         p.criado_em
     FROM producao
     p
-    LEFT JOIN tanques t ON t.id = p.tanque_id AND t.usuario_id = p.usuario_id
+    LEFT JOIN tanques t ON t.id_tanque = p.tanque_id AND t.usuario_id = p.usuario_id
 `;
 
 function validarVolumeTanque(tanque, novoVolume) {
@@ -80,7 +81,7 @@ router.post("/", async (req, res) => {
         if (!date || Number.isNaN(total) || total <= 0) return res.status(400).json({ error: "Dados de produção inválidos" });
 
         await conn.beginTransaction();
-        const [tanques] = await conn.query("SELECT * FROM tanques WHERE id = ? AND usuario_id = ? FOR UPDATE", [tanqueId, usuarioId]);
+        const [tanques] = await conn.query("SELECT * FROM tanques WHERE id_tanque = ? AND usuario_id = ? FOR UPDATE", [tanqueId, usuarioId]);
         const tanque = tanques[0];
         const novoVolume = Number(tanque?.quantidade_atual || 0) + total;
         const erroVolume = validarVolumeTanque(tanque, novoVolume);
@@ -93,10 +94,14 @@ router.post("/", async (req, res) => {
             "INSERT INTO producao (usuario_id, tanque_id, data, producao_diaria, qualidade, observacoes) VALUES (?, ?, ?, ?, ?, ?)",
             [usuarioId, tanqueId, date, total, quality, notes]
         );
-        await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id = ? AND usuario_id = ?", [novoVolume, tanqueId, usuarioId]);
+        await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id_tanque = ? AND usuario_id = ?", [novoVolume, tanqueId, usuarioId]);
         await conn.commit();
 
-        res.status(201).json({ id: result.insertId, message: "Produção registrada!" });
+        res.status(201).json({
+            id: result.insertId,
+            id_producao: result.insertId,
+            message: "Produção registrada!",
+        });
     } catch (error) {
         await conn.rollback();
         console.error(error);
@@ -114,7 +119,7 @@ router.delete("/:id", async (req, res) => {
         if (!usuarioId) return;
 
         await conn.beginTransaction();
-        const [producoes] = await conn.query("SELECT * FROM producao WHERE id = ? AND usuario_id = ? FOR UPDATE", [req.params.id, usuarioId]);
+        const [producoes] = await conn.query("SELECT * FROM producao WHERE id_producao = ? AND usuario_id = ? FOR UPDATE", [req.params.id, usuarioId]);
         if (producoes.length === 0) {
             await conn.rollback();
             return res.status(404).json({ error: "Registro não encontrado" });
@@ -122,7 +127,7 @@ router.delete("/:id", async (req, res) => {
 
         const producao = producoes[0];
         if (producao.tanque_id) {
-            const [tanques] = await conn.query("SELECT * FROM tanques WHERE id = ? AND usuario_id = ? FOR UPDATE", [producao.tanque_id, usuarioId]);
+            const [tanques] = await conn.query("SELECT * FROM tanques WHERE id_tanque = ? AND usuario_id = ? FOR UPDATE", [producao.tanque_id, usuarioId]);
             const tanque = tanques[0];
             const novoVolume = Number(tanque?.quantidade_atual || 0) - Number(producao.producao_diaria || 0);
             const erroVolume = validarVolumeTanque(tanque, novoVolume);
@@ -130,10 +135,10 @@ router.delete("/:id", async (req, res) => {
                 await conn.rollback();
                 return res.status(400).json({ error: erroVolume });
             }
-            await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id = ? AND usuario_id = ?", [novoVolume, producao.tanque_id, usuarioId]);
+            await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id_tanque = ? AND usuario_id = ?", [novoVolume, producao.tanque_id, usuarioId]);
         }
 
-        await conn.query("DELETE FROM producao WHERE id = ? AND usuario_id = ?", [req.params.id, usuarioId]);
+        await conn.query("DELETE FROM producao WHERE id_producao = ? AND usuario_id = ?", [req.params.id, usuarioId]);
         await conn.commit();
         res.json({ message: "Registro excluído" });
     } catch (error) {
@@ -159,7 +164,7 @@ router.put("/:id", async (req, res) => {
         if (!date || Number.isNaN(total) || total <= 0) return res.status(400).json({ error: "Dados de produção inválidos" });
 
         await conn.beginTransaction();
-        const [producoes] = await conn.query("SELECT * FROM producao WHERE id = ? AND usuario_id = ? FOR UPDATE", [id, usuarioId]);
+        const [producoes] = await conn.query("SELECT * FROM producao WHERE id_producao = ? AND usuario_id = ? FOR UPDATE", [id, usuarioId]);
         if (producoes.length === 0) {
             await conn.rollback();
             return res.status(404).json({ error: "Registro não encontrado" });
@@ -170,7 +175,7 @@ router.put("/:id", async (req, res) => {
         const tanqueNovoId = Number(tanqueId);
 
         if (tanqueAntigoId && Number(tanqueAntigoId) !== tanqueNovoId) {
-            const [tanquesAntigos] = await conn.query("SELECT * FROM tanques WHERE id = ? AND usuario_id = ? FOR UPDATE", [tanqueAntigoId, usuarioId]);
+            const [tanquesAntigos] = await conn.query("SELECT * FROM tanques WHERE id_tanque = ? AND usuario_id = ? FOR UPDATE", [tanqueAntigoId, usuarioId]);
             const tanqueAntigo = tanquesAntigos[0];
             const volumeAntigo = Number(tanqueAntigo?.quantidade_atual || 0) - Number(producaoAntes.producao_diaria || 0);
             const erroAntigo = validarVolumeTanque(tanqueAntigo, volumeAntigo);
@@ -178,10 +183,10 @@ router.put("/:id", async (req, res) => {
                 await conn.rollback();
                 return res.status(400).json({ error: erroAntigo });
             }
-            await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id = ? AND usuario_id = ?", [volumeAntigo, tanqueAntigoId, usuarioId]);
+            await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id_tanque = ? AND usuario_id = ?", [volumeAntigo, tanqueAntigoId, usuarioId]);
         }
 
-        const [tanquesNovos] = await conn.query("SELECT * FROM tanques WHERE id = ? AND usuario_id = ? FOR UPDATE", [tanqueNovoId, usuarioId]);
+        const [tanquesNovos] = await conn.query("SELECT * FROM tanques WHERE id_tanque = ? AND usuario_id = ? FOR UPDATE", [tanqueNovoId, usuarioId]);
         const tanqueNovo = tanquesNovos[0];
         const baseVolumeNovo = Number(tanqueNovo?.quantidade_atual || 0);
         const novoVolume = Number(tanqueAntigoId) === tanqueNovoId
@@ -194,10 +199,10 @@ router.put("/:id", async (req, res) => {
         }
 
         await conn.query(
-            "UPDATE producao SET tanque_id=?, data=?, producao_diaria=?, qualidade=?, observacoes=? WHERE id=? AND usuario_id=?",
+            "UPDATE producao SET tanque_id=?, data=?, producao_diaria=?, qualidade=?, observacoes=? WHERE id_producao=? AND usuario_id=?",
             [tanqueNovoId, date, total, quality, notes, id, usuarioId]
         );
-        await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id = ? AND usuario_id = ?", [novoVolume, tanqueNovoId, usuarioId]);
+        await conn.query("UPDATE tanques SET quantidade_atual = ? WHERE id_tanque = ? AND usuario_id = ?", [novoVolume, tanqueNovoId, usuarioId]);
         await conn.commit();
         res.json({ message: "Produção atualizada!" });
     } catch (error) {

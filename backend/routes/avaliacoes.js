@@ -6,7 +6,7 @@ const { requireUsuario } = require("../utils/tenant");
 async function ensureAvaliacoesSchema() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS avaliacoes_app (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_avaliacao_app INT AUTO_INCREMENT PRIMARY KEY,
             usuario_id INT NOT NULL,
             usuario_nome VARCHAR(150) NOT NULL,
             estrelas TINYINT NOT NULL,
@@ -43,7 +43,7 @@ router.post("/", async (req, res) => {
             return res.status(400).json({ erro: "Informe a nota e a descrição da experiência." });
         }
 
-        const [usuarios] = await pool.query("SELECT nome FROM usuarios WHERE id = ? LIMIT 1", [usuarioId]);
+        const [usuarios] = await pool.query("SELECT nome FROM usuarios WHERE id_usuario = ? LIMIT 1", [usuarioId]);
         const usuarioNome = usuarios[0]?.nome || "Usuario";
 
         const [result] = await pool.query(
@@ -51,7 +51,11 @@ router.post("/", async (req, res) => {
             [usuarioId, usuarioNome, estrelas, descricao]
         );
 
-        res.status(201).json({ id: result.insertId, mensagem: "Avaliação registrada" });
+        res.status(201).json({
+            id: result.insertId,
+            id_avaliacao_app: result.insertId,
+            mensagem: "Avaliação registrada",
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ erro: "Erro ao registrar avaliação" });

@@ -6,7 +6,7 @@ const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
 async function ensureFinanciamentosSchema() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS financiamentos (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_financiamento INT AUTO_INCREMENT PRIMARY KEY,
             usuario_id INT NULL,
             nome VARCHAR(120) NOT NULL,
             credor VARCHAR(120) NULL,
@@ -86,7 +86,8 @@ router.get("/", async (req, res) => {
 
         const [rows] = await pool.query(`
             SELECT
-                id,
+                id_financiamento AS id,
+                id_financiamento,
                 nome,
                 credor,
                 valor_total AS valorTotal,
@@ -101,7 +102,7 @@ router.get("/", async (req, res) => {
                 DATE_FORMAT(data_quitacao, '%Y-%m-%d') AS dataQuitacao
             FROM financiamentos
             WHERE usuario_id = ?
-            ORDER BY criado_em DESC, id DESC
+            ORDER BY criado_em DESC, id_financiamento DESC
         `, [usuarioId]);
 
         res.json(rows);
@@ -136,7 +137,12 @@ router.post("/", async (req, res) => {
             ]
         );
 
-        res.status(201).json({ id: result.insertId, status: "ativo", ...financiamento });
+        res.status(201).json({
+            id: result.insertId,
+            id_financiamento: result.insertId,
+            status: "ativo",
+            ...financiamento,
+        });
     } catch (err) {
         console.error(err);
         res.status(err.status || 500).json({ erro: err.message || "Erro ao cadastrar financiamento" });
@@ -153,7 +159,7 @@ router.put("/:id", async (req, res) => {
         const financiamento = prepararFinanciamento(req.body);
 
         const [existentes] = await pool.query(
-            "SELECT id FROM financiamentos WHERE id = ? AND usuario_id = ?",
+            "SELECT id_financiamento AS id FROM financiamentos WHERE id_financiamento = ? AND usuario_id = ?",
             [id, usuarioId]
         );
 
@@ -171,7 +177,7 @@ router.put("/:id", async (req, res) => {
                  data_financiamento = ?,
                  data_vencimento_parcela = ?,
                  observacoes = ?
-             WHERE id = ? AND usuario_id = ?`,
+             WHERE id_financiamento = ? AND usuario_id = ?`,
             [
                 financiamento.nome,
                 financiamento.credor,
@@ -186,7 +192,7 @@ router.put("/:id", async (req, res) => {
             ]
         );
 
-        res.json({ id, ...financiamento });
+        res.json({ id, id_financiamento: id, ...financiamento });
     } catch (err) {
         console.error(err);
         res.status(err.status || 500).json({ erro: err.message || "Erro ao atualizar financiamento" });
@@ -209,7 +215,7 @@ router.patch("/:id/quitar", async (req, res) => {
         }
 
         const [financiamentos] = await pool.query(
-            "SELECT id, quantidade_parcelas FROM financiamentos WHERE id = ? AND usuario_id = ?",
+            "SELECT id_financiamento AS id, quantidade_parcelas FROM financiamentos WHERE id_financiamento = ? AND usuario_id = ?",
             [id, usuarioId]
         );
 
@@ -224,7 +230,7 @@ router.patch("/:id/quitar", async (req, res) => {
                  valor_quitacao = ?,
                  desconto_quitacao = ?,
                  data_quitacao = ?
-             WHERE id = ? AND usuario_id = ?`,
+             WHERE id_financiamento = ? AND usuario_id = ?`,
             [valorQuitacao, descontoQuitacao, dataQuitacao, id, usuarioId]
         );
 
@@ -250,9 +256,9 @@ router.patch("/:id/quitar-parcela", async (req, res) => {
         }
 
         const [financiamentos] = await pool.query(
-            `SELECT id, valor_total, quantidade_parcelas, parcelas_pagas, status
+            `SELECT id_financiamento AS id, valor_total, quantidade_parcelas, parcelas_pagas, status
              FROM financiamentos
-             WHERE id = ? AND usuario_id = ?`,
+             WHERE id_financiamento = ? AND usuario_id = ?`,
             [id, usuarioId]
         );
 
@@ -280,7 +286,7 @@ router.patch("/:id/quitar-parcela", async (req, res) => {
                  valor_quitacao = CASE WHEN ? THEN ? ELSE valor_quitacao END,
                  desconto_quitacao = CASE WHEN ? THEN 0 ELSE desconto_quitacao END,
                  data_quitacao = CASE WHEN ? THEN ? ELSE data_quitacao END
-             WHERE id = ? AND usuario_id = ?`,
+             WHERE id_financiamento = ? AND usuario_id = ?`,
             [
                 novasParcelasPagas,
                 quitado ? "quitado" : "ativo",

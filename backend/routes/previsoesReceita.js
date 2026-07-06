@@ -6,7 +6,7 @@ const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
 async function ensurePrevisoesReceitaSchema() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS previsoes_receita (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id_previsao_receita INT AUTO_INCREMENT PRIMARY KEY,
             usuario_id INT NULL,
             ano_mes CHAR(7) NOT NULL,
             valor_estimado DECIMAL(12,2) NOT NULL,
@@ -40,7 +40,8 @@ router.get("/", async (req, res) => {
 
         const [rows] = await pool.query(`
             SELECT
-                id,
+                id_previsao_receita AS id,
+                id_previsao_receita,
                 ano_mes AS anoMes,
                 valor_estimado AS valorEstimado,
                 valor_real AS valorReal,
@@ -68,7 +69,8 @@ router.get("/:anoMes", async (req, res) => {
 
         const [rows] = await pool.query(`
             SELECT
-                id,
+                id_previsao_receita AS id,
+                id_previsao_receita,
                 ano_mes AS anoMes,
                 valor_estimado AS valorEstimado,
                 valor_real AS valorReal,
@@ -125,7 +127,21 @@ router.post("/", async (req, res) => {
                 confirmado_em = CURRENT_TIMESTAMP
         `, [usuarioId, anoMes, valorEstimado, valorReal, ccs, cbt, observacoes]);
 
-        res.status(201).json({ anoMes, valorEstimado, valorReal, ccs, cbt, observacoes });
+        const [rows] = await pool.query(
+            "SELECT id_previsao_receita AS id FROM previsoes_receita WHERE usuario_id = ? AND ano_mes = ? LIMIT 1",
+            [usuarioId, anoMes]
+        );
+
+        res.status(201).json({
+            id: rows[0]?.id || null,
+            id_previsao_receita: rows[0]?.id || null,
+            anoMes,
+            valorEstimado,
+            valorReal,
+            ccs,
+            cbt,
+            observacoes,
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ erro: "Erro ao salvar previsao de receita" });
