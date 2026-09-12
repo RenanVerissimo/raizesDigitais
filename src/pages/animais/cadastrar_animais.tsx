@@ -62,10 +62,10 @@ export default function CadastrarAnimais() {
     }
 
     async function handleSubmit() {
-        if (!formData.nome.trim() || !formData.identificador.trim()) {
+/*         if (!formData.nome.trim() || !formData.identificador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
-        }
+        } */
 
         const dataNascIso = toIso(formData.dataNascimento);
         if (!dataNascIso) {
@@ -105,7 +105,7 @@ export default function CadastrarAnimais() {
         if (formData.diasDescarteLeite.trim()) {
             diasDescarteLeite = parseInt(formData.diasDescarteLeite, 10);
             if (isNaN(diasDescarteLeite) || diasDescarteLeite <= 0) {
-                Alert.alert("AtenÃ§Ã£o", "Se preenchido, o descarte de leite deve ser maior que 0 dias.");
+                Alert.alert("Atenção", "Se preenchido, o descarte de leite deve ser maior que 0 dias.");
                 return;
             }
         }
@@ -211,7 +211,7 @@ export default function CadastrarAnimais() {
                 <View style={{ padding: 20, gap: 16 }}>
 
                     {/* Nome */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="tag" size={16} color="#4a90e2" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
@@ -225,7 +225,7 @@ export default function CadastrarAnimais() {
                             placeholderTextColor="#9ca3af"
                             style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a" }}
                         />
-                    </View>
+                    </View> 
 
                     {/* Identificador */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>

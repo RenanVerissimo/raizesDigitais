@@ -70,7 +70,7 @@ export default function EditarAnimais() {
                 dataUltimoParto: toBr(animal.data_ultimo_parto),
                 diasDescarteLeite: animal.dias_descarte_leite != null ? String(animal.dias_descarte_leite) : "",
 
-                // 🔥 NOVOS
+                
                 prenha: Number(animal.prenha) === 1,
                 emCio: Number(animal.em_cio) === 1,
                 abortou: Number(animal.abortou) === 1,
@@ -94,10 +94,10 @@ export default function EditarAnimais() {
     async function handleSubmit() {
         if (salvando) return;
 
-        if (!formData.nome.trim() || !formData.identificador.trim()) {
+/*         if (!formData.nome.trim() || !formData.identificador.trim()) {
             Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
             return;
-        }
+        } */
 
         const dataNascIso = toIso(formData.dataNascimento);
         if (!dataNascIso) {
@@ -137,7 +137,7 @@ export default function EditarAnimais() {
         if (formData.diasDescarteLeite.trim()) {
             diasDescarteLeite = parseInt(formData.diasDescarteLeite, 10);
             if (isNaN(diasDescarteLeite) || diasDescarteLeite <= 0) {
-                Alert.alert("AtenÃ§Ã£o", "Se preenchido, o descarte de leite deve ser maior que 0 dias.");
+                Alert.alert("Atenção", "Se preenchido, o descarte de leite deve ser maior que 0 dias.");
                 return;
             }
         }
@@ -156,7 +156,7 @@ export default function EditarAnimais() {
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
                 dias_descarte_leite: diasDescarteLeite,
 
-                // 🔥 NOVOS
+                
                 prenha: formData.prenha,
                 em_cio: formData.emCio,
                 abortou: formData.abortou,
