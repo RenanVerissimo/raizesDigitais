@@ -6,6 +6,7 @@ function normalizarStatusAnimal(status) {
 }
 const pool = require("../database/conecction");
 const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
+const { AnimalValidationError, normalizarDadosAnimal } = require("../utils/animal");
 
 async function ensureAnimaisSchema() {
     await ensureUsuarioColumn("animais");
@@ -17,6 +18,13 @@ async function ensureAnimaisSchema() {
         { name: "status", sql: "ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ativo' AFTER identificador" },
         { name: "dias_descarte_leite", sql: "ADD COLUMN dias_descarte_leite INT NULL AFTER data_ultimo_parto" },
         { name: "data_reproducao", sql: "ADD COLUMN data_reproducao DATE NULL AFTER data_ultimo_parto" },
+        { name: "vaca_vazia", sql: "ADD COLUMN vaca_vazia TINYINT(1) NOT NULL DEFAULT 0 AFTER nao_emprenha" },
+        { name: "parasitas", sql: "ADD COLUMN parasitas TINYINT(1) NOT NULL DEFAULT 0" },
+        { name: "tipo_parasita", sql: "ADD COLUMN tipo_parasita ENUM('endoparasitas', 'ectoparasitas', 'ambos') NULL" },
+        { name: "data_identificacao", sql: "ADD COLUMN data_identificacao DATE NULL" },
+        { name: "observacoes_saude", sql: "ADD COLUMN observacoes_saude TEXT NULL" },
+        { name: "data_inicio_tratamento", sql: "ADD COLUMN data_inicio_tratamento DATE NULL" },
+        { name: "data_fim_tratamento", sql: "ADD COLUMN data_fim_tratamento DATE NULL" },
     ];
 
     const [columns] = await pool.query(`
@@ -31,6 +39,13 @@ async function ensureAnimaisSchema() {
     for (const column of requiredColumns) {
         if (!existingColumns.has(column.name)) {
             await pool.query(`ALTER TABLE animais ${column.sql}`);
+            if (column.name === "vaca_vazia") {
+                await pool.query(`
+                    UPDATE animais SET vaca_vazia = 1
+                    WHERE id_animal > 0 AND vaca_vazia = 0
+                      AND prenha = 0 AND em_cio = 0 AND abortou = 0 AND nao_emprenha = 0
+                `);
+            }
         }
     }
 }
@@ -38,10 +53,16 @@ async function ensureAnimaisSchema() {
 // LISTAR TODOS
 router.get("/", async (req, res) => {
     try {
-        await ensureAnimaisSchema();
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
-        const [rows] = await pool.query("SELECT animais.*, id_animal AS id FROM animais WHERE usuario_id = ? ORDER BY criado_em DESC", [usuarioId]);
+        await ensureAnimaisSchema();
+        const [rows] = await pool.query(`
+            SELECT animais.*, id_animal AS id,
+                DATE_FORMAT(data_identificacao, '%Y-%m-%d') AS data_identificacao,
+                DATE_FORMAT(data_inicio_tratamento, '%Y-%m-%d') AS data_inicio_tratamento,
+                DATE_FORMAT(data_fim_tratamento, '%Y-%m-%d') AS data_fim_tratamento
+            FROM animais WHERE usuario_id = ? ORDER BY criado_em DESC
+        `, [usuarioId]);
         res.json(rows);
     } catch (err) {
         console.error(err);
@@ -51,118 +72,20 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
     try {
-        await ensureAnimaisSchema();
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
-        const {
-            nome,
-            identificador,
-            status = "ativo",
-            producao_media_diaria,
-            raca,
-            peso,
-            descricao,
-            data_nascimento,
-            data_ultimo_parto,
-            dias_descarte_leite,
-
-            // 🔥 NOVOS CAMPOS
-            prenha,
-            em_cio,
-            abortou,
-            nao_emprenha,
-            mastite,
-            tratamento_mastite,
-            doente,
-            doenca,
-            descricao_doenca,
-            data_reproducao,
-            data_inseminacao,
-            data_confirmacao_prenhez
-        } = req.body;
-
-/*         if (!nome || !identificador) {
-            return res.status(400).json({ erro: "Nome e identificador são obrigatórios" });
-        } */
-
-        if (!data_nascimento) {
-            return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
-        }
-
-        // O campo legado tratamento_mastite armazena o tratamento de qualquer doença.
-        const tratamento = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
-        const temMastite = Boolean(mastite);
-        const temOutraDoenca = Boolean(doente) && doenca === "outra";
-        const doenteFinal = temMastite || temOutraDoenca;
-        const doencaFinal = temMastite ? "mastite" : temOutraDoenca ? "outra" : null;
-        const descricaoDoencaFinal = temOutraDoenca ? descricao_doenca || null : null;
-
+        const dados = normalizarDadosAnimal(req.body || {});
+        await ensureAnimaisSchema();
+        // As colunas vêm da lista fixa de campos normalizados, nunca do cliente.
+        const colunas = ["usuario_id", ...Object.keys(dados)];
+        const valores = [usuarioId, ...Object.values(dados)];
         const [result] = await pool.query(
-            `INSERT INTO animais 
-            (
-                usuario_id,
-                nome,
-                identificador,
-                status,
-                producao_media_diaria,
-                raca,
-                peso,
-                descricao,
-                data_nascimento,
-                data_ultimo_parto,
-                dias_descarte_leite,
-
-                prenha,
-                em_cio,
-                abortou,
-                nao_emprenha,
-                mastite,
-                tratamento_mastite,
-                doente,
-                doenca,
-                descricao_doenca,
-                data_reproducao,
-                data_inseminacao,
-                data_confirmacao_prenhez
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                usuarioId,
-                nome,
-                identificador,
-                normalizarStatusAnimal(status),
-                producao_media_diaria ?? null,
-                raca || null,
-                peso ?? null,
-                descricao || null,
-                data_nascimento,
-                data_ultimo_parto || null,
-                dias_descarte_leite === null || dias_descarte_leite === undefined || dias_descarte_leite === "" ? null : Number(dias_descarte_leite),
-
-                // 🔥 BOOLEAN → 0/1
-                prenha ? 1 : 0,
-                em_cio ? 1 : 0,
-                abortou ? 1 : 0,
-                nao_emprenha ? 1 : 0,
-                temMastite ? 1 : 0,
-                tratamento || null,
-                doenteFinal ? 1 : 0,
-                doencaFinal,
-                descricaoDoencaFinal,
-
-                data_reproducao || null,
-                data_inseminacao || null,
-                data_confirmacao_prenhez || null,
-            ]
+            `INSERT INTO animais (${colunas.join(", ")}) VALUES (${colunas.map(() => "?").join(", ")})`,
+            valores
         );
-
-        res.status(201).json({
-            id: result.insertId,
-            id_animal: result.insertId,
-            mensagem: "Animal cadastrado",
-        });
-
+        res.status(201).json({ id: result.insertId, id_animal: result.insertId, mensagem: "Animal cadastrado" });
     } catch (err) {
+        if (err instanceof AnimalValidationError) return res.status(400).json({ erro: err.message });
         console.error(err);
         res.status(500).json({ erro: "Erro ao cadastrar animal" });
     }
@@ -170,113 +93,37 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
     try {
-        await ensureAnimaisSchema();
         const usuarioId = await requireUsuario(req, res);
         if (!usuarioId) return;
-        const {
-            nome,
-            identificador,
-            status,
-            producao_media_diaria,
-            raca,
-            peso,
-            descricao,
-            data_nascimento,
-            data_ultimo_parto,
-
-            dias_descarte_leite,
-            // 🔥 NOVOS
-            prenha,
-            em_cio,
-            abortou,
-            nao_emprenha,
-            mastite,
-            tratamento_mastite,
-            doente,
-            doenca,
-            descricao_doenca,
-            data_reproducao,
-            data_inseminacao,
-            data_confirmacao_prenhez
-        } = req.body;
-
-        if (!data_nascimento) {
-            return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
-        }
-
-        const tratamento = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
-        const temMastite = Boolean(mastite);
-        const temOutraDoenca = Boolean(doente) && doenca === "outra";
-        const doenteFinal = temMastite || temOutraDoenca;
-        const doencaFinal = temMastite ? "mastite" : temOutraDoenca ? "outra" : null;
-        const descricaoDoencaFinal = temOutraDoenca ? descricao_doenca || null : null;
-
-        const [result] = await pool.query(
-            `UPDATE animais 
-            SET 
-                nome = ?,
-                identificador = ?,
-                status = ?,
-                producao_media_diaria = ?,
-                raca = ?,
-                peso = ?,
-                descricao = ?,
-                data_nascimento = ?,
-                data_ultimo_parto = ?,
-                dias_descarte_leite = ?,
-
-                prenha = ?,
-                em_cio = ?,
-                abortou = ?,
-                nao_emprenha = ?,
-                mastite = ?,
-                tratamento_mastite = ?,
-                doente = ?,
-                doenca = ?,
-                descricao_doenca = ?,
-                data_reproducao = ?,
-                data_inseminacao = ?,
-                data_confirmacao_prenhez = ?
-
-            WHERE id_animal = ? AND usuario_id = ?`,
-            [
-                nome,
-                identificador,
-                normalizarStatusAnimal(status),
-                producao_media_diaria ?? null,
-                raca || null,
-                peso ?? null,
-                descricao || null,
-                data_nascimento,
-                data_ultimo_parto || null,
-                dias_descarte_leite === null || dias_descarte_leite === undefined || dias_descarte_leite === "" ? null : Number(dias_descarte_leite),
-
-                // 🔥 BOOLEAN
-                prenha ? 1 : 0,
-                em_cio ? 1 : 0,
-                abortou ? 1 : 0,
-                nao_emprenha ? 1 : 0,
-                temMastite ? 1 : 0,
-                tratamento || null,
-                doenteFinal ? 1 : 0,
-                doencaFinal,
-                descricaoDoencaFinal,
-                data_reproducao || null,
-                data_inseminacao || null,
-                data_confirmacao_prenhez || null,
-
-                req.params.id,
-                usuarioId,
-            ]
+        await ensureAnimaisSchema();
+        const [animais] = await pool.query(
+            "SELECT * FROM animais WHERE id_animal = ? AND usuario_id = ? LIMIT 1",
+            [req.params.id, usuarioId]
         );
+        if (!animais.length) return res.status(404).json({ erro: "Animal não encontrado" });
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ erro: "Animal não encontrado" });
+        // Campos omitidos por clientes antigos ou pela solução de alertas são preservados.
+        const alteracoes = req.body || {};
+        const body = { ...animais[0], ...alteracoes };
+        const indicadoresLegados = ["prenha", "em_cio", "abortou", "nao_emprenha"];
+        if (alteracoes.status_reprodutivo !== undefined) {
+            for (const campo of ["vaca_vazia", ...indicadoresLegados]) body[campo] = alteracoes[campo];
+        } else if (alteracoes.vaca_vazia === undefined && indicadoresLegados.some((campo) => alteracoes[campo] !== undefined)) {
+            // A solução de alertas e clientes antigos ainda enviam só os quatro indicadores.
+            body.vaca_vazia = undefined;
         }
-
+        if (alteracoes.tratamento_mastite === undefined && alteracoes.tratamentoMastite !== undefined) {
+            body.tratamento_mastite = alteracoes.tratamentoMastite;
+        }
+        const dados = normalizarDadosAnimal(body);
+        const [result] = await pool.query(
+            `UPDATE animais SET ${Object.keys(dados).map((coluna) => coluna + " = ?").join(", ")} WHERE id_animal = ? AND usuario_id = ?`,
+            [...Object.values(dados), req.params.id, usuarioId]
+        );
+        if (!result.affectedRows) return res.status(404).json({ erro: "Animal não encontrado" });
         res.json({ mensagem: "Animal atualizado" });
-
     } catch (err) {
+        if (err instanceof AnimalValidationError) return res.status(400).json({ erro: err.message });
         console.error(err);
         res.status(500).json({ erro: "Erro ao atualizar animal" });
     }

@@ -9,6 +9,7 @@ export const opcoesStatusReprodutivo = [
 export type StatusReprodutivo = "" | typeof opcoesStatusReprodutivo[number]["key"];
 
 type IndicadoresReprodutivos = {
+    vaca_vazia?: boolean | number | null;
     prenha?: boolean | number | null;
     em_cio?: boolean | number | null;
     abortou?: boolean | number | null;
@@ -19,6 +20,7 @@ export function obterStatusReprodutivo(animal?: IndicadoresReprodutivos): Status
     if (!animal) return "";
 
     const indicadores = [
+        { key: "vacaVazia", valor: animal.vaca_vazia },
         { key: "prenha", valor: animal.prenha },
         { key: "emCio", valor: animal.em_cio },
         { key: "abortou", valor: animal.abortou },
@@ -29,8 +31,9 @@ export function obterStatusReprodutivo(animal?: IndicadoresReprodutivos): Status
     // Registros antigos com vários indicadores precisam de uma nova escolha.
     if (selecionados.length > 1) return "";
     if (selecionados.length === 1) return selecionados[0].key;
-    if (indicadores.some(({ valor }) => valor == null)) return "";
+    if (animal.vaca_vazia != null) return "";
+    if (indicadores.slice(1).some(({ valor }) => valor == null)) return "";
 
-    // No formato atual da API, Vaca Vazia usa os quatro indicadores desmarcados.
+    // Compatibilidade com registros anteriores à coluna vaca_vazia.
     return "vacaVazia";
 }

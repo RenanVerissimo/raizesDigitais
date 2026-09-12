@@ -50,6 +50,7 @@ export interface Animal {
     dias_descarte_leite?: number | null;
 
     // Novos campos
+    vaca_vazia?: boolean | number | null;
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;
@@ -57,8 +58,14 @@ export interface Animal {
     mastite: boolean;
     tratamento_mastite?: string | null;
     doente?: boolean | number | null;
-    doenca?: "mastite" | "outra" | null;
+    doenca?: "mastite" | "parasitas" | "outra" | null;
     descricao_doenca?: string | null;
+    parasitas?: boolean | number | null;
+    tipo_parasita?: "endoparasitas" | "ectoparasitas" | "ambos" | null;
+    data_identificacao?: string | null;
+    observacoes_saude?: string | null;
+    data_inicio_tratamento?: string | null;
+    data_fim_tratamento?: string | null;
 
     data_reproducao?: string | null;
     data_base_gestacao?: string | null;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import DateInput from "../../components/DateInput";
-import AnimalHealthSection, { type TipoParasita } from "../../components/AnimalHealthSection";
+import AnimalHealthSection from "../../components/AnimalHealthSection";
 import {
     ActivityIndicator,
     View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -14,6 +14,7 @@ import { Animal } from "../../interfaces/interfaces";
 import { atualizarAnimal } from "../../services/api";
 import Toast from "react-native-toast-message";
 import { toBr, toIso } from "../../utils/formatters";
+import { carregarSaudeAnimal, prepararSaudeAnimal } from "../../utils/saudeAnimal";
 import { obterStatusReprodutivo, opcoesStatusReprodutivo } from "../../utils/statusReprodutivo";
 
 export default function EditarAnimais() {
@@ -39,17 +40,7 @@ export default function EditarAnimais() {
 
         // 🔥 NOVOS
         statusReprodutivo: obterStatusReprodutivo(animal),
-        mastite: Number(animal?.mastite) === 1,
-        tratamento: animal?.tratamento_mastite ?? "",
-        // Datas locais, ainda sem integração com a API.
-        dataInicioTratamento: "",
-        dataFimTratamento: "",
-        parasitas: false,
-        tipoParasita: "" as TipoParasita,
-        dataIdentificacao: "",
-        observacoesSaude: "",
-        outraDoenca: Number(animal?.doente) === 1 && animal?.doenca === "outra",
-        descricaoDoenca: animal?.descricao_doenca ?? "",
+        ...carregarSaudeAnimal(animal),
         dataReproducao: toBr(animal?.data_reproducao || animal?.data_base_gestacao || animal?.data_cobertura),
         dataInseminacao: toBr(animal?.data_inseminacao || animal?.data_reproducao || animal?.data_base_gestacao || animal?.data_cobertura),
         dataConfirmacaoPrenhez: toBr(animal?.data_confirmacao_prenhez),
@@ -71,16 +62,7 @@ export default function EditarAnimais() {
 
                 
                 statusReprodutivo: obterStatusReprodutivo(animal),
-                mastite: Number(animal.mastite) === 1,
-                tratamento: animal.tratamento_mastite ?? "",
-                dataInicioTratamento: "",
-                dataFimTratamento: "",
-                parasitas: false,
-                tipoParasita: "" as TipoParasita,
-                dataIdentificacao: "",
-                observacoesSaude: "",
-                outraDoenca: Number(animal.doente) === 1 && animal.doenca === "outra",
-                descricaoDoenca: animal.descricao_doenca ?? "",
+                ...carregarSaudeAnimal(animal),
                 dataReproducao: toBr(animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura),
                 dataInseminacao: toBr(animal.data_inseminacao || animal.data_reproducao || animal.data_base_gestacao || animal.data_cobertura),
                 dataConfirmacaoPrenhez: toBr(animal.data_confirmacao_prenhez),
@@ -130,8 +112,11 @@ export default function EditarAnimais() {
             }
         }
 
-        if (formData.outraDoenca && !formData.descricaoDoenca.trim()) {
-            Alert.alert("Atenção", "Informe qual doença ou condição de saúde foi identificada.");
+        let dadosSaude: ReturnType<typeof prepararSaudeAnimal>;
+        try {
+            dadosSaude = prepararSaudeAnimal(formData);
+        } catch (err) {
+            Alert.alert("Atenção", err instanceof Error ? err.message : "Confira os dados de saúde.");
             return;
         }
 
@@ -159,15 +144,13 @@ export default function EditarAnimais() {
                 dias_descarte_leite: diasDescarteLeite,
 
                 
+                status_reprodutivo: formData.statusReprodutivo,
+                vaca_vazia: formData.statusReprodutivo === "vacaVazia",
                 prenha: formData.statusReprodutivo === "prenha",
                 em_cio: formData.statusReprodutivo === "emCio",
                 abortou: formData.statusReprodutivo === "abortou",
                 nao_emprenha: formData.statusReprodutivo === "naoEmprenha",
-                mastite: formData.mastite,
-                tratamento_mastite: formData.tratamento.trim() || null,
-                doente: formData.mastite || formData.outraDoenca,
-                doenca: formData.mastite ? "mastite" : formData.outraDoenca ? "outra" : null,
-                descricao_doenca: formData.outraDoenca ? formData.descricaoDoenca.trim() : null,
+                ...dadosSaude,
                 data_reproducao: toIso(formData.dataInseminacao || formData.dataReproducao),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.statusReprodutivo === "prenha" ? toIso(formData.dataConfirmacaoPrenhez) : null,
@@ -186,7 +169,7 @@ export default function EditarAnimais() {
             Toast.show({
                 type: "error",
                 text1: "Erro ao salvar",
-                text2: "A conexão demorou demais ou caiu. Tente novamente em alguns instantes.",
+                text2: err instanceof Error ? err.message : "Não foi possível salvar as alterações.",
                 position: "top",
                 visibilityTime: 3000,
             });

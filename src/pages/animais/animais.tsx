@@ -251,13 +251,16 @@ export default function Animais() {
                                                     <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
                                                         Descrição: {animal.descricao || "—"}
                                                     </Text>
-                                                    {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || avisoDescarte || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
+                                                    {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || Number(animal.parasitas) === 1 || avisoDescarte || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
                                                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                                                             {Number(animal.prenha) === 1 && (
                                                                 <TagAnimal label="Gestante" backgroundColor="#dcfce7" color="#15803d" />
                                                             )}
                                                             {Number(animal.mastite) === 1 && (
                                                                 <TagAnimal label="Mastite" backgroundColor="#fee2e2" color="#dc2626" />
+                                                            )}
+                                                            {Number(animal.parasitas) === 1 && (
+                                                                <TagAnimal label="Parasitas" backgroundColor="#ede9fe" color="#6d28d9" />
                                                             )}
                                                             {avisoDescarte && (
                                                                 <TagAnimal label="Leite em descarte" backgroundColor="#ffedd5" color="#c2410c" />

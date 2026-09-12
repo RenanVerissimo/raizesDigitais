@@ -1,4 +1,5 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { StatusReprodutivo } from "../utils/statusReprodutivo";
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
 /* import { API_URL } from "../config";
 
@@ -254,7 +255,8 @@ export async function criarAnimal(dados: {
     data_ultimo_parto?: string | null;
     dias_descarte_leite?: number | null;
 
-    // 🔥 NOVOS CAMPOS
+    status_reprodutivo?: Exclude<StatusReprodutivo, "">;
+    vaca_vazia?: boolean;
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;
@@ -262,8 +264,14 @@ export async function criarAnimal(dados: {
     mastite: boolean;
     tratamento_mastite?: string | null;
     doente?: boolean;
-    doenca?: "mastite" | "outra" | null;
+    doenca?: "mastite" | "parasitas" | "outra" | null;
     descricao_doenca?: string | null;
+    parasitas?: boolean;
+    tipo_parasita?: "endoparasitas" | "ectoparasitas" | "ambos" | null;
+    data_identificacao?: string | null;
+    observacoes_saude?: string | null;
+    data_inicio_tratamento?: string | null;
+    data_fim_tratamento?: string | null;
 
     data_reproducao?: string | null;
     data_base_gestacao?: string | null;
@@ -279,7 +287,8 @@ export async function criarAnimal(dados: {
         });
 
         if (!response.ok) {
-            throw new Error(`Erro ao cadastrar (status ${response.status})`);
+            const erro = await response.json().catch(() => ({}));
+            throw new Error(erro.erro || `Erro ao cadastrar (status ${response.status})`);
         }
 
         return await response.json();
@@ -304,7 +313,8 @@ export async function atualizarAnimal(id: number, dados: {
     data_ultimo_parto?: string | null;
     dias_descarte_leite?: number | null;
 
-    // 🔥 NOVOS CAMPOS
+    status_reprodutivo?: Exclude<StatusReprodutivo, "">;
+    vaca_vazia?: boolean;
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;
@@ -312,8 +322,14 @@ export async function atualizarAnimal(id: number, dados: {
     mastite: boolean;
     tratamento_mastite?: string | null;
     doente?: boolean;
-    doenca?: "mastite" | "outra" | null;
+    doenca?: "mastite" | "parasitas" | "outra" | null;
     descricao_doenca?: string | null;
+    parasitas?: boolean;
+    tipo_parasita?: "endoparasitas" | "ectoparasitas" | "ambos" | null;
+    data_identificacao?: string | null;
+    observacoes_saude?: string | null;
+    data_inicio_tratamento?: string | null;
+    data_fim_tratamento?: string | null;
 
     data_reproducao?: string | null;
     data_base_gestacao?: string | null;
@@ -329,7 +345,8 @@ export async function atualizarAnimal(id: number, dados: {
         });
 
         if (!response.ok) {
-            throw new Error(`Erro ao atualizar (status ${response.status})`);
+            const erro = await response.json().catch(() => ({}));
+            throw new Error(erro.erro || `Erro ao atualizar (status ${response.status})`);
         }
 
         return await response.json();

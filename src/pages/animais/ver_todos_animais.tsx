@@ -10,6 +10,7 @@ import ConfirmDeleteModal from "./ConfirmationModal";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
 import { calcularAvisoDescarteLeite } from "../../utils/alerts";
+import { obterStatusReprodutivo, opcoesStatusReprodutivo } from "../../utils/statusReprodutivo";
 import Toast from "react-native-toast-message";
 
 type FiltroStatusAnimal = "ativos" | "inativos" | "todos";
@@ -478,13 +479,16 @@ function CardAnimal({
                         <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
                             Descrição: {animal.descricao || "—"}
                         </Text>
-                        {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || avisoDescarte || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
+                        {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || Number(animal.parasitas) === 1 || avisoDescarte || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
                             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
                                 {Number(animal.prenha) === 1 && (
                                     <TagAnimal label="Gestante" backgroundColor="#dcfce7" color="#15803d" />
                                 )}
                                 {Number(animal.mastite) === 1 && (
                                     <TagAnimal label="Mastite" backgroundColor="#fee2e2" color="#dc2626" />
+                                )}
+                                {Number(animal.parasitas) === 1 && (
+                                    <TagAnimal label="Parasitas" backgroundColor="#ede9fe" color="#6d28d9" />
                                 )}
                                 {avisoDescarte && (
                                     <TagAnimal label="Leite em descarte" backgroundColor="#ffedd5" color="#c2410c" />
@@ -671,10 +675,7 @@ function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; a
                         </SecaoDetalhes>
 
                         <SecaoDetalhes titulo="Reprodução">
-                            <LinhaDetalhe label="Prenha" valor={boolTexto(animal.prenha)} />
-                            <LinhaDetalhe label="Em cio" valor={boolTexto(animal.em_cio)} />
-                            <LinhaDetalhe label="Abortou" valor={boolTexto(animal.abortou)} />
-                            <LinhaDetalhe label="Não emprenha" valor={boolTexto(animal.nao_emprenha)} />
+                            <LinhaDetalhe label="Status reprodutivo" valor={opcoesStatusReprodutivo.find((opcao) => opcao.key === obterStatusReprodutivo(animal))?.label || "Não informado"} />
                             <LinhaDetalhe label="Reproducao" valor={animal.data_reproducao || animal.data_base_gestacao ? formatarData2(animal.data_reproducao || animal.data_base_gestacao) : "—"} />
                             <LinhaDetalhe label="Inseminação" valor={animal.data_inseminacao ? formatarData2(animal.data_inseminacao) : "—"} />
                             <LinhaDetalhe label="Confirmação prenhez" valor={animal.data_confirmacao_prenhez ? formatarData2(animal.data_confirmacao_prenhez) : "—"} />
@@ -685,7 +686,13 @@ function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; a
                             <LinhaDetalhe label="Doente" valor={boolTexto(animal.doente)} />
                             <LinhaDetalhe label="Doença" valor={detalheValor(animal.doenca)} />
                             <LinhaDetalhe label="Descrição doença" valor={detalheValor(animal.descricao_doenca)} />
+                            <LinhaDetalhe label="Parasitas" valor={boolTexto(animal.parasitas)} />
+                            <LinhaDetalhe label="Tipo de parasita" valor={animal.tipo_parasita === "ambos" ? "Endoparasitas e ectoparasitas" : animal.tipo_parasita === "endoparasitas" ? "Endoparasitas" : animal.tipo_parasita === "ectoparasitas" ? "Ectoparasitas" : "—"} />
+                            <LinhaDetalhe label="Data de identificação" valor={animal.data_identificacao ? formatarData2(animal.data_identificacao) : "—"} />
+                            <LinhaDetalhe label="Observações de saúde" valor={detalheValor(animal.observacoes_saude)} />
                             <LinhaDetalhe label="Tipo de tratamento" valor={detalheValor(animal.tratamento_mastite)} />
+                            <LinhaDetalhe label="Início do tratamento" valor={animal.data_inicio_tratamento ? formatarData2(animal.data_inicio_tratamento) : "—"} />
+                            <LinhaDetalhe label="Fim do tratamento" valor={animal.data_fim_tratamento ? formatarData2(animal.data_fim_tratamento) : "—"} />
                         </SecaoDetalhes>
 
                         <View style={{ backgroundColor: "#f9fafb", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>

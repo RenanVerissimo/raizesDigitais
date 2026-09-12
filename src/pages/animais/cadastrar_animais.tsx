@@ -17,8 +17,9 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { criarAnimal, listarAnimais } from "../../services/api";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
-import AnimalHealthSection, { type TipoParasita } from "../../components/AnimalHealthSection";
+import AnimalHealthSection from "../../components/AnimalHealthSection";
 import { toIso } from "../../utils/formatters";
+import { carregarSaudeAnimal, prepararSaudeAnimal } from "../../utils/saudeAnimal";
 import { normalizarId } from "../../utils/normalizarId";
 import { opcoesStatusReprodutivo, type StatusReprodutivo } from "../../utils/statusReprodutivo";
 
@@ -39,17 +40,7 @@ export default function CadastrarAnimais() {
         diasDescarteLeite: "",
         // Reprodutivo
         statusReprodutivo: "" as StatusReprodutivo,
-        mastite: false,
-        tratamento: "",
-        // Datas locais, ainda sem integração com a API.
-        dataInicioTratamento: "",
-        dataFimTratamento: "",
-        parasitas: false,
-        tipoParasita: "" as TipoParasita,
-        dataIdentificacao: "",
-        observacoesSaude: "",
-        outraDoenca: false,
-        descricaoDoenca: "",
+        ...carregarSaudeAnimal(),
         dataReproducao: "",
         dataInseminacao: "",
         dataConfirmacaoPrenhez: "",
@@ -102,8 +93,11 @@ export default function CadastrarAnimais() {
             }
         }
 
-        if (formData.outraDoenca && !formData.descricaoDoenca.trim()) {
-            Alert.alert("Atenção", "Informe qual doença ou condição de saúde foi identificada.");
+        let dadosSaude: ReturnType<typeof prepararSaudeAnimal>;
+        try {
+            dadosSaude = prepararSaudeAnimal(formData);
+        } catch (err) {
+            Alert.alert("Atenção", err instanceof Error ? err.message : "Confira os dados de saúde.");
             return;
         }
 
@@ -141,15 +135,13 @@ export default function CadastrarAnimais() {
                 data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
                 dias_descarte_leite: diasDescarteLeite,
+                status_reprodutivo: formData.statusReprodutivo,
+                vaca_vazia: formData.statusReprodutivo === "vacaVazia",
                 prenha: formData.statusReprodutivo === "prenha",
                 em_cio: formData.statusReprodutivo === "emCio",
                 abortou: formData.statusReprodutivo === "abortou",
                 nao_emprenha: formData.statusReprodutivo === "naoEmprenha",
-                mastite: formData.mastite,
-                tratamento_mastite: formData.tratamento.trim() || null,
-                doente: formData.mastite || formData.outraDoenca,
-                doenca: formData.mastite ? "mastite" : formData.outraDoenca ? "outra" : null,
-                descricao_doenca: formData.outraDoenca ? formData.descricaoDoenca.trim() : null,
+                ...dadosSaude,
                 data_reproducao: toIso(formData.dataInseminacao || formData.dataReproducao),
                 data_inseminacao: toIso(formData.dataInseminacao),
                 data_confirmacao_prenhez: formData.statusReprodutivo === "prenha" ? toIso(formData.dataConfirmacaoPrenhez) : null,
@@ -166,7 +158,7 @@ export default function CadastrarAnimais() {
             setTimeout(() => navigation.goBack(), 500);
         } catch (err) {
             console.error(err);
-            Toast.show({ type: "error", text1: "Erro", text2: "Não foi possível salvar." });
+            Toast.show({ type: "error", text1: "Erro", text2: err instanceof Error ? err.message : "Não foi possível salvar." });
         }
     }
 

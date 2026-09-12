@@ -175,6 +175,7 @@ export default function AnimalHealthSection({ value, onChange, disabled = false 
                     <View style={styles.field}>
                         <FieldTitle icon="activity" title="Qual doença ou condição?" />
                         <TextInput accessibilityLabel="Qual doença ou condição?" value={value.descricaoDoenca}
+                            maxLength={255}
                             onChangeText={(descricaoDoenca) => atualizar({ descricaoDoenca })}
                             editable={!disabled} placeholder="Ex.: febre, casco inflamado, ferimento, tristeza..."
                             placeholderTextColor="#94a3b8" multiline numberOfLines={3}
@@ -207,6 +208,7 @@ export default function AnimalHealthSection({ value, onChange, disabled = false 
                     <View style={styles.field}>
                         <FieldTitle icon="clipboard" title="Tipo de tratamento" optional />
                         <TextInput accessibilityLabel="Tipo de tratamento" value={value.tratamento}
+                            maxLength={255}
                             onChangeText={(tratamento) => atualizar({ tratamento })}
                             editable={!disabled} placeholder="Descreva os cuidados, medicamentos e acompanhamento realizados..."
                             placeholderTextColor="#94a3b8" multiline numberOfLines={3}
