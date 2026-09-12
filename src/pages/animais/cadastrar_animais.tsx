@@ -17,8 +17,10 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { criarAnimal, listarAnimais } from "../../services/api";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
+import AnimalHealthSection, { type TipoParasita } from "../../components/AnimalHealthSection";
 import { toIso } from "../../utils/formatters";
 import { normalizarId } from "../../utils/normalizarId";
+import { opcoesStatusReprodutivo, type StatusReprodutivo } from "../../utils/statusReprodutivo";
 
 export default function CadastrarAnimais() {
     const insets = useSafeAreaInsets();
@@ -36,12 +38,16 @@ export default function CadastrarAnimais() {
         dataUltimoParto: "",
         diasDescarteLeite: "",
         // Reprodutivo
-        prenha: false,
-        emCio: false,
-        abortou: false,
-        naoEmprenha: false,
+        statusReprodutivo: "" as StatusReprodutivo,
         mastite: false,
-        tratamentoMastite: "",
+        tratamento: "",
+        // Datas locais, ainda sem integração com a API.
+        dataInicioTratamento: "",
+        dataFimTratamento: "",
+        parasitas: false,
+        tipoParasita: "" as TipoParasita,
+        dataIdentificacao: "",
+        observacoesSaude: "",
         outraDoenca: false,
         descricaoDoenca: "",
         dataReproducao: "",
@@ -62,10 +68,15 @@ export default function CadastrarAnimais() {
     }
 
     async function handleSubmit() {
-/*         if (!formData.nome.trim() || !formData.identificador.trim()) {
-            Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
+        if (!formData.statusReprodutivo) {
+            Alert.alert("Atenção", "Selecione o status reprodutivo do animal.");
             return;
-        } */
+        }
+
+        /*         if (!formData.nome.trim() || !formData.identificador.trim()) {
+                    Alert.alert("Atenção", "Preencha os campos obrigatórios marcados com *");
+                    return;
+                } */
 
         const dataNascIso = toIso(formData.dataNascimento);
         if (!dataNascIso) {
@@ -89,11 +100,6 @@ export default function CadastrarAnimais() {
                 Alert.alert("Atenção", "Se preenchido, o peso deve ser maior que 0.");
                 return;
             }
-        }
-
-        if (formData.mastite && !formData.tratamentoMastite.trim()) {
-            Alert.alert("Atenção", "Informe qual tratamento foi realizado para mastite.");
-            return;
         }
 
         if (formData.outraDoenca && !formData.descricaoDoenca.trim()) {
@@ -135,18 +141,18 @@ export default function CadastrarAnimais() {
                 data_nascimento: dataNascIso,
                 data_ultimo_parto: toIso(formData.dataUltimoParto),
                 dias_descarte_leite: diasDescarteLeite,
-                prenha: formData.prenha,
-                em_cio: formData.emCio,
-                abortou: formData.abortou,
-                nao_emprenha: formData.naoEmprenha,
+                prenha: formData.statusReprodutivo === "prenha",
+                em_cio: formData.statusReprodutivo === "emCio",
+                abortou: formData.statusReprodutivo === "abortou",
+                nao_emprenha: formData.statusReprodutivo === "naoEmprenha",
                 mastite: formData.mastite,
-                tratamento_mastite: formData.mastite ? formData.tratamentoMastite.trim() : null,
+                tratamento_mastite: formData.tratamento.trim() || null,
                 doente: formData.mastite || formData.outraDoenca,
                 doenca: formData.mastite ? "mastite" : formData.outraDoenca ? "outra" : null,
                 descricao_doenca: formData.outraDoenca ? formData.descricaoDoenca.trim() : null,
                 data_reproducao: toIso(formData.dataInseminacao || formData.dataReproducao),
                 data_inseminacao: toIso(formData.dataInseminacao),
-                data_confirmacao_prenhez: formData.prenha ? toIso(formData.dataConfirmacaoPrenhez) : null,
+                data_confirmacao_prenhez: formData.statusReprodutivo === "prenha" ? toIso(formData.dataConfirmacaoPrenhez) : null,
             });
 
             Toast.show({
@@ -163,13 +169,6 @@ export default function CadastrarAnimais() {
             Toast.show({ type: "error", text1: "Erro", text2: "Não foi possível salvar." });
         }
     }
-
-    const statusReprodutivo = [
-        { key: "prenha", label: "Prenha", cor: "#22c55e", icon: "check-circle" },
-        { key: "emCio", label: "Em Cio", cor: "#f59e0b", icon: "alert-circle" },
-        { key: "abortou", label: "Abortou", cor: "#ef4444", icon: "x-circle" },
-        { key: "naoEmprenha", label: "Não Emprenha", cor: "#6b7280", icon: "slash" },
-    ] as const;
 
     return (
         <KeyboardAvoidingView
@@ -211,7 +210,7 @@ export default function CadastrarAnimais() {
                 <View style={{ padding: 20, gap: 16 }}>
 
                     {/* Nome */}
-{/*                      <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    {/*                      <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                             <Feather name="tag" size={16} color="#4a90e2" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
@@ -350,47 +349,36 @@ export default function CadastrarAnimais() {
                         ) : null}
                     </View>
 
-                    {/* Descrição */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="file-text" size={16} color="#6b7280" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Descrição <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
-                            </Text>
-                        </View>
-                        <TextInput
-                            value={formData.descricao}
-                            onChangeText={(v) => setFormData({ ...formData, descricao: v })}
-                            placeholder="Ex: Animal dócil, vacinada em janeiro..."
-                            placeholderTextColor="#9ca3af"
-                            multiline
-                            numberOfLines={4}
-                            textAlignVertical="top"
-                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 90 }}
-                        />
-                    </View>
+                    <AnimalHealthSection
+                        value={formData}
+                        onChange={(changes) => setFormData((current) => ({ ...current, ...changes }))}
+                    />
+
+
 
                     {/* Status Reprodutivo */}
-                    <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
+                    <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bfdbfe" }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
                             <MaterialCommunityIcons name="cow" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Status Reprodutivo <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#1d4ed8" }}>
+                                Status Reprodutivo <Text style={{ color: "#ef4444" }}>*</Text>
                             </Text>
                         </View>
-                        <View style={{ gap: 10 }}>
-                            {statusReprodutivo.map((item) => {
-                                const ativo = formData[item.key] as boolean;
+                        <View style={{ gap: 10 }} accessibilityRole="radiogroup" accessibilityLabel="Status reprodutivo obrigatório">
+                            {opcoesStatusReprodutivo.map((item) => {
+                                const ativo = formData.statusReprodutivo === item.key;
                                 return (
                                     <TouchableOpacity
                                         key={item.key}
+                                        accessibilityRole="radio"
+                                        accessibilityLabel={item.label}
+                                        accessibilityState={{ checked: ativo }}
                                         onPress={() => {
-                                            // Se desativar prenha, limpa a data de confirmação.
-                                            if (item.key === "prenha" && ativo) {
-                                                setFormData({ ...formData, prenha: false, dataConfirmacaoPrenhez: "" });
-                                            } else {
-                                                setFormData({ ...formData, [item.key]: !ativo });
-                                            }
+                                            setFormData((current) => ({
+                                                ...current,
+                                                statusReprodutivo: item.key,
+                                                dataConfirmacaoPrenhez: item.key === "prenha" ? current.dataConfirmacaoPrenhez : "",
+                                            }));
                                         }}
                                         activeOpacity={0.7}
                                         style={{
@@ -421,24 +409,24 @@ export default function CadastrarAnimais() {
                                 );
                             })}
                         </View>
-                    </View>
 
-                    {/* Data de Inseminação */}
-                    <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bfdbfe" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                            <Feather name="calendar" size={16} color="#4a90e2" />
-                            <Text style={{ fontSize: 14, fontWeight: "500", color: "#1d4ed8" }}>
-                                Data de Inseminação <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
-                            </Text>
+                        {/* Data de Inseminação */}
+                        <View style={{ gap: 12, marginTop: 18, paddingTop: 16, borderTopWidth: 1, borderTopColor: "#bfdbfe" }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <Feather name="calendar" size={16} color="#4a90e2" />
+                                <Text style={{ flex: 1, fontSize: 14, fontWeight: "500", color: "#1d4ed8" }}>
+                                    Data de Inseminação <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                </Text>
+                            </View>
+                            <DateInput
+                                value={formData.dataInseminacao}
+                                onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataReproducao: v })}
+                            />
                         </View>
-                        <DateInput
-                            value={formData.dataInseminacao}
-                            onChange={(v) => setFormData({ ...formData, dataInseminacao: v, dataReproducao: v })}
-                        />
                     </View>
 
                     {/* Data de confirmação — só aparece se prenha */}
-                    {formData.prenha && (
+                    {formData.statusReprodutivo === "prenha" && (
                         <View style={{ backgroundColor: "#f0fdf4", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bbf7d0" }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
                                 <Feather name="calendar" size={16} color="#22c55e" />
@@ -459,117 +447,24 @@ export default function CadastrarAnimais() {
                         </View>
                     )}
 
-                    {/* Saúde */}
+                    {/* Descrição */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                            <Feather name="heart" size={16} color="#dc2626" />
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                            <Feather name="file-text" size={16} color="#6b7280" />
                             <Text style={{ fontSize: 14, fontWeight: "500", color: "#0a0a0a" }}>
-                                Saúde <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
+                                Descrição do Animal <Text style={{ color: "#9ca3af", fontWeight: "400" }}>(Opcional)</Text>
                             </Text>
                         </View>
-                        <View style={{ gap: 12 }}>
-                            <TouchableOpacity
-                                onPress={() => setFormData({
-                                    ...formData,
-                                    mastite: !formData.mastite,
-                                    tratamentoMastite: formData.mastite ? "" : formData.tratamentoMastite,
-                                })}
-                                activeOpacity={0.7}
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    padding: 12,
-                                    backgroundColor: formData.mastite ? "#fee2e2" : "#f9fafb",
-                                    borderWidth: 1,
-                                    borderColor: formData.mastite ? "#dc2626" : "#e5e7eb",
-                                    borderRadius: 10,
-                                }}
-                            >
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                    <Feather name="alert-triangle" size={16} color={formData.mastite ? "#dc2626" : "#9ca3af"} />
-                                    <Text style={{ fontSize: 14, fontWeight: "500", color: formData.mastite ? "#dc2626" : "#6b7280" }}>
-                                        Controle de mastite
-                                    </Text>
-                                </View>
-                                <View style={{
-                                    width: 22, height: 22, borderRadius: 11,
-                                    backgroundColor: formData.mastite ? "#dc2626" : "#e5e7eb",
-                                    alignItems: "center", justifyContent: "center",
-                                }}>
-                                    {formData.mastite ? <Feather name="check" size={13} color="#fff" /> : null}
-                                </View>
-                            </TouchableOpacity>
-
-                            {formData.mastite && (
-                                <View style={{ gap: 8 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: "500", color: "#374151" }}>
-                                        Qual tratamento foi realizado?
-                                    </Text>
-                                    <TextInput
-                                        value={formData.tratamentoMastite}
-                                        onChangeText={(v) => setFormData({ ...formData, tratamentoMastite: v })}
-                                        placeholder="Ex: antibiótico, ordenha separada, acompanhamento veterinário..."
-                                        placeholderTextColor="#9ca3af"
-                                        multiline
-                                        numberOfLines={3}
-                                        textAlignVertical="top"
-                                        style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 82 }}
-                                    />
-                                </View>
-                            )}
-
-                            <TouchableOpacity
-                                onPress={() => setFormData({
-                                    ...formData,
-                                    outraDoenca: !formData.outraDoenca,
-                                    descricaoDoenca: formData.outraDoenca ? "" : formData.descricaoDoenca,
-                                })}
-                                activeOpacity={0.7}
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    padding: 12,
-                                    backgroundColor: formData.outraDoenca ? "#dbeafe" : "#f9fafb",
-                                    borderWidth: 1,
-                                    borderColor: formData.outraDoenca ? "#2563eb" : "#e5e7eb",
-                                    borderRadius: 10,
-                                }}
-                            >
-                                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                    <Feather name="activity" size={16} color={formData.outraDoenca ? "#2563eb" : "#9ca3af"} />
-                                    <Text style={{ fontSize: 14, fontWeight: "500", color: formData.outraDoenca ? "#2563eb" : "#6b7280" }}>
-                                        Outra doença ou condição
-                                    </Text>
-                                </View>
-                                <View style={{
-                                    width: 22, height: 22, borderRadius: 11,
-                                    backgroundColor: formData.outraDoenca ? "#2563eb" : "#e5e7eb",
-                                    alignItems: "center", justifyContent: "center",
-                                }}>
-                                    {formData.outraDoenca ? <Feather name="check" size={13} color="#fff" /> : null}
-                                </View>
-                            </TouchableOpacity>
-
-                            {formData.outraDoenca && (
-                                <View style={{ gap: 8 }}>
-                                    <Text style={{ fontSize: 13, fontWeight: "500", color: "#374151" }}>
-                                        Qual doença ou condição foi identificada?
-                                    </Text>
-                                    <TextInput
-                                        value={formData.descricaoDoenca}
-                                        onChangeText={(v) => setFormData({ ...formData, descricaoDoenca: v })}
-                                        placeholder="Ex: casco inflamado, febre, ferimento, tristeza..."
-                                        placeholderTextColor="#9ca3af"
-                                        multiline
-                                        numberOfLines={3}
-                                        textAlignVertical="top"
-                                        style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 82 }}
-                                    />
-                                </View>
-                            )}
-                        </View>
+                        <TextInput
+                            value={formData.descricao}
+                            onChangeText={(v) => setFormData({ ...formData, descricao: v })}
+                            placeholder="Ex: Animal dócil, vacinada em janeiro..."
+                            placeholderTextColor="#9ca3af"
+                            multiline
+                            numberOfLines={4}
+                            textAlignVertical="top"
+                            style={{ backgroundColor: "#f9fafb", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#0a0a0a", minHeight: 90 }}
+                        />
                     </View>
 
                     {/* Botões */}

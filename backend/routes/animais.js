@@ -89,7 +89,8 @@ router.post("/", async (req, res) => {
             return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
         }
 
-        const tratamentoMastite = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
+        // O campo legado tratamento_mastite armazena o tratamento de qualquer doença.
+        const tratamento = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
         const temMastite = Boolean(mastite);
         const temOutraDoenca = Boolean(doente) && doenca === "outra";
         const doenteFinal = temMastite || temOutraDoenca;
@@ -144,7 +145,7 @@ router.post("/", async (req, res) => {
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
                 temMastite ? 1 : 0,
-                temMastite ? tratamentoMastite || null : null,
+                tratamento || null,
                 doenteFinal ? 1 : 0,
                 doencaFinal,
                 descricaoDoencaFinal,
@@ -203,7 +204,7 @@ router.put("/:id", async (req, res) => {
             return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
         }
 
-        const tratamentoMastite = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
+        const tratamento = tratamento_mastite ?? req.body.tratamentoMastite ?? null;
         const temMastite = Boolean(mastite);
         const temOutraDoenca = Boolean(doente) && doenca === "outra";
         const doenteFinal = temMastite || temOutraDoenca;
@@ -256,7 +257,7 @@ router.put("/:id", async (req, res) => {
                 abortou ? 1 : 0,
                 nao_emprenha ? 1 : 0,
                 temMastite ? 1 : 0,
-                temMastite ? tratamentoMastite || null : null,
+                tratamento || null,
                 doenteFinal ? 1 : 0,
                 doencaFinal,
                 descricaoDoencaFinal,

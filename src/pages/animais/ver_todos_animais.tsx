@@ -682,10 +682,10 @@ function DetalhesAnimalModal({ visible, animal, onClose }: { visible: boolean; a
 
                         <SecaoDetalhes titulo="Saúde">
                             <LinhaDetalhe label="Mastite" valor={boolTexto(animal.mastite)} />
-                            <LinhaDetalhe label="Tratamento mastite" valor={detalheValor(animal.tratamento_mastite)} />
                             <LinhaDetalhe label="Doente" valor={boolTexto(animal.doente)} />
                             <LinhaDetalhe label="Doença" valor={detalheValor(animal.doenca)} />
                             <LinhaDetalhe label="Descrição doença" valor={detalheValor(animal.descricao_doenca)} />
+                            <LinhaDetalhe label="Tipo de tratamento" valor={detalheValor(animal.tratamento_mastite)} />
                         </SecaoDetalhes>
 
                         <View style={{ backgroundColor: "#f9fafb", borderRadius: 12, padding: 12, borderWidth: 1, borderColor: "#f1f5f9" }}>
