@@ -81,9 +81,9 @@ router.post("/", async (req, res) => {
             data_confirmacao_prenhez
         } = req.body;
 
-        if (!nome || !identificador) {
+/*         if (!nome || !identificador) {
             return res.status(400).json({ erro: "Nome e identificador são obrigatórios" });
-        }
+        } */
 
         if (!data_nascimento) {
             return res.status(400).json({ erro: "A data de nascimento é obrigatória" });
