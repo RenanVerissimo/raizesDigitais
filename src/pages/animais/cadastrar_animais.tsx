@@ -14,7 +14,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { criarAnimal, listarAnimais } from "../../services/api";
+import { criarAnimal, listarAnimaisDisponiveis } from "../../services/api";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
 import AnimalHealthSection from "../../components/AnimalHealthSection";
@@ -27,6 +27,8 @@ export default function CadastrarAnimais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const [salvando, setSalvando] = useState(false);
+    const salvandoRef = React.useRef(false);
 
     const [formData, setFormData] = useState({
         nome: "",
@@ -47,6 +49,7 @@ export default function CadastrarAnimais() {
     });
 
     function handleCancelar() {
+        if (salvandoRef.current) return;
         const temDados = formData.nome || formData.identificador || formData.producaoMediaDiaria;
         if (temDados) {
             Alert.alert("Cancelar cadastro", "Deseja descartar as informações?", [
@@ -59,6 +62,12 @@ export default function CadastrarAnimais() {
     }
 
     async function handleSubmit() {
+        if (salvandoRef.current) return;
+        if (!formData.identificador.trim()) {
+            Alert.alert("Atenção", "Informe o número/identificação do animal.");
+            return;
+        }
+
         if (!formData.statusReprodutivo) {
             Alert.alert("Atenção", "Selecione o status reprodutivo do animal.");
             return;
@@ -110,22 +119,23 @@ export default function CadastrarAnimais() {
             }
         }
 
-        const todosAnimais = await listarAnimais();
-        const novoId = normalizarId(formData.identificador);
-        const jaExiste = todosAnimais.some((a) => normalizarId(a.identificador) === novoId);
-        if (jaExiste) {
-            Toast.show({
-                type: "error",
-                text1: "Identificador já cadastrado.",
-                text2: `Já existe um animal com o ID "${formData.identificador}".`,
-                position: "top",
-                visibilityTime: 4000,
-            });
-            return;
-        }
-
+        salvandoRef.current = true;
+        setSalvando(true);
         try {
-            await criarAnimal({
+            const todosAnimais = await listarAnimaisDisponiveis();
+            const novoId = normalizarId(formData.identificador);
+            if (todosAnimais.some((a) => normalizarId(a.identificador) === novoId)) {
+                Toast.show({
+                    type: "error",
+                    text1: "Identificador já cadastrado.",
+                    text2: `Já existe um animal com o ID "${formData.identificador}".`,
+                    position: "top",
+                    visibilityTime: 4000,
+                });
+                return;
+            }
+
+            const resultado = await criarAnimal({
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
                 producao_media_diaria: producao,
@@ -149,16 +159,21 @@ export default function CadastrarAnimais() {
 
             Toast.show({
                 type: "success",
-                text1: "Animal cadastrado!",
-                text2: "O animal foi salvo com sucesso.",
+                text1: resultado.salvo_offline ? "Animal salvo neste dispositivo!" : "Animal cadastrado!",
+                text2: resultado.salvo_offline
+                    ? "Será enviado quando houver conexão e o aplicativo estiver aberto."
+                    : "O animal foi salvo com sucesso.",
                 position: "top",
                 visibilityTime: 3000,
             });
 
-            setTimeout(() => navigation.goBack(), 500);
+            navigation.goBack();
         } catch (err) {
             console.error(err);
             Toast.show({ type: "error", text1: "Erro", text2: err instanceof Error ? err.message : "Não foi possível salvar." });
+        } finally {
+            salvandoRef.current = false;
+            setSalvando(false);
         }
     }
 
@@ -463,6 +478,7 @@ export default function CadastrarAnimais() {
                     <View style={{ flexDirection: "row", gap: 10, marginBottom: insets.bottom + 20 }}>
                         <TouchableOpacity
                             onPress={handleCancelar}
+                            disabled={salvando}
                             activeOpacity={0.7}
                             style={{
                                 flex: 1,
@@ -477,7 +493,7 @@ export default function CadastrarAnimais() {
                             <Text style={{ fontSize: 16, fontWeight: "600", color: "#6b7280" }}>Cancelar</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity onPress={handleSubmit} activeOpacity={0.85} style={{ flex: 2 }}>
+                        <TouchableOpacity onPress={handleSubmit} disabled={salvando} activeOpacity={0.85} style={{ flex: 2, opacity: salvando ? 0.6 : 1 }}>
                             <LinearGradient
                                 colors={["#4a90e2", "#357abd"]}
                                 start={{ x: 0, y: 0 }}
@@ -485,7 +501,7 @@ export default function CadastrarAnimais() {
                                 style={{ borderRadius: 14, paddingVertical: 16, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 }}
                             >
                                 <Feather name="check" size={18} color="#fff" />
-                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>Cadastrar</Text>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: "#fff" }}>{salvando ? "Salvando..." : "Cadastrar"}</Text>
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>

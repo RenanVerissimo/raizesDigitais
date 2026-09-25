@@ -1,11 +1,10 @@
-import React, { useState, useCallback } from "react";
-import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar, Alert } from "react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { Animal } from "../../interfaces/interfaces";
-import { listarAnimais, excluirAnimal } from "../../services/api";
+import { useNavigation } from "@react-navigation/native";
+import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/AnimalSyncStatus";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
 import { calcularAvisoDescarteLeite } from "../../utils/alerts";
@@ -17,8 +16,7 @@ export default function Animais() {
 
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
-    const [animais, setAnimais] = useState<Animal[]>([]);
-    const [carregando, setCarregando] = useState(true);
+    const { animais, carregando, ...sincronizacao } = useAnimaisComSincronizacao();
     const [dicasAberto, setDicasAberto] = useState(true);
 
     const animaisAtivos = animais.filter((a) => a.status !== "inativo" && a.status !== "vendido");
@@ -66,18 +64,6 @@ export default function Animais() {
                 ]
             );
         } */
-
-    useFocusEffect(
-        useCallback(() => {
-            setCarregando(true);
-            listarAnimais()
-                .then(setAnimais)
-                .catch(() => Alert.alert("Erro", "Não foi possível carregar os animais"))
-                .finally(() => setCarregando(false));
-        }, [])
-    );
-
-
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -131,6 +117,7 @@ export default function Animais() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
+                    <AnimalSyncStatus {...sincronizacao} />
 
                     {/* Estimativa de Produção */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
@@ -233,6 +220,11 @@ export default function Animais() {
                                                     <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
                                                         ID: {animal.identificador}
                                                     </Text>
+                                                    {animal.salvo_offline && (
+                                                        <Text style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+                                                            Aguardando sincronização
+                                                        </Text>
+                                                    )}
                                                     <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={1}>
                                                         Raça: {animal.raca || "—"}
                                                     </Text>

@@ -1,5 +1,7 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { StatusReprodutivo } from "../utils/statusReprodutivo";
+import NetInfo from "@react-native-community/netinfo";
+import { confirmarAnimalSincronizado, criarAnimalOffline, listarAnimaisOffline, prepararAnimaisParaSincronizacao } from "./animaisOffline";
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
 /* import { API_URL } from "../config";
 
@@ -18,6 +20,7 @@ const NETWORK_ERROR_MESSAGE = "Conexão instável. Verifique a internet e tente 
 
 type ApiFetchInit = RequestInit & {
     retryUnsafe?: boolean;
+    retryNetwork?: boolean;
     silentNetworkError?: boolean;
     timeoutMs?: number;
     omitUsuarioHeader?: boolean;
@@ -106,7 +109,7 @@ export async function limparUsuarioLogado() {
 }
 
 async function apiFetch(path: string, init: ApiFetchInit = {}) {
-    const { retryUnsafe = false, silentNetworkError = false, timeoutMs, omitUsuarioHeader = false, ...fetchInit } = init;
+    const { retryUnsafe = false, retryNetwork = true, silentNetworkError = false, timeoutMs, omitUsuarioHeader = false, ...fetchInit } = init;
     const usuario = omitUsuarioHeader ? null : await getUsuarioLogado();
     const headers = {
         ...(fetchInit.headers || {}),
@@ -114,7 +117,7 @@ async function apiFetch(path: string, init: ApiFetchInit = {}) {
     };
     const url = `${BASE_URL}${path}`;
     const method = String(fetchInit.method || "GET").toUpperCase();
-    const canRetry = method === "GET" || method === "HEAD" || retryUnsafe;
+    const canRetry = retryNetwork && (method === "GET" || method === "HEAD" || retryUnsafe);
     const maxAttempts = canRetry ? NETWORK_RETRY_DELAYS_MS.length + 1 : 1;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -225,9 +228,9 @@ export async function atualizarProducao(id: number, dados: {
 // ANIMAIS
 // ============================================
 
-export async function listarAnimais(): Promise<Animal[]> {
+export async function listarAnimais(options?: { timeoutMs?: number; retryNetwork?: boolean }): Promise<Animal[]> {
     try {
-        const response = await apiFetch(`/animais`);
+        const response = await apiFetch(`/animais`, options);
 
         if (!response.ok) {
             throw new Error(`Erro ao listar animais (status ${response.status})`);
@@ -238,6 +241,129 @@ export async function listarAnimais(): Promise<Animal[]> {
     } catch (err) {
         console.error("Falha em listarAnimais:", err);
         throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
+    }
+}
+
+async function estaSemInternet() {
+    const rede = await NetInfo.fetch();
+    return rede.isConnected === false || rede.isInternetReachable === false;
+}
+
+async function getUsuarioParaAnimais() {
+    const usuario = await getUsuarioLogado();
+    if (!usuario || !Number.isSafeInteger(usuario.id) || usuario.id <= 0) {
+        throw new Error("Entre na sua conta com internet antes de cadastrar animais offline.");
+    }
+    return usuario;
+}
+
+export interface ResultadoSincronizacaoAnimais {
+    usuarioId: number | null;
+    enviados: number;
+    pendentes: number;
+    erro?: string;
+}
+
+const sincronizacoesAnimais = new Map<number, Promise<ResultadoSincronizacaoAnimais>>();
+const ouvintesSincronizacaoAnimais = new Set<(resultado: ResultadoSincronizacaoAnimais) => void>();
+
+export function observarSincronizacaoAnimais(ouvinte: (resultado: ResultadoSincronizacaoAnimais) => void) {
+    ouvintesSincronizacaoAnimais.add(ouvinte);
+    return () => { ouvintesSincronizacaoAnimais.delete(ouvinte); };
+}
+
+async function enviarAnimaisPendentes(usuario: UsuarioLogado): Promise<ResultadoSincronizacaoAnimais> {
+    const resultado: ResultadoSincronizacaoAnimais = { usuarioId: usuario.id, enviados: 0, pendentes: 0 };
+    try {
+        resultado.pendentes = (await listarAnimaisOffline(usuario.id)).filter((animal) => animal.salvo_offline).length;
+        if (!resultado.pendentes) return resultado;
+        if (!usuario.token) throw new Error("Entre novamente na sua conta para sincronizar os animais.");
+        if (await estaSemInternet()) throw new Error("Sem conexão. Os animais continuam salvos neste dispositivo.");
+
+        const pendentes = await prepararAnimaisParaSincronizacao(usuario.id);
+        for (const animal of pendentes) {
+            const sessaoAtual = await getUsuarioLogado();
+            if (sessaoAtual?.id !== usuario.id || !sessaoAtual.token) {
+                throw new Error("A sessão mudou. Os cadastros permanecem vinculados à conta original.");
+            }
+            const { id, usuario_id, salvo_offline, idempotency_key, ...dados } = animal;
+            const response = await apiFetch("/animais/sincronizar", {
+                method: "POST",
+                // Usa o token da mesma conta que originou a fila, mesmo se houver logout durante o envio.
+                omitUsuarioHeader: true,
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessaoAtual.token}` },
+                body: JSON.stringify({ ...dados, idempotencyKey: idempotency_key }),
+                retryNetwork: false,
+                silentNetworkError: true,
+            });
+            const resposta = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const mensagem = response.status === 401 || response.status === 403
+                    ? "Entre novamente na sua conta para sincronizar os animais."
+                    : response.status === 404
+                        ? "O servidor precisa ser atualizado para receber os cadastros offline."
+                        : resposta.erro || "Não foi possível sincronizar. Tente novamente.";
+                resultado.erro ??= `Animal ${animal.identificador}: ${mensagem}`;
+                if ([401, 403, 404].includes(response.status) || response.status >= 500) break;
+                continue;
+            }
+
+            const idServidor = Number(resposta.id ?? resposta.id_animal);
+            if (!Number.isSafeInteger(idServidor) || idServidor <= 0 || resposta.idempotencyKey !== idempotency_key) {
+                throw new Error("O servidor não confirmou o cadastro. O animal continua salvo neste dispositivo.");
+            }
+            await confirmarAnimalSincronizado(usuario.id, idempotency_key!);
+            resultado.enviados++;
+            resultado.pendentes--;
+        }
+        resultado.pendentes = (await listarAnimaisOffline(usuario.id)).filter((animal) => animal.salvo_offline).length;
+    } catch (error) {
+        resultado.erro = error instanceof Error ? error.message : "Não foi possível sincronizar os animais.";
+    }
+
+    for (const ouvinte of ouvintesSincronizacaoAnimais) {
+        try { ouvinte(resultado); } catch (error) { console.warn("Falha ao atualizar a tela após sincronização:", error); }
+    }
+    return resultado;
+}
+
+/** Executa uma única fila por usuário; falhas preservam as pendências para a próxima tentativa. */
+export async function sincronizarAnimaisPendentes(): Promise<ResultadoSincronizacaoAnimais> {
+    const usuario = await getUsuarioLogado();
+    if (!usuario || !Number.isSafeInteger(usuario.id) || usuario.id <= 0) {
+        return { usuarioId: null, enviados: 0, pendentes: 0 };
+    }
+    const existente = sincronizacoesAnimais.get(usuario.id);
+    if (existente) return existente;
+
+    const sincronizacao = enviarAnimaisPendentes(usuario);
+    sincronizacoesAnimais.set(usuario.id, sincronizacao);
+    try {
+        return await sincronizacao;
+    } finally {
+        if (sincronizacoesAnimais.get(usuario.id) === sincronizacao) sincronizacoesAnimais.delete(usuario.id);
+    }
+}
+
+/** Inclui as pendências locais nas telas de animais, sem duplicar envios já recebidos pelo servidor. */
+export async function listarAnimaisDisponiveis(): Promise<Animal[]> {
+    const usuario = await getUsuarioParaAnimais();
+    const locais = await listarAnimaisOffline(usuario.id);
+    if (await estaSemInternet()) return locais;
+
+    try {
+        const remotos = await listarAnimais({ timeoutMs: 8000, retryNetwork: false });
+        const pendentes = locais.filter((animal) => animal.salvo_offline);
+        const chavesPendentes = new Set(pendentes.map((animal) => animal.idempotency_key).filter(Boolean));
+        return [
+            ...pendentes,
+            // Se a resposta do envio se perdeu, mantém o aviso local até confirmar a mesma chave.
+            ...remotos.filter((animal) => !chavesPendentes.has(animal.idempotency_key)),
+        ];
+    } catch (error) {
+        // Falhas HTTP (como sessão expirada) continuam visíveis; só rede usa a lista local.
+        if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) return locais;
+        throw error;
     }
 }
 
@@ -278,8 +404,13 @@ export async function criarAnimal(dados: {
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
     data_confirmacao_prenhez?: string | null;
-}) {
+}): Promise<{ id: number; salvo_offline?: boolean }> {
     try {
+        const usuario = await getUsuarioParaAnimais();
+        if (await estaSemInternet()) {
+            return await criarAnimalOffline(usuario.id, dados);
+        }
+
         const response = await apiFetch(`/animais`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1229,6 +1360,7 @@ export async function login(email: string, senha: string) {
         throw new Error("Resposta de login inválida. Tente novamente.");
     }
     await salvarUsuarioLogado({ ...dados.usuario, token: dados.token });
+    void sincronizarAnimaisPendentes().catch((error) => console.warn("Não foi possível iniciar a sincronização:", error));
     return dados;
 }
 

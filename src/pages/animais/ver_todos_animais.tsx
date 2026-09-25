@@ -1,11 +1,12 @@
-import React, { useState, useCallback } from "react";
-import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar, Alert, Modal } from "react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, View, Text, TextInput, TouchableOpacity, ScrollView, StatusBar, Modal } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
-import { atualizarStatusAnimal, listarAnimais, excluirAnimal } from "../../services/api";
+import { atualizarStatusAnimal, listarAnimaisDisponiveis as listarAnimais, excluirAnimal } from "../../services/api";
+import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/AnimalSyncStatus";
 import ConfirmDeleteModal from "./ConfirmationModal";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
@@ -20,22 +21,12 @@ type FiltroStatusAnimal = "ativos" | "inativos" | "todos";
 export default function VerTodosAnimais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
-    const [animais, setAnimais] = useState<Animal[]>([]);
-    const [carregando, setCarregando] = useState(true);
+    const { animais, setAnimais, carregando, ...sincronizacao } = useAnimaisComSincronizacao();
     const [atualizandoStatusId, setAtualizandoStatusId] = useState<number | null>(null);
     const [excluindoId, setExcluindoId] = useState<number | null>(null);
     const [busca, setBusca] = useState("");
     const [filtroStatus, setFiltroStatus] = useState<FiltroStatusAnimal>("ativos");
 
-    useFocusEffect(
-        useCallback(() => {
-            setCarregando(true);
-            listarAnimais()
-                .then(setAnimais)
-                .catch(() => Alert.alert("Erro", "Não foi possível carregar"))
-                .finally(() => setCarregando(false));
-        }, [])
-    );
     const [modalVisible, setModalVisible] = useState(false);
     const [animalSelecionado, setAnimalSelecionado] = useState<Animal | null>(null);
     const [animalDetalhes, setAnimalDetalhes] = useState<Animal | null>(null);
@@ -69,12 +60,13 @@ export default function VerTodosAnimais() {
     }
 
     function handleExcluir(animal: Animal) {
+        if (animal.salvo_offline) return;
         setAnimalSelecionado(animal);
         setModalVisible(true);
     }
 
     async function confirmarExclusao() {
-        if (!animalSelecionado) return;
+        if (!animalSelecionado || animalSelecionado.salvo_offline) return;
 
         const nomeExcluido = animalSelecionado.nome;
 
@@ -106,12 +98,13 @@ export default function VerTodosAnimais() {
     }
 
     function handleInativarStatus(animal: Animal) {
-        if (animal.status === "inativo" || animal.status === "vendido") return;
+        if (animal.salvo_offline || animal.status === "inativo" || animal.status === "vendido") return;
         setAnimalStatusSelecionado(animal);
         setModalStatusVisible(true);
     }
 
     async function inativarAnimal(animal: Animal) {
+        if (animal.salvo_offline) return false;
         const novoStatus = "inativo";
 
         try {
@@ -210,6 +203,7 @@ export default function VerTodosAnimais() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 10, paddingBottom: insets.bottom + 20 }}>
+                    <AnimalSyncStatus {...sincronizacao} />
                     {!carregando && animais.length > 0 && (
                         <>
                             <View style={{ backgroundColor: "#fff", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#e5e7eb", flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -461,6 +455,11 @@ function CardAnimal({
                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
                             ID: {animal.identificador}
                         </Text>
+                        {animal.salvo_offline && (
+                            <Text style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+                                Aguardando sincronização
+                            </Text>
+                        )}
                         <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={1}>
                             Raça: {animal.raca || "—"}
                         </Text>
@@ -500,7 +499,7 @@ function CardAnimal({
                         )}
                     </View>
                 </View>
-                {!vendido && (
+                {!animal.salvo_offline && !vendido && (
                     <View style={{ flexDirection: "row", gap: 6 }}>
                         <TouchableOpacity
                             onPress={(event) => {
@@ -563,7 +562,7 @@ function CardAnimal({
                         : "—"}
                 </Text>
             </View>
-            {!vendido && !inativo && (
+            {!animal.salvo_offline && !vendido && !inativo && (
                 <TouchableOpacity
                     onPress={(event) => {
                         event.stopPropagation();

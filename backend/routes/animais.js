@@ -9,7 +9,13 @@ const { requireUsuario, ensureUsuarioColumn } = require("../utils/tenant");
 const { AnimalValidationError, normalizarDadosAnimal } = require("../utils/animal");
 
 async function ensureAnimaisSchema() {
-    await ensureUsuarioColumn("animais");
+    try {
+        await ensureUsuarioColumn("animais");
+    } catch (err) {
+        // Outra requisição pode ter criado a coluna durante a mesma migração.
+        if (err.code !== "ER_DUP_FIELDNAME") throw err;
+        await ensureUsuarioColumn("animais");
+    }
     const requiredColumns = [
         { name: "doente", sql: "ADD COLUMN doente TINYINT(1) NOT NULL DEFAULT 0 AFTER mastite" },
         { name: "doenca", sql: "ADD COLUMN doenca VARCHAR(40) NULL AFTER doente" },
@@ -38,7 +44,11 @@ async function ensureAnimaisSchema() {
 
     for (const column of requiredColumns) {
         if (!existingColumns.has(column.name)) {
-            await pool.query(`ALTER TABLE animais ${column.sql}`);
+            try {
+                await pool.query(`ALTER TABLE animais ${column.sql}`);
+            } catch (err) {
+                if (err.code !== "ER_DUP_FIELDNAME") throw err;
+            }
             if (column.name === "vaca_vazia") {
                 await pool.query(`
                     UPDATE animais SET vaca_vazia = 1
@@ -46,6 +56,35 @@ async function ensureAnimaisSchema() {
                       AND prenha = 0 AND em_cio = 0 AND abortou = 0 AND nao_emprenha = 0
                 `);
             }
+        }
+    }
+}
+
+async function ensureAnimaisSincronizacaoSchema() {
+    await ensureAnimaisSchema();
+    const [columns] = await pool.query(`
+        SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'animais'
+          AND COLUMN_NAME = 'idempotency_key'
+    `);
+    if (!columns.length) {
+        try {
+            await pool.query("ALTER TABLE animais ADD COLUMN idempotency_key VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NULL");
+        } catch (err) {
+            if (err.code !== "ER_DUP_FIELDNAME") throw err;
+        }
+    }
+
+    const [indexes] = await pool.query(`
+        SELECT INDEX_NAME FROM INFORMATION_SCHEMA.STATISTICS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'animais'
+          AND INDEX_NAME = 'uq_animais_usuario_idempotency'
+    `);
+    if (!indexes.length) {
+        try {
+            await pool.query("ALTER TABLE animais ADD UNIQUE KEY uq_animais_usuario_idempotency (usuario_id, idempotency_key)");
+        } catch (err) {
+            if (err.code !== "ER_DUP_KEYNAME") throw err;
         }
     }
 }
@@ -88,6 +127,46 @@ router.post("/", async (req, res) => {
         if (err instanceof AnimalValidationError) return res.status(400).json({ erro: err.message });
         console.error(err);
         res.status(500).json({ erro: "Erro ao cadastrar animal" });
+    }
+});
+
+// A chave acompanha o cadastro local em todas as tentativas de envio.
+router.post("/sincronizar", async (req, res) => {
+    try {
+        const usuarioId = await requireUsuario(req, res);
+        if (!usuarioId) return;
+        const body = req.body || {};
+        const { idempotencyKey } = body;
+        if (typeof idempotencyKey !== "string" || !/^[A-Za-z0-9_-]{1,100}$/.test(idempotencyKey)) {
+            return res.status(400).json({ erro: "Informe uma chave válida para sincronizar o animal." });
+        }
+        const dados = normalizarDadosAnimal(body);
+        await ensureAnimaisSincronizacaoSchema();
+        const colunas = ["usuario_id", "idempotency_key", ...Object.keys(dados)];
+        const valores = [usuarioId, idempotencyKey, ...Object.values(dados)];
+        try {
+            const [result] = await pool.query(
+                `INSERT INTO animais (${colunas.join(", ")}) VALUES (${colunas.map(() => "?").join(", ")})`,
+                valores
+            );
+            return res.status(201).json({ id: result.insertId, id_animal: result.insertId, idempotencyKey });
+        } catch (err) {
+            if (err.code !== "ER_DUP_ENTRY") throw err;
+            const [existentes] = await pool.query(
+                "SELECT id_animal FROM animais WHERE usuario_id = ? AND idempotency_key = ? LIMIT 1",
+                [usuarioId, idempotencyKey]
+            );
+            if (existentes.length) {
+                const id = existentes[0].id_animal;
+                return res.json({ id, id_animal: id, idempotencyKey });
+            }
+            // Um identificador já usado por outro cadastro não autoriza sobrescrevê-lo.
+            return res.status(409).json({ erro: "Existe um cadastro com dados únicos iguais, como o identificador. Revise o animal antes de sincronizar." });
+        }
+    } catch (err) {
+        if (err instanceof AnimalValidationError) return res.status(400).json({ erro: err.message });
+        console.error(err);
+        res.status(500).json({ erro: "Erro ao sincronizar animal" });
     }
 });
 

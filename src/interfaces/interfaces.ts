@@ -36,6 +36,9 @@ export interface Producao {
 
 export interface Animal {
     id: number;
+    usuario_id?: number;
+    salvo_offline?: boolean;
+    idempotency_key?: string;
     nome: string;
     identificador: string;
     status?: "ativo" | "inativo" | "vendido" | null;
