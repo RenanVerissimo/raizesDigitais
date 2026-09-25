@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProducaoRegistro from "./src/pages/producao/producao_registro";
 import ProducaoHistorico from "./src/pages/producao/producao_historico";
 import Dashboard from "./src/pages/dashboard/dashboard";
+import TarefasAsync from "./src/pages/dashboard/tarefasAsync";
 import LoginScreen from "./src/pages/login/login";
 import EsqueciSenha from "./src/pages/login/esqueci_senha";
 
@@ -134,6 +135,8 @@ export default function App() {
                     <Stack.Screen name="quitar_financiamento" component={QuitarFinanciamento} />
                     <Stack.Screen name="quitar_parcela_financiamento" component={QuitarParcelaFinanciamento} />
                     <Stack.Screen name="editar_financiamento" component={EditarFinanciamento} />
+                    <Stack.Screen name="tarefasAsync" component={TarefasAsync} />
+
 
                 </Stack.Navigator>
             </NavigationContainer>

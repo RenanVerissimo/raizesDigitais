@@ -19,6 +19,8 @@ import { criarAvaliacaoApp, getUsuarioLogado, limparUsuarioLogado, listarAnimais
 import { Producao } from "../../interfaces/interfaces";
 import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 import Toast from "react-native-toast-message";
+import AntDesign from '@expo/vector-icons/AntDesign';
+
 
 function formatarDataLocal(data: Date) {
     const ano = data.getFullYear();
@@ -266,12 +268,26 @@ export default function Dashboard() {
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 4 }}>{farmName}</Text>
                             <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.9)" }}>Olá, {userName}</Text>
                         </View>
-                        <TouchableOpacity
-                            onPress={handleLogout}
-                            style={{ backgroundColor: "rgba(255,255,255,0.2)", padding: 10, borderRadius: 10 }}
+
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                gap: 5,
+                            }}
                         >
-                            <Feather name="log-out" size={20} color="#fff" />
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate("tarefasAsync")}
+                                style={{ backgroundColor: "rgba(255,255,255,0.2)", padding: 10, borderRadius: 10 }}
+                            >
+                                <AntDesign name="cloud-sync" size={20} color="white" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleLogout}
+                                style={{ backgroundColor: "rgba(255,255,255,0.2)", padding: 10, borderRadius: 10 }}
+                            >
+                                <Feather name="log-out" size={20} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 10 }}>
@@ -523,7 +539,7 @@ export default function Dashboard() {
                         <Feather name="chevron-right" size={20} color="#4a90e2" />
                     </TouchableOpacity>
 
-                  
+
                 </View>
             </ScrollView>
             <Modal visible={modalAvaliacaoVisible} transparent animationType="fade" onRequestClose={fecharModalAvaliacao}>
