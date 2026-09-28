@@ -12,14 +12,7 @@ import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/A
 
 export default function TarefasAsync() {
 	const navigation = useNavigation<any>();
-	const { animais, carregando, pendentes, sincronizando, mensagem, sincronizarAgora } = useAnimaisComSincronizacao();
-	const tarefasOffline = animais
-		.filter((animal) => animal.salvo_offline)
-		.map((animal) => ({
-			id: animal.idempotency_key ?? animal.id,
-			tipo: "Cadastro de animal",
-			animal,
-		}));
+	const { tarefas: tarefasOffline, carregando, pendentes, sincronizando, mensagem, sincronizarAgora } = useAnimaisComSincronizacao();
 
 	return (
 		<View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -77,9 +70,9 @@ export default function TarefasAsync() {
 										<MaterialCommunityIcons name="cow" size={21} color="#4a90e2" />
 									</View>
 									<View style={{ flex: 1 }}>
-										<Text style={{ color: "#111827", fontSize: 15, fontWeight: "800" }}>{tarefa.tipo}</Text>
+										<Text style={{ color: "#111827", fontSize: 15, fontWeight: "800" }}>{tarefa.titulo}</Text>
 										<Text style={{ color: "#6b7280", fontSize: 13, marginTop: 3 }}>
-											{tarefa.animal.nome || "Animal sem nome"} | Identificador: {tarefa.animal.identificador}
+											{tarefa.nome} | Identificador: {tarefa.identificador}
 										</Text>
 									</View>
 									<View style={{ backgroundColor: "#fef3c7", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5 }}>

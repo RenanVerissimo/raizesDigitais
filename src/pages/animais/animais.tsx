@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar } from "react-native";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -89,6 +89,13 @@ export default function Animais() {
                                 Gerencie seu rebanho
                             </Text>
                         </View>
+
+{/*                         <AntDesign
+                            name="cloud-sync"
+                            size={24}
+                            color="#ff0000"
+                        /> */}
+
                     </View>
 
                     <TouchableOpacity
@@ -188,83 +195,83 @@ export default function Animais() {
                                     const destacado = inativo || vendido;
                                     const avisoDescarte = calcularAvisoDescarteLeite(animal.data_ultimo_parto, animal.dias_descarte_leite);
                                     return (
-                                    <View
-                                        key={animal.id}
-                                        style={{ backgroundColor: destacado ? "#f3f4f6" : "#fff", borderWidth: 1, borderColor: destacado ? "#d1d5db" : "#e5e7eb", borderRadius: 12, padding: 14, opacity: destacado ? 0.82 : 1 }}
-                                    >
-                                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                                            <View style={{ flexDirection: "row", gap: 12, flex: 1 }}>
-                                                <View
-                                                    style={{
-                                                        width: 44,
-                                                        height: 44,
-                                                        backgroundColor: destacado ? "#e5e7eb" : "rgba(74,144,226,0.1)",
-                                                        borderRadius: 12,
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                    }}
-                                                >
-                                                    <MaterialCommunityIcons name="cow" size={22} color={destacado ? "#6b7280" : "#4a90e2"} />
-                                                </View>
-                                                <View style={{ flex: 1 }}>
-                                                    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
-                                                        <Text style={{ flexShrink: 1, minWidth: 0, fontSize: 15, fontWeight: "600", color: destacado ? "#6b7280" : "#0a0a0a", lineHeight: 20 }} numberOfLines={2}>
-                                                            {animal.nome}
+                                        <View
+                                            key={animal.id}
+                                            style={{ backgroundColor: destacado ? "#f3f4f6" : "#fff", borderWidth: 1, borderColor: destacado ? "#d1d5db" : "#e5e7eb", borderRadius: 12, padding: 14, opacity: destacado ? 0.82 : 1 }}
+                                        >
+                                            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                                <View style={{ flexDirection: "row", gap: 12, flex: 1 }}>
+                                                    <View
+                                                        style={{
+                                                            width: 44,
+                                                            height: 44,
+                                                            backgroundColor: destacado ? "#e5e7eb" : "rgba(74,144,226,0.1)",
+                                                            borderRadius: 12,
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                        }}
+                                                    >
+                                                        <MaterialCommunityIcons name="cow" size={22} color={destacado ? "#6b7280" : "#4a90e2"} />
+                                                    </View>
+                                                    <View style={{ flex: 1 }}>
+                                                        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, flexWrap: "wrap" }}>
+                                                            <Text style={{ flexShrink: 1, minWidth: 0, fontSize: 15, fontWeight: "600", color: destacado ? "#6b7280" : "#0a0a0a", lineHeight: 20 }} numberOfLines={2}>
+                                                                {animal.nome}
+                                                            </Text>
+                                                            {destacado && (
+                                                                <View style={{ backgroundColor: vendido ? "#fee2e2" : "#e5e7eb", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
+                                                                    <Text style={{ fontSize: 10, fontWeight: "800", color: vendido ? "#b91c1c" : "#4b5563" }}>{vendido ? "Vendida" : "Inativa"}</Text>
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                        <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
+                                                            ID: {animal.identificador}
                                                         </Text>
-                                                        {destacado && (
-                                                            <View style={{ backgroundColor: vendido ? "#fee2e2" : "#e5e7eb", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 }}>
-                                                                <Text style={{ fontSize: 10, fontWeight: "800", color: vendido ? "#b91c1c" : "#4b5563" }}>{vendido ? "Vendida" : "Inativa"}</Text>
+                                                        {animal.salvo_offline && (
+                                                            <Text style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
+                                                                Aguardando sincronização
+                                                            </Text>
+                                                        )}
+                                                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={1}>
+                                                            Raça: {animal.raca || "—"}
+                                                        </Text>
+                                                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                                                            Idade: {calcularIdade(animal.data_nascimento)}
+                                                        </Text>
+                                                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                                                            Nascimento: {formatarData2(animal.data_nascimento)}
+                                                        </Text>
+                                                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                                                            Último parto: {animal.data_ultimo_parto ? formatarData2(animal.data_ultimo_parto) : "—"}
+                                                        </Text>
+                                                        <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
+                                                            Peso: {animal.peso != null ? `${Number(animal.peso).toFixed(1)} kg` : "—"}
+                                                        </Text>
+                                                        <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
+                                                            Descrição: {animal.descricao || "—"}
+                                                        </Text>
+                                                        {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || Number(animal.parasitas) === 1 || avisoDescarte || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
+                                                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                                                                {Number(animal.prenha) === 1 && (
+                                                                    <TagAnimal label="Gestante" backgroundColor="#dcfce7" color="#15803d" />
+                                                                )}
+                                                                {Number(animal.mastite) === 1 && (
+                                                                    <TagAnimal label="Mastite" backgroundColor="#fee2e2" color="#dc2626" />
+                                                                )}
+                                                                {Number(animal.parasitas) === 1 && (
+                                                                    <TagAnimal label="Parasitas" backgroundColor="#ede9fe" color="#6d28d9" />
+                                                                )}
+                                                                {avisoDescarte && (
+                                                                    <TagAnimal label="Leite em descarte" backgroundColor="#ffedd5" color="#c2410c" />
+                                                                )}
+                                                                {Number(animal.doente) === 1 && animal.doenca === "outra" && (
+                                                                    <TagAnimal label={animal.descricao_doenca || "Outra doença"} backgroundColor="#dbeafe" color="#1d4ed8" />
+                                                                )}
                                                             </View>
                                                         )}
                                                     </View>
-                                                    <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
-                                                        ID: {animal.identificador}
-                                                    </Text>
-                                                    {animal.salvo_offline && (
-                                                        <Text style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                                                            Aguardando sincronização
-                                                        </Text>
-                                                    )}
-                                                    <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={1}>
-                                                        Raça: {animal.raca || "—"}
-                                                    </Text>
-                                                    <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
-                                                        Idade: {calcularIdade(animal.data_nascimento)}
-                                                    </Text>
-                                                    <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
-                                                        Nascimento: {formatarData2(animal.data_nascimento)}
-                                                    </Text>
-                                                    <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
-                                                        Último parto: {animal.data_ultimo_parto ? formatarData2(animal.data_ultimo_parto) : "—"}
-                                                    </Text>
-                                                    <Text style={{ fontSize: 11, color: "#9ca3af" }} numberOfLines={1}>
-                                                        Peso: {animal.peso != null ? `${Number(animal.peso).toFixed(1)} kg` : "—"}
-                                                    </Text>
-                                                    <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={2}>
-                                                        Descrição: {animal.descricao || "—"}
-                                                    </Text>
-                                                    {(Number(animal.prenha) === 1 || Number(animal.mastite) === 1 || Number(animal.parasitas) === 1 || avisoDescarte || (Number(animal.doente) === 1 && animal.doenca === "outra")) && (
-                                                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                                                            {Number(animal.prenha) === 1 && (
-                                                                <TagAnimal label="Gestante" backgroundColor="#dcfce7" color="#15803d" />
-                                                            )}
-                                                            {Number(animal.mastite) === 1 && (
-                                                                <TagAnimal label="Mastite" backgroundColor="#fee2e2" color="#dc2626" />
-                                                            )}
-                                                            {Number(animal.parasitas) === 1 && (
-                                                                <TagAnimal label="Parasitas" backgroundColor="#ede9fe" color="#6d28d9" />
-                                                            )}
-                                                            {avisoDescarte && (
-                                                                <TagAnimal label="Leite em descarte" backgroundColor="#ffedd5" color="#c2410c" />
-                                                            )}
-                                                            {Number(animal.doente) === 1 && animal.doenca === "outra" && (
-                                                                <TagAnimal label={animal.descricao_doenca || "Outra doença"} backgroundColor="#dbeafe" color="#1d4ed8" />
-                                                            )}
-                                                        </View>
-                                                    )}
                                                 </View>
-                                            </View>
-                                            {/*                                             <View style={{ flexDirection: "row", gap: 6 }}>
+                                                {/*                                             <View style={{ flexDirection: "row", gap: 6 }}>
                                                 <TouchableOpacity
                                                     onPress={() => navigation.navigate("editar_animais", { animal })}
                                                     style={{ padding: 6 }}
@@ -275,16 +282,16 @@ export default function Animais() {
                                                     <Feather name="trash-2" size={18} color="#ef4444" />
                                                 </TouchableOpacity>
                                             </View> */}
+                                            </View>
+                                            <View style={{ marginTop: 10, padding: 10, backgroundColor: "#eff6ff", borderRadius: 8 }}>
+                                                <Text style={{ fontSize: 11, color: "#6b7280" }}>Produção Média Diária</Text>
+                                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#4a90e2" }}>
+                                                    {animal.producao_media_diaria != null
+                                                        ? `${Number(animal.producao_media_diaria).toFixed(1)} L/dia`
+                                                        : "—"}
+                                                </Text>
+                                            </View>
                                         </View>
-                                        <View style={{ marginTop: 10, padding: 10, backgroundColor: "#eff6ff", borderRadius: 8 }}>
-                                            <Text style={{ fontSize: 11, color: "#6b7280" }}>Produção Média Diária</Text>
-                                            <Text style={{ fontSize: 14, fontWeight: "600", color: "#4a90e2" }}>
-                                                {animal.producao_media_diaria != null
-                                                    ? `${Number(animal.producao_media_diaria).toFixed(1)} L/dia`
-                                                    : "—"}
-                                            </Text>
-                                        </View>
-                                    </View>
                                     );
                                 })}
                             </View>
@@ -311,16 +318,16 @@ export default function Animais() {
                         </TouchableOpacity>
                         {dicasAberto && (
                             <View style={{ gap: 8, marginTop: 10 }}>
-                            {[
-                                "Mantenha o cadastro atualizado para estimativas mais precisas",
-                                "A produção média varia conforme raça, alimentação e saúde",
-                                "Compare a produção real com a estimada para identificar melhorias",
-                            ].map((dica, i) => (
-                                <View key={i} style={{ flexDirection: "row", gap: 8 }}>
-                                    <Text style={{ color: "#4a90e2", fontSize: 13 }}>•</Text>
-                                    <Text style={{ flex: 1, fontSize: 13, color: "#374151" }}>{dica}</Text>
-                                </View>
-                            ))}
+                                {[
+                                    "Mantenha o cadastro atualizado para estimativas mais precisas",
+                                    "A produção média varia conforme raça, alimentação e saúde",
+                                    "Compare a produção real com a estimada para identificar melhorias",
+                                ].map((dica, i) => (
+                                    <View key={i} style={{ flexDirection: "row", gap: 8 }}>
+                                        <Text style={{ color: "#4a90e2", fontSize: 13 }}>•</Text>
+                                        <Text style={{ flex: 1, fontSize: 13, color: "#374151" }}>{dica}</Text>
+                                    </View>
+                                ))}
                             </View>
                         )}
                     </View>

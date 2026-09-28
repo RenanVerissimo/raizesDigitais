@@ -1,8 +1,20 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { StatusReprodutivo } from "../utils/statusReprodutivo";
-import NetInfo from "@react-native-community/netinfo";
-import { confirmarAnimalSincronizado, criarAnimalOffline, listarAnimaisOffline, prepararAnimaisParaSincronizacao } from "./animaisOffline";
+import {
+    confirmarAcaoAnimalOffline,
+    confirmarAnimalSincronizado,
+    criarAnimalOffline,
+    editarAnimalOffline,
+    excluirAnimalOffline,
+    listarAcoesAnimaisOffline,
+    listarAnimaisOffline,
+    listarCacheAnimais,
+    prepararAnimaisParaSincronizacao,
+    salvarCacheAnimais,
+    type AcaoAnimalOffline,
+} from "./animaisOffline";
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
+import { estaSemInternet } from "../utils/conexaoInternet";
 /* import { API_URL } from "../config";
 
 const BASE_URL = API_URL;
@@ -244,11 +256,6 @@ export async function listarAnimais(options?: { timeoutMs?: number; retryNetwork
     }
 }
 
-async function estaSemInternet() {
-    const rede = await NetInfo.fetch();
-    return rede.isConnected === false || rede.isInternetReachable === false;
-}
-
 async function getUsuarioParaAnimais() {
     const usuario = await getUsuarioLogado();
     if (!usuario || !Number.isSafeInteger(usuario.id) || usuario.id <= 0) {
@@ -275,10 +282,14 @@ export function observarSincronizacaoAnimais(ouvinte: (resultado: ResultadoSincr
 async function enviarAnimaisPendentes(usuario: UsuarioLogado): Promise<ResultadoSincronizacaoAnimais> {
     const resultado: ResultadoSincronizacaoAnimais = { usuarioId: usuario.id, enviados: 0, pendentes: 0 };
     try {
-        resultado.pendentes = (await listarAnimaisOffline(usuario.id)).filter((animal) => animal.salvo_offline).length;
+        const [cadastrosIniciais, acoesIniciais] = await Promise.all([
+            listarAnimaisOffline(usuario.id),
+            listarAcoesAnimaisOffline(usuario.id),
+        ]);
+        resultado.pendentes = cadastrosIniciais.filter((animal) => animal.salvo_offline).length + acoesIniciais.length;
         if (!resultado.pendentes) return resultado;
         if (!usuario.token) throw new Error("Entre novamente na sua conta para sincronizar os animais.");
-        if (await estaSemInternet()) throw new Error("Sem conexão. Os animais continuam salvos neste dispositivo.");
+        if (await estaSemInternet()) throw new Error("Sem internet. As tarefas continuam salvas neste dispositivo.");
 
         const pendentes = await prepararAnimaisParaSincronizacao(usuario.id);
         for (const animal of pendentes) {
@@ -316,7 +327,40 @@ async function enviarAnimaisPendentes(usuario: UsuarioLogado): Promise<Resultado
             resultado.enviados++;
             resultado.pendentes--;
         }
-        resultado.pendentes = (await listarAnimaisOffline(usuario.id)).filter((animal) => animal.salvo_offline).length;
+
+        const acoes = await listarAcoesAnimaisOffline(usuario.id);
+        for (const acao of acoes) {
+            const sessaoAtual = await getUsuarioLogado();
+            if (sessaoAtual?.id !== usuario.id || !sessaoAtual.token) {
+                throw new Error("A sessão mudou. As tarefas permanecem vinculadas à conta original.");
+            }
+            const response = await apiFetch(`/animais/${acao.animalId}`, {
+                method: acao.tipo === "editar" ? "PUT" : "DELETE",
+                omitUsuarioHeader: true,
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessaoAtual.token}` },
+                body: acao.tipo === "editar" ? JSON.stringify(acao.dados) : undefined,
+                retryNetwork: false,
+                silentNetworkError: true,
+            });
+            // Uma exclusão repetida é considerada concluída: o estado desejado já foi atingido.
+            if (!response.ok && !(acao.tipo === "excluir" && response.status === 404)) {
+                const resposta = await response.json().catch(() => ({}));
+                const mensagem = response.status === 401 || response.status === 403
+                    ? "Entre novamente na sua conta para sincronizar os animais."
+                    : resposta.erro || `Não foi possível ${acao.tipo} o animal.`;
+                resultado.erro ??= `Animal ${acao.identificador}: ${mensagem}`;
+                if ([401, 403].includes(response.status) || response.status >= 500) break;
+                continue;
+            }
+            await confirmarAcaoAnimalOffline(usuario.id, acao.id);
+            resultado.enviados++;
+            resultado.pendentes--;
+        }
+        const [cadastrosRestantes, acoesRestantes] = await Promise.all([
+            listarAnimaisOffline(usuario.id),
+            listarAcoesAnimaisOffline(usuario.id),
+        ]);
+        resultado.pendentes = cadastrosRestantes.filter((animal) => animal.salvo_offline).length + acoesRestantes.length;
     } catch (error) {
         resultado.erro = error instanceof Error ? error.message : "Não foi possível sincronizar os animais.";
     }
@@ -348,23 +392,78 @@ export async function sincronizarAnimaisPendentes(): Promise<ResultadoSincroniza
 /** Inclui as pendências locais nas telas de animais, sem duplicar envios já recebidos pelo servidor. */
 export async function listarAnimaisDisponiveis(): Promise<Animal[]> {
     const usuario = await getUsuarioParaAnimais();
-    const locais = await listarAnimaisOffline(usuario.id);
-    if (await estaSemInternet()) return locais;
+    const [locais, cache, acoes] = await Promise.all([
+        listarAnimaisOffline(usuario.id),
+        listarCacheAnimais(usuario.id),
+        listarAcoesAnimaisOffline(usuario.id),
+    ]);
+    const pendentes = locais.filter((animal) => animal.salvo_offline);
+
+    function juntarComPendentes(animaisServidor: Animal[]) {
+        const chavesPendentes = new Set(pendentes.map((animal) => animal.idempotency_key).filter(Boolean));
+        const exclusoes = new Set(acoes.filter((acao) => acao.tipo === "excluir").map((acao) => acao.animalId));
+        const edicoes = new Map(
+            acoes.filter((acao) => acao.tipo === "editar" && acao.dados).map((acao) => [acao.animalId, acao.dados!]),
+        );
+        return [
+            ...pendentes,
+            ...animaisServidor
+                .filter((animal) => !chavesPendentes.has(animal.idempotency_key) && !exclusoes.has(animal.id))
+                .map((animal) => edicoes.has(animal.id)
+                    ? { ...animal, ...edicoes.get(animal.id), id: animal.id, acao_offline: "editar" as const }
+                    : animal),
+        ];
+    }
+
+    if (await estaSemInternet()) return juntarComPendentes(cache);
 
     try {
         const remotos = await listarAnimais({ timeoutMs: 8000, retryNetwork: false });
-        const pendentes = locais.filter((animal) => animal.salvo_offline);
-        const chavesPendentes = new Set(pendentes.map((animal) => animal.idempotency_key).filter(Boolean));
-        return [
-            ...pendentes,
-            // Se a resposta do envio se perdeu, mantém o aviso local até confirmar a mesma chave.
-            ...remotos.filter((animal) => !chavesPendentes.has(animal.idempotency_key)),
-        ];
+        const listaVisivel = juntarComPendentes(remotos);
+        try {
+            // O cache guarda a cópia do servidor; as ações pendentes são aplicadas ao ler.
+            await salvarCacheAnimais(usuario.id, remotos);
+        } catch (error) {
+            console.warn("Não foi possível atualizar o cache de animais:", error);
+        }
+        return listaVisivel;
     } catch (error) {
-        // Falhas HTTP (como sessão expirada) continuam visíveis; só rede usa a lista local.
-        if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) return locais;
+        // Se a conexão cair durante a consulta, mantém a última lista recebida da API.
+        if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) return juntarComPendentes(cache);
         throw error;
     }
+}
+
+export interface TarefaAnimalOffline {
+    id: string | number;
+    tipo: "cadastrar" | "editar" | "excluir";
+    titulo: string;
+    nome: string;
+    identificador: string;
+}
+
+export async function listarTarefasAnimaisOffline(): Promise<TarefaAnimalOffline[]> {
+    const usuario = await getUsuarioParaAnimais();
+    const [cadastros, acoes] = await Promise.all([
+        listarAnimaisOffline(usuario.id),
+        listarAcoesAnimaisOffline(usuario.id),
+    ]);
+    return [
+        ...cadastros.filter((animal) => animal.salvo_offline).map((animal) => ({
+            id: animal.idempotency_key ?? animal.id,
+            tipo: "cadastrar" as const,
+            titulo: "Cadastro de animal",
+            nome: animal.nome || "Animal sem nome",
+            identificador: animal.identificador,
+        })),
+        ...acoes.map((acao: AcaoAnimalOffline) => ({
+            id: acao.id,
+            tipo: acao.tipo,
+            titulo: acao.tipo === "editar" ? "Edição de animal" : "Exclusão de animal",
+            nome: acao.nome || "Animal sem nome",
+            identificador: acao.identificador,
+        })),
+    ];
 }
 
 export async function criarAnimal(dados: {
@@ -467,7 +566,13 @@ export async function atualizarAnimal(id: number, dados: {
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
     data_confirmacao_prenhez?: string | null;
-}) {
+}): Promise<{ salvo_offline?: boolean; mensagem?: string }> {
+    const usuario = await getUsuarioParaAnimais();
+    const jaPossuiAcaoOffline = (await listarAcoesAnimaisOffline(usuario.id)).some((acao) => acao.animalId === id);
+    if (id < 0 || jaPossuiAcaoOffline || await estaSemInternet()) {
+        await editarAnimalOffline(usuario.id, id, dados);
+        return { salvo_offline: true, mensagem: "Edição salva neste dispositivo" };
+    }
     try {
         const response = await apiFetch(`/animais/${id}`, {
             method: "PUT",
@@ -484,11 +589,21 @@ export async function atualizarAnimal(id: number, dados: {
 
     } catch (err) {
         console.error("Falha em atualizarAnimal:", err);
+        if (err instanceof Error && err.message === NETWORK_ERROR_MESSAGE) {
+            await editarAnimalOffline(usuario.id, id, dados);
+            return { salvo_offline: true, mensagem: "Edição salva neste dispositivo" };
+        }
         throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
 
-export async function excluirAnimal(id: number) {
+export async function excluirAnimal(id: number): Promise<{ salvo_offline?: boolean; cancelouCadastro?: boolean; mensagem?: string }> {
+    const usuario = await getUsuarioParaAnimais();
+    const jaPossuiAcaoOffline = (await listarAcoesAnimaisOffline(usuario.id)).some((acao) => acao.animalId === id);
+    if (id < 0 || jaPossuiAcaoOffline || await estaSemInternet()) {
+        const resultado = await excluirAnimalOffline(usuario.id, id);
+        return { ...resultado, salvo_offline: !resultado.cancelouCadastro, mensagem: "Exclusão salva neste dispositivo" };
+    }
     try {
         const response = await apiFetch(`/animais/${id}`, {
             method: "DELETE",
@@ -502,6 +617,10 @@ export async function excluirAnimal(id: number) {
 
     } catch (err) {
         console.error("Falha em excluirAnimal:", err);
+        if (err instanceof Error && err.message === NETWORK_ERROR_MESSAGE) {
+            const resultado = await excluirAnimalOffline(usuario.id, id);
+            return { ...resultado, salvo_offline: !resultado.cancelouCadastro, mensagem: "Exclusão salva neste dispositivo" };
+        }
         throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }

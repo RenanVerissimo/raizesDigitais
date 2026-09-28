@@ -4,6 +4,16 @@ import { normalizarId } from "../utils/normalizarId";
 
 const gravacoesPorUsuario = new Map<number, Promise<unknown>>();
 
+export interface AcaoAnimalOffline {
+    id: string;
+    tipo: "editar" | "excluir";
+    animalId: number;
+    nome: string;
+    identificador: string;
+    dados?: Omit<Animal, "id" | "usuario_id" | "salvo_offline" | "idempotency_key">;
+    criadaEm: string;
+}
+
 function gerarChaveCadastro() {
     return `animal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
@@ -28,17 +38,60 @@ function chaveAnimais(usuarioId: number): string {
     return `@raizes_digitais:usuario:${usuarioId}:animais`;
 }
 
+function chaveCacheAnimais(usuarioId: number): string {
+    chaveAnimais(usuarioId);
+    return `@raizes_digitais:usuario:${usuarioId}:animais_cache`;
+}
+
+function chaveAcoesAnimais(usuarioId: number): string {
+    chaveAnimais(usuarioId);
+    return `@raizes_digitais:usuario:${usuarioId}:animais_acoes`;
+}
+
+function converterListaAnimais(dados: string | null, mensagemErro: string): Animal[] {
+    if (dados === null) return [];
+    const animais: unknown = JSON.parse(dados);
+    if (!Array.isArray(animais)) throw new Error(mensagemErro);
+    return animais as Animal[];
+}
+
 /** Retorna uma lista vazia somente quando ainda não há dados salvos. */
 export async function listarAnimaisOffline(usuarioId: number): Promise<Animal[]> {
     const dados = await AsyncStorage.getItem(chaveAnimais(usuarioId));
+    return converterListaAnimais(dados, "Os dados locais de animais não contêm uma lista válida.");
+}
+
+/** Retorna a última lista de animais recebida do servidor para este usuário. */
+export async function listarCacheAnimais(usuarioId: number): Promise<Animal[]> {
+    const dados = await AsyncStorage.getItem(chaveCacheAnimais(usuarioId));
+    return converterListaAnimais(dados, "O cache de animais não contém uma lista válida.");
+}
+
+/** Substitui o cache somente depois que a API retorna uma lista válida. */
+export async function salvarCacheAnimais(usuarioId: number, animais: Animal[]): Promise<void> {
+    if (!Array.isArray(animais)) throw new Error("Informe uma lista de animais para salvar no cache.");
+    await executarGravacao(usuarioId, () => gravarCache(usuarioId, animais));
+}
+
+async function gravarCache(usuarioId: number, animais: Animal[]): Promise<void> {
+    await AsyncStorage.setItem(chaveCacheAnimais(usuarioId), JSON.stringify(animais));
+}
+
+async function lerAcoes(usuarioId: number): Promise<AcaoAnimalOffline[]> {
+    const dados = await AsyncStorage.getItem(chaveAcoesAnimais(usuarioId));
     if (dados === null) return [];
+    const acoes: unknown = JSON.parse(dados);
+    if (!Array.isArray(acoes)) throw new Error("As ações offline de animais não contêm uma lista válida.");
+    return acoes as AcaoAnimalOffline[];
+}
 
-    const animais: unknown = JSON.parse(dados);
-    if (!Array.isArray(animais)) {
-        throw new Error("Os dados locais de animais não contêm uma lista válida.");
-    }
+async function gravarAcoes(usuarioId: number, acoes: AcaoAnimalOffline[]) {
+    await AsyncStorage.setItem(chaveAcoesAnimais(usuarioId), JSON.stringify(acoes));
+}
 
-    return animais as Animal[];
+export async function listarAcoesAnimaisOffline(usuarioId: number): Promise<AcaoAnimalOffline[]> {
+    chaveAnimais(usuarioId);
+    return lerAcoes(usuarioId);
 }
 
 /** Substitui a lista completa do usuário; não adiciona registros individualmente. */
@@ -109,5 +162,83 @@ export async function confirmarAnimalSincronizado(usuarioId: number, chave: stri
     await executarGravacao(usuarioId, async () => {
         const animais = await listarAnimaisOffline(usuarioId);
         await gravarLista(usuarioId, animais.filter((animal) => animal.idempotency_key !== chave));
+    });
+}
+
+export async function editarAnimalOffline(
+    usuarioId: number,
+    animalId: number,
+    dados: Omit<Animal, "id" | "usuario_id" | "salvo_offline" | "idempotency_key">,
+): Promise<Animal> {
+    return executarGravacao(usuarioId, async () => {
+        const locais = await listarAnimaisOffline(usuarioId);
+        const local = locais.find((animal) => animal.id === animalId && animal.salvo_offline);
+        if (local) {
+            const atualizado = { ...local, ...dados, id: local.id, usuario_id: usuarioId, salvo_offline: true };
+            await gravarLista(usuarioId, locais.map((animal) => animal.id === animalId ? atualizado : animal));
+            return atualizado;
+        }
+
+        const cache = await listarCacheAnimais(usuarioId);
+        const existente = cache.find((animal) => animal.id === animalId);
+        if (!existente) throw new Error("Animal não encontrado no cache deste usuário.");
+        const identificador = normalizarId(dados.identificador);
+        const repetidoNoCache = cache.some((animal) => animal.id !== animalId && normalizarId(animal.identificador) === identificador);
+        const repetidoLocal = locais.some((animal) => normalizarId(animal.identificador) === identificador);
+        if (repetidoNoCache || repetidoLocal) throw new Error("Já existe outro animal com esse identificador.");
+        const atualizado: Animal = { ...existente, ...dados, id: animalId, usuario_id: usuarioId };
+        const acoes = await lerAcoes(usuarioId);
+        if (acoes.some((acao) => acao.animalId === animalId && acao.tipo === "excluir")) {
+            throw new Error("Este animal já está aguardando exclusão.");
+        }
+        const acao: AcaoAnimalOffline = {
+            id: `editar-${usuarioId}-${animalId}`,
+            tipo: "editar",
+            animalId,
+            nome: atualizado.nome,
+            identificador: atualizado.identificador,
+            dados,
+            criadaEm: new Date().toISOString(),
+        };
+        await gravarCache(usuarioId, cache.map((animal) => animal.id === animalId ? atualizado : animal));
+        await gravarAcoes(usuarioId, [...acoes.filter((item) => item.id !== acao.id), acao]);
+        return atualizado;
+    });
+}
+
+export async function excluirAnimalOffline(usuarioId: number, animalId: number): Promise<{ cancelouCadastro: boolean }> {
+    return executarGravacao(usuarioId, async () => {
+        const locais = await listarAnimaisOffline(usuarioId);
+        const local = locais.find((animal) => animal.id === animalId && animal.salvo_offline);
+        if (local) {
+            await gravarLista(usuarioId, locais.filter((animal) => animal.id !== animalId));
+            return { cancelouCadastro: true };
+        }
+
+        const cache = await listarCacheAnimais(usuarioId);
+        const existente = cache.find((animal) => animal.id === animalId);
+        if (!existente) throw new Error("Animal não encontrado no cache deste usuário.");
+        const acoes = await lerAcoes(usuarioId);
+        const acao: AcaoAnimalOffline = {
+            id: `excluir-${usuarioId}-${animalId}`,
+            tipo: "excluir",
+            animalId,
+            nome: existente.nome,
+            identificador: existente.identificador,
+            criadaEm: new Date().toISOString(),
+        };
+        await gravarCache(usuarioId, cache.filter((animal) => animal.id !== animalId));
+        await gravarAcoes(usuarioId, [
+            ...acoes.filter((item) => item.animalId !== animalId),
+            acao,
+        ]);
+        return { cancelouCadastro: false };
+    });
+}
+
+export async function confirmarAcaoAnimalOffline(usuarioId: number, acaoId: string): Promise<void> {
+    await executarGravacao(usuarioId, async () => {
+        const acoes = await lerAcoes(usuarioId);
+        await gravarAcoes(usuarioId, acoes.filter((acao) => acao.id !== acaoId));
     });
 }

@@ -38,6 +38,7 @@ export interface Animal {
     id: number;
     usuario_id?: number;
     salvo_offline?: boolean;
+    acao_offline?: "editar" | "excluir";
     idempotency_key?: string;
     nome: string;
     identificador: string;

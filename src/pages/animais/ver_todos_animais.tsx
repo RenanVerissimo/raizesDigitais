@@ -60,25 +60,28 @@ export default function VerTodosAnimais() {
     }
 
     function handleExcluir(animal: Animal) {
-        if (animal.salvo_offline) return;
         setAnimalSelecionado(animal);
         setModalVisible(true);
     }
 
     async function confirmarExclusao() {
-        if (!animalSelecionado || animalSelecionado.salvo_offline) return;
+        if (!animalSelecionado) return;
 
         const nomeExcluido = animalSelecionado.nome;
 
         try {
             setExcluindoId(animalSelecionado.id);
-            await excluirAnimal(animalSelecionado.id);
+            const resultado = await excluirAnimal(animalSelecionado.id);
             setAnimais((prev) => prev.filter((a) => a.id !== animalSelecionado.id));
 
             Toast.show({
                 type: "success",
-                text1: "Animal excluído",
-                text2: `${nomeExcluido} foi removido com sucesso.`,
+                text1: resultado.salvo_offline ? "Exclusão salva offline" : "Animal excluído",
+                text2: resultado.salvo_offline
+                    ? `${nomeExcluido} será excluído do servidor quando houver internet.`
+                    : resultado.cancelouCadastro
+                        ? `O cadastro offline de ${nomeExcluido} foi cancelado.`
+                        : `${nomeExcluido} foi removido com sucesso.`,
                 position: "top",
                 visibilityTime: 3000,
             });
@@ -455,7 +458,7 @@ function CardAnimal({
                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
                             ID: {animal.identificador}
                         </Text>
-                        {animal.salvo_offline && (
+                        {(animal.salvo_offline || animal.acao_offline) && (
                             <Text style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
                                 Aguardando sincronização
                             </Text>
@@ -499,7 +502,7 @@ function CardAnimal({
                         )}
                     </View>
                 </View>
-                {!animal.salvo_offline && !vendido && (
+                {!vendido && (
                     <View style={{ flexDirection: "row", gap: 6 }}>
                         <TouchableOpacity
                             onPress={(event) => {
