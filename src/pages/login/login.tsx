@@ -306,14 +306,21 @@ export default function LoginScreen() {
 
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                 <ScrollView
-                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 32 }]}
+                    contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 62, paddingBottom: insets.bottom + 32 }]}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                     showsHorizontalScrollIndicator={false}
                     bounces={false}
                 >
                     <FloatingIcon source={require("../../assets/garrafa-de-leite.png")} size={32} top="15%" left={40} duration={3000} delay={0} name={"phone"} />
-                    <FloatingIcon name="trending-up" size={28} top="7%" right={50} duration={4000} delay={500} />
+                    <View style={[styles.utfprLogoContainer, { top: insets.top + 12 }]}>
+                        <Image
+                            source={require("../../assets/logo-utfpr2.png")}
+                            style={styles.utfprLogoImage}
+                            resizeMode="contain"
+                            accessibilityLabel="UTFPR - Universidade Tecnológica Federal do Paraná"
+                        />
+                    </View>
                     <View style={styles.header}>
                         <View style={styles.logoWrapper}>
                             <View style={styles.logoContainer}>

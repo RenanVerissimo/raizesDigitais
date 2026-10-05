@@ -6,6 +6,14 @@ export const styles = StyleSheet.create({
   gradient: { flex: 1, overflow: "hidden" },
   scrollContent: { flexGrow: 1, paddingHorizontal: 20, justifyContent: "center", overflow: "hidden" },
   header: { alignItems: "center", marginBottom: isSmallScreen ? 16 : 28 },
+  utfprLogoContainer: {
+    position: "absolute",
+    right: 20,
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: "#ffffff",
+  },
+  utfprLogoImage: { width: 75, height: 30 },
   logoWrapper: {
     position: "relative",
     marginBottom: isSmallScreen ? 8 : 12,
