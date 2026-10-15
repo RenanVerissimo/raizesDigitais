@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Animal } from "../interfaces/interfaces";
-import { normalizarId } from "../utils/normalizarId";
+import type { Animal } from "../../interfaces/interfaces";
+import { normalizarId } from "../../utils/normalizarId";
 
 const gravacoesPorUsuario = new Map<number, Promise<unknown>>();
 

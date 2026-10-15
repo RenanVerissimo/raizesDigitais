@@ -12,9 +12,11 @@ import {
     prepararAnimaisParaSincronizacao,
     salvarCacheAnimais,
     type AcaoAnimalOffline,
-} from "./animaisOffline";
-import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
+} from "./offline/animaisOffline";
+import { Animal, Compra, Financiamento, Producao, Receita, StatusCompra } from "../interfaces/interfaces";
 import { estaSemInternet } from "../utils/conexaoInternet";
+import { listarProducoesLocal, listarTanquesLocal, salvarProducoesLocal, salvarTanquesLocal } from "./offline/historicoDeProducaoOffline";
+
 /* import { API_URL } from "../config";
 
 const BASE_URL = API_URL;
@@ -159,12 +161,54 @@ async function apiFetch(path: string, init: ApiFetchInit = {}) {
     throw new Error(NETWORK_ERROR_MESSAGE);
 }
 
-export async function listarProducoes(options?: { silentNetworkError?: boolean }) {
+
+/* export async function listarProducoes(options?: { silentNetworkError?: boolean }) {
     const response = await apiFetch("/producao", {
         silentNetworkError: options?.silentNetworkError,
     });
     return response.json();
 }
+ */
+
+export async function listarProducoes(
+    options?: { silentNetworkError?: boolean }
+): Promise<Producao[]> {
+
+    const usuario = await getUsuarioLogado();
+
+    if (!usuario) {
+        throw new Error("Usuário não encontrado.");
+    }
+
+    // Se estiver sem internet, busca as produções salvas localmente
+    if (await estaSemInternet()) {
+        const producoes = await listarProducoesLocal(usuario.id);
+
+        console.log(
+            "Produções carregadas offline:",
+            JSON.stringify(producoes)
+        );
+
+        return producoes;
+    }
+
+    // Se estiver com internet, busca normalmente na API
+    const response = await apiFetch("/producao", {
+        silentNetworkError: options?.silentNetworkError,
+    });
+
+    if (!response.ok) {
+        throw new Error("Erro ao listar produções");
+    }
+
+    const producoes: Producao[] = await response.json();
+
+    // Salva uma cópia para utilização offline
+    await salvarProducoesLocal(usuario.id, producoes);
+
+    return producoes;
+}
+
 export async function listarProducoesRecentes() {
     const response = await apiFetch("/producao/recentes");
     return response.json();
@@ -185,7 +229,8 @@ export async function criarAvaliacaoApp(dados: { estrelas: number; descricao: st
     return response.json();
 }
 
-export async function criarProducao(dados: {
+
+/* export async function criarProducao(dados: {
     date: string;
     dailyProduction: number;
     tanqueId: number;
@@ -203,8 +248,50 @@ export async function criarProducao(dados: {
         throw new Error(erroData.erro || erroData.error || "Erro ao salvar produção");
     }
     return response.json();
+}
+ */
 
+export async function criarProducao(dados: {
+    date: string;
+    dailyProduction: number;
+    tanqueId: number;
+    notes: string | null;
+}) {
+    const usuario = await getUsuarioLogado();
 
+    if (!usuario) {
+        throw new Error("Usuário não encontrado.");
+    }
+
+    // Se estiver sem internet, salva localmente
+    if (await estaSemInternet()) {
+        await salvarProducoesLocal(usuario.id, [dados as unknown as Producao]);
+
+        return {
+            salvo_offline: true
+        };
+    }
+
+    // Se estiver com internet, salva normalmente na API
+    const response = await apiFetch(`/producao`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dados),
+        silentNetworkError: true,
+        timeoutMs: 90000,
+    });
+
+    if (!response.ok) {
+        const erroData = await response.json().catch(() => ({}));
+
+        throw new Error(
+            erroData.erro ||
+            erroData.error ||
+            "Erro ao salvar produção"
+        );
+    }
+
+    return response.json();
 }
 
 export async function excluirProducao(id: number) {
@@ -1125,20 +1212,50 @@ export async function quitarParcelaFinanciamento(id: number, dados: {
 // ESTOQUE — TANQUES
 // ============================================
 
-export async function listarTanques(options?: { silentNetworkError?: boolean }) {
+export async function listarTanques(
+    options?: { silentNetworkError?: boolean }
+) {
+    const usuario = await getUsuarioLogado();
+
+    if (!usuario) {
+        throw new Error("Usuário não encontrado.");
+    }
+
+    // OFFLINE: utiliza os tanques que já foram salvos no aparelho
+    if (await estaSemInternet()) {
+        const tanques = await listarTanquesLocal(usuario.id);
+
+        console.log(
+            "Tanques carregados offline:",
+            JSON.stringify(tanques)
+        );
+
+        return tanques;
+    }
+
+    // ONLINE: busca os tanques normalmente na API
     const res = await apiFetch(`/estoque/tanques`, {
         silentNetworkError: options?.silentNetworkError,
     });
-    if (!res.ok) throw new Error("Erro ao listar tanques");
+
+    if (!res.ok) {
+        throw new Error("Erro ao listar tanques");
+    }
+
     const dados = await res.json();
-    return dados.map((t: any) => ({
+
+    const tanques = dados.map((t: any) => ({
         ...t,
         capacidade: Number(t.capacidade),
         volumeAtual: Number(t.volumeAtual),
         temperatura: Number(t.temperatura),
     }));
-}
 
+    // Guarda uma cópia dos tanques existentes para uso offline
+    await salvarTanquesLocal(usuario.id, tanques);
+
+    return tanques;
+}
 export async function criarTanque(dados: {
     nome: string;
     capacidade: number;
