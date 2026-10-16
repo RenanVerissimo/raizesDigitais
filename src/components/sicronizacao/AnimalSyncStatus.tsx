@@ -2,14 +2,14 @@ import React, { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Button, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { AntDesign, Feather } from "@expo/vector-icons";
-import { Animal } from "../interfaces/interfaces";
+import { Animal } from "../../interfaces/interfaces";
 import {
     getUsuarioLogado,
     listarAnimaisDisponiveis,
     listarTarefasAnimaisOffline,
     observarSincronizacaoAnimais,
     sincronizarAnimaisPendentes,
-} from "../services/api";
+} from "../../services/api";
 
 type ResultadoSincronizacao = Awaited<ReturnType<typeof sincronizarAnimaisPendentes>>;
 

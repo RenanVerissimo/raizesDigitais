@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/AnimalSyncStatus";
+import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/sicronizacao/AnimalSyncStatus";
 
 export default function TarefasAsync() {
 	const navigation = useNavigation<any>();

@@ -15,7 +15,8 @@ import {
 } from "./offline/animaisOffline";
 import { Animal, Compra, Financiamento, Producao, Receita, StatusCompra } from "../interfaces/interfaces";
 import { estaSemInternet } from "../utils/conexaoInternet";
-import { listarProducoesLocal, listarTanquesLocal, salvarProducoesLocal, salvarTanquesLocal } from "./offline/historicoDeProducaoOffline";
+import { listarProducoesLocal, salvarProducoesLocal  } from "./offline/ProducaoOffline";
+import { listarTanquesLocal, salvarTanquesLocal } from "./offline/EstoqueDeLeiteOffline";
 
 /* import { API_URL } from "../config";
 

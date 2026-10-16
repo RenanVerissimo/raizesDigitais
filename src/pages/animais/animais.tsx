@@ -4,7 +4,7 @@ import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/AnimalSyncStatus";
+import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/sicronizacao/AnimalSyncStatus";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
 import { calcularAvisoDescarteLeite } from "../../utils/alerts";

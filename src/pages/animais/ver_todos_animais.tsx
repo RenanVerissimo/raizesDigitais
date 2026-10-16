@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
 import { atualizarStatusAnimal, listarAnimaisDisponiveis as listarAnimais, excluirAnimal } from "../../services/api";
-import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/AnimalSyncStatus";
+import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/sicronizacao/AnimalSyncStatus";
 import ConfirmDeleteModal from "./ConfirmationModal";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
