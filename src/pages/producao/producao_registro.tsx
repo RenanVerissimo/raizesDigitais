@@ -161,11 +161,13 @@ export default function ProducaoRegistro() {
         return false;
     }
 
-    function mostrarSucesso() {
+    function mostrarSucesso(salvoOffline = false) {
         Toast.show({
             type: "success",
-            text1: isEditando ? "Produção atualizada!" : "Produção registrada!",
-            text2: isEditando
+            text1: salvoOffline ? "Coleta registrada offline!" : isEditando ? "Produção atualizada!" : "Produção registrada!",
+            text2: salvoOffline
+                ? "Salva no celular. Você pode consultar a pendência em Tarefas Offline."
+                : isEditando
                 ? "As alteracoes foram salvas."
                 : "Sua coleta foi salva com sucesso.",
             position: "top",
@@ -223,13 +225,15 @@ export default function ProducaoRegistro() {
         };
 
         try {
+            let salvoOffline = false;
             if (isEditando) {
                 await atualizarProducao(producaoEditando!.id, dados);
             } else {
-                await criarProducao(dados);
+                const resultado = await criarProducao(dados);
+                salvoOffline = resultado?.salvo_offline === true;
             }
 
-            mostrarSucesso();
+            mostrarSucesso(salvoOffline);
 
             if (!isEditando) {
                 setFormData({

@@ -1,5 +1,9 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
+import { estaSemInternet } from "../utils/conexaoInternet";
+import type { Tanque } from "../pages/controle_de_estoque/estoque";
+import { listarTanquesLocal, salvarTanquesLocal } from "./offline/EstoqueDeLeiteOffline";
+import { adicionarTarefaOffline } from "./offline/sincronizacaoOffline";
 /* import { API_URL } from "../config";
 
 const BASE_URL = API_URL;
@@ -175,6 +179,23 @@ export async function criarProducao(dados: {
     tanqueId: number;
     notes: string | null;
 }) {
+    if (await estaSemInternet()) {
+        const usuario = await getUsuarioLogado();
+        if (!usuario) throw new Error("Usuário não encontrado.");
+
+        const tarefaId = gerarIdempotencyKey("coleta");
+        await adicionarTarefaOffline(usuario.id, {
+            id: tarefaId,
+            usuarioId: usuario.id,
+            tipo: "criar",
+            para: "producao",
+            dados: { ...dados },
+            criadaEm: new Date().toISOString(),
+        });
+
+        return { salvo_offline: true, tarefaId };
+    }
+
     const response = await apiFetch(`/producao`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -858,18 +879,33 @@ export async function quitarParcelaFinanciamento(id: number, dados: {
 // ESTOQUE — TANQUES
 // ============================================
 
-export async function listarTanques(options?: { silentNetworkError?: boolean }) {
-    const res = await apiFetch(`/estoque/tanques`, {
-        silentNetworkError: options?.silentNetworkError,
-    });
+export async function listarTanques(options?: { silentNetworkError?: boolean }): Promise<Tanque[]> {
+    const usuario = await getUsuarioLogado();
+    if (!usuario) throw new Error("Usuário não encontrado.");
+
+    if (await estaSemInternet()) return listarTanquesLocal(usuario.id);
+
+    let res: Response;
+    try {
+        res = await apiFetch(`/estoque/tanques`, {
+            silentNetworkError: options?.silentNetworkError,
+        });
+    } catch (error) {
+        if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) {
+            return listarTanquesLocal(usuario.id);
+        }
+        throw error;
+    }
     if (!res.ok) throw new Error("Erro ao listar tanques");
     const dados = await res.json();
-    return dados.map((t: any) => ({
+    const tanques: Tanque[] = dados.map((t: any) => ({
         ...t,
         capacidade: Number(t.capacidade),
         volumeAtual: Number(t.volumeAtual),
         temperatura: Number(t.temperatura),
     }));
+    await salvarTanquesLocal(usuario.id, tanques);
+    return tanques;
 }
 
 export async function criarTanque(dados: {

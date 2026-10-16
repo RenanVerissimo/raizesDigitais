@@ -1,8 +1,5 @@
 import React from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { AppState } from "react-native";
-import NetInfo from "@react-native-community/netinfo";
-import { sincronizarAnimaisPendentes } from "./src/services/api";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -75,27 +72,6 @@ const toastConfig = {
 };
 
 export default function App() {
-    React.useEffect(() => {
-        const tentarSincronizar = () => {
-            if (AppState.currentState !== "active") return;
-            void sincronizarAnimaisPendentes().catch((error) => console.warn("Falha ao iniciar sincronização:", error));
-        };
-        const removerRede = NetInfo.addEventListener((rede) => {
-            if (rede.isConnected && rede.isInternetReachable !== false) tentarSincronizar();
-        });
-        const estadoApp = AppState.addEventListener("change", (estado) => {
-            if (estado === "active") tentarSincronizar();
-        });
-        // Retenta falhas transitórias enquanto o app está aberto, sem depender de outro evento de rede.
-        const intervalo = setInterval(tentarSincronizar, 30000);
-        tentarSincronizar();
-        return () => {
-            removerRede();
-            estadoApp.remove();
-            clearInterval(intervalo);
-        };
-    }, []);
-
     return (
         <SafeAreaProvider>
             <NavigationContainer>
