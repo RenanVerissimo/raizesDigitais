@@ -1,11 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Producao } from "../../interfaces/interfaces";
 import { Tanque } from "../../pages/controle_de_estoque/estoque";
 
 
 function chaveTanques(usuarioId: number): string {
     return `@raizes_digitais:usuario:${usuarioId}:tanques`;
 }
+
 
 export async function salvarTanquesLocal(
     usuarioId: number,
@@ -37,3 +37,6 @@ export async function listarTanquesLocal(
 
     return JSON.parse(dados) as Tanque[];
 }
+
+
+

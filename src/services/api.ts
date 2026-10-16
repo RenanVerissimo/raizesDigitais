@@ -1,23 +1,5 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { StatusReprodutivo } from "../utils/statusReprodutivo";
-import {
-    confirmarAcaoAnimalOffline,
-    confirmarAnimalSincronizado,
-    criarAnimalOffline,
-    editarAnimalOffline,
-    excluirAnimalOffline,
-    listarAcoesAnimaisOffline,
-    listarAnimaisOffline,
-    listarCacheAnimais,
-    prepararAnimaisParaSincronizacao,
-    salvarCacheAnimais,
-    type AcaoAnimalOffline,
-} from "./offline/animaisOffline";
-import { Animal, Compra, Financiamento, Producao, Receita, StatusCompra } from "../interfaces/interfaces";
-import { estaSemInternet } from "../utils/conexaoInternet";
-import { listarProducoesLocal, salvarProducoesLocal  } from "./offline/ProducaoOffline";
-import { listarTanquesLocal, salvarTanquesLocal } from "./offline/EstoqueDeLeiteOffline";
-
+import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
 /* import { API_URL } from "../config";
 
 const BASE_URL = API_URL;
@@ -25,7 +7,7 @@ const BASE_URL = API_URL;
 console.log("BASE_URL:", BASE_URL); */
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
-console.log("BASE_URL:", BASE_URL);
+
 
 const USUARIO_STORAGE_KEY = "@raizes_digitais_usuario";
 let usuarioLogadoMemoria: UsuarioLogado | null = null;
@@ -35,7 +17,6 @@ const NETWORK_ERROR_MESSAGE = "Conexão instável. Verifique a internet e tente 
 
 type ApiFetchInit = RequestInit & {
     retryUnsafe?: boolean;
-    retryNetwork?: boolean;
     silentNetworkError?: boolean;
     timeoutMs?: number;
     omitUsuarioHeader?: boolean;
@@ -124,7 +105,7 @@ export async function limparUsuarioLogado() {
 }
 
 async function apiFetch(path: string, init: ApiFetchInit = {}) {
-    const { retryUnsafe = false, retryNetwork = true, silentNetworkError = false, timeoutMs, omitUsuarioHeader = false, ...fetchInit } = init;
+    const { retryUnsafe = false, silentNetworkError = false, timeoutMs, omitUsuarioHeader = false, ...fetchInit } = init;
     const usuario = omitUsuarioHeader ? null : await getUsuarioLogado();
     const headers = {
         ...(fetchInit.headers || {}),
@@ -132,7 +113,7 @@ async function apiFetch(path: string, init: ApiFetchInit = {}) {
     };
     const url = `${BASE_URL}${path}`;
     const method = String(fetchInit.method || "GET").toUpperCase();
-    const canRetry = retryNetwork && (method === "GET" || method === "HEAD" || retryUnsafe);
+    const canRetry = method === "GET" || method === "HEAD" || retryUnsafe;
     const maxAttempts = canRetry ? NETWORK_RETRY_DELAYS_MS.length + 1 : 1;
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -162,54 +143,12 @@ async function apiFetch(path: string, init: ApiFetchInit = {}) {
     throw new Error(NETWORK_ERROR_MESSAGE);
 }
 
-
-/* export async function listarProducoes(options?: { silentNetworkError?: boolean }) {
+export async function listarProducoes(options?: { silentNetworkError?: boolean }) {
     const response = await apiFetch("/producao", {
         silentNetworkError: options?.silentNetworkError,
     });
     return response.json();
 }
- */
-
-export async function listarProducoes(
-    options?: { silentNetworkError?: boolean }
-): Promise<Producao[]> {
-
-    const usuario = await getUsuarioLogado();
-
-    if (!usuario) {
-        throw new Error("Usuário não encontrado.");
-    }
-
-    // Se estiver sem internet, busca as produções salvas localmente
-    if (await estaSemInternet()) {
-        const producoes = await listarProducoesLocal(usuario.id);
-
-        console.log(
-            "Produções carregadas offline:",
-            JSON.stringify(producoes)
-        );
-
-        return producoes;
-    }
-
-    // Se estiver com internet, busca normalmente na API
-    const response = await apiFetch("/producao", {
-        silentNetworkError: options?.silentNetworkError,
-    });
-
-    if (!response.ok) {
-        throw new Error("Erro ao listar produções");
-    }
-
-    const producoes: Producao[] = await response.json();
-
-    // Salva uma cópia para utilização offline
-    await salvarProducoesLocal(usuario.id, producoes);
-
-    return producoes;
-}
-
 export async function listarProducoesRecentes() {
     const response = await apiFetch("/producao/recentes");
     return response.json();
@@ -230,8 +169,7 @@ export async function criarAvaliacaoApp(dados: { estrelas: number; descricao: st
     return response.json();
 }
 
-
-/* export async function criarProducao(dados: {
+export async function criarProducao(dados: {
     date: string;
     dailyProduction: number;
     tanqueId: number;
@@ -249,50 +187,8 @@ export async function criarAvaliacaoApp(dados: { estrelas: number; descricao: st
         throw new Error(erroData.erro || erroData.error || "Erro ao salvar produção");
     }
     return response.json();
-}
- */
 
-export async function criarProducao(dados: {
-    date: string;
-    dailyProduction: number;
-    tanqueId: number;
-    notes: string | null;
-}) {
-    const usuario = await getUsuarioLogado();
 
-    if (!usuario) {
-        throw new Error("Usuário não encontrado.");
-    }
-
-    // Se estiver sem internet, salva localmente
-    if (await estaSemInternet()) {
-        await salvarProducoesLocal(usuario.id, [dados as unknown as Producao]);
-
-        return {
-            salvo_offline: true
-        };
-    }
-
-    // Se estiver com internet, salva normalmente na API
-    const response = await apiFetch(`/producao`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dados),
-        silentNetworkError: true,
-        timeoutMs: 90000,
-    });
-
-    if (!response.ok) {
-        const erroData = await response.json().catch(() => ({}));
-
-        throw new Error(
-            erroData.erro ||
-            erroData.error ||
-            "Erro ao salvar produção"
-        );
-    }
-
-    return response.json();
 }
 
 export async function excluirProducao(id: number) {
@@ -328,9 +224,9 @@ export async function atualizarProducao(id: number, dados: {
 // ANIMAIS
 // ============================================
 
-export async function listarAnimais(options?: { timeoutMs?: number; retryNetwork?: boolean }): Promise<Animal[]> {
+export async function listarAnimais(): Promise<Animal[]> {
     try {
-        const response = await apiFetch(`/animais`, options);
+        const response = await apiFetch(`/animais`);
 
         if (!response.ok) {
             throw new Error(`Erro ao listar animais (status ${response.status})`);
@@ -342,216 +238,6 @@ export async function listarAnimais(options?: { timeoutMs?: number; retryNetwork
         console.error("Falha em listarAnimais:", err);
         throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
-}
-
-async function getUsuarioParaAnimais() {
-    const usuario = await getUsuarioLogado();
-    if (!usuario || !Number.isSafeInteger(usuario.id) || usuario.id <= 0) {
-        throw new Error("Entre na sua conta com internet antes de cadastrar animais offline.");
-    }
-    return usuario;
-}
-
-export interface ResultadoSincronizacaoAnimais {
-    usuarioId: number | null;
-    enviados: number;
-    pendentes: number;
-    erro?: string;
-}
-
-const sincronizacoesAnimais = new Map<number, Promise<ResultadoSincronizacaoAnimais>>();
-const ouvintesSincronizacaoAnimais = new Set<(resultado: ResultadoSincronizacaoAnimais) => void>();
-
-export function observarSincronizacaoAnimais(ouvinte: (resultado: ResultadoSincronizacaoAnimais) => void) {
-    ouvintesSincronizacaoAnimais.add(ouvinte);
-    return () => { ouvintesSincronizacaoAnimais.delete(ouvinte); };
-}
-
-async function enviarAnimaisPendentes(usuario: UsuarioLogado): Promise<ResultadoSincronizacaoAnimais> {
-    const resultado: ResultadoSincronizacaoAnimais = { usuarioId: usuario.id, enviados: 0, pendentes: 0 };
-    try {
-        const [cadastrosIniciais, acoesIniciais] = await Promise.all([
-            listarAnimaisOffline(usuario.id),
-            listarAcoesAnimaisOffline(usuario.id),
-        ]);
-        resultado.pendentes = cadastrosIniciais.filter((animal) => animal.salvo_offline).length + acoesIniciais.length;
-        if (!resultado.pendentes) return resultado;
-        if (!usuario.token) throw new Error("Entre novamente na sua conta para sincronizar os animais.");
-        if (await estaSemInternet()) throw new Error("Sem internet. As tarefas continuam salvas neste dispositivo.");
-
-        const pendentes = await prepararAnimaisParaSincronizacao(usuario.id);
-        for (const animal of pendentes) {
-            const sessaoAtual = await getUsuarioLogado();
-            if (sessaoAtual?.id !== usuario.id || !sessaoAtual.token) {
-                throw new Error("A sessão mudou. Os cadastros permanecem vinculados à conta original.");
-            }
-            const { id, usuario_id, salvo_offline, idempotency_key, ...dados } = animal;
-            const response = await apiFetch("/animais/sincronizar", {
-                method: "POST",
-                // Usa o token da mesma conta que originou a fila, mesmo se houver logout durante o envio.
-                omitUsuarioHeader: true,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessaoAtual.token}` },
-                body: JSON.stringify({ ...dados, idempotencyKey: idempotency_key }),
-                retryNetwork: false,
-                silentNetworkError: true,
-            });
-            const resposta = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                const mensagem = response.status === 401 || response.status === 403
-                    ? "Entre novamente na sua conta para sincronizar os animais."
-                    : response.status === 404
-                        ? "O servidor precisa ser atualizado para receber os cadastros offline."
-                        : resposta.erro || "Não foi possível sincronizar. Tente novamente.";
-                resultado.erro ??= `Animal ${animal.identificador}: ${mensagem}`;
-                if ([401, 403, 404].includes(response.status) || response.status >= 500) break;
-                continue;
-            }
-
-            const idServidor = Number(resposta.id ?? resposta.id_animal);
-            if (!Number.isSafeInteger(idServidor) || idServidor <= 0 || resposta.idempotencyKey !== idempotency_key) {
-                throw new Error("O servidor não confirmou o cadastro. O animal continua salvo neste dispositivo.");
-            }
-            await confirmarAnimalSincronizado(usuario.id, idempotency_key!);
-            resultado.enviados++;
-            resultado.pendentes--;
-        }
-
-        const acoes = await listarAcoesAnimaisOffline(usuario.id);
-        for (const acao of acoes) {
-            const sessaoAtual = await getUsuarioLogado();
-            if (sessaoAtual?.id !== usuario.id || !sessaoAtual.token) {
-                throw new Error("A sessão mudou. As tarefas permanecem vinculadas à conta original.");
-            }
-            const response = await apiFetch(`/animais/${acao.animalId}`, {
-                method: acao.tipo === "editar" ? "PUT" : "DELETE",
-                omitUsuarioHeader: true,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessaoAtual.token}` },
-                body: acao.tipo === "editar" ? JSON.stringify(acao.dados) : undefined,
-                retryNetwork: false,
-                silentNetworkError: true,
-            });
-            // Uma exclusão repetida é considerada concluída: o estado desejado já foi atingido.
-            if (!response.ok && !(acao.tipo === "excluir" && response.status === 404)) {
-                const resposta = await response.json().catch(() => ({}));
-                const mensagem = response.status === 401 || response.status === 403
-                    ? "Entre novamente na sua conta para sincronizar os animais."
-                    : resposta.erro || `Não foi possível ${acao.tipo} o animal.`;
-                resultado.erro ??= `Animal ${acao.identificador}: ${mensagem}`;
-                if ([401, 403].includes(response.status) || response.status >= 500) break;
-                continue;
-            }
-            await confirmarAcaoAnimalOffline(usuario.id, acao.id);
-            resultado.enviados++;
-            resultado.pendentes--;
-        }
-        const [cadastrosRestantes, acoesRestantes] = await Promise.all([
-            listarAnimaisOffline(usuario.id),
-            listarAcoesAnimaisOffline(usuario.id),
-        ]);
-        resultado.pendentes = cadastrosRestantes.filter((animal) => animal.salvo_offline).length + acoesRestantes.length;
-    } catch (error) {
-        resultado.erro = error instanceof Error ? error.message : "Não foi possível sincronizar os animais.";
-    }
-
-    for (const ouvinte of ouvintesSincronizacaoAnimais) {
-        try { ouvinte(resultado); } catch (error) { console.warn("Falha ao atualizar a tela após sincronização:", error); }
-    }
-    return resultado;
-}
-
-/** Executa uma única fila por usuário; falhas preservam as pendências para a próxima tentativa. */
-export async function sincronizarAnimaisPendentes(): Promise<ResultadoSincronizacaoAnimais> {
-    const usuario = await getUsuarioLogado();
-    if (!usuario || !Number.isSafeInteger(usuario.id) || usuario.id <= 0) {
-        return { usuarioId: null, enviados: 0, pendentes: 0 };
-    }
-    const existente = sincronizacoesAnimais.get(usuario.id);
-    if (existente) return existente;
-
-    const sincronizacao = enviarAnimaisPendentes(usuario);
-    sincronizacoesAnimais.set(usuario.id, sincronizacao);
-    try {
-        return await sincronizacao;
-    } finally {
-        if (sincronizacoesAnimais.get(usuario.id) === sincronizacao) sincronizacoesAnimais.delete(usuario.id);
-    }
-}
-
-/** Inclui as pendências locais nas telas de animais, sem duplicar envios já recebidos pelo servidor. */
-export async function listarAnimaisDisponiveis(): Promise<Animal[]> {
-    const usuario = await getUsuarioParaAnimais();
-    const [locais, cache, acoes] = await Promise.all([
-        listarAnimaisOffline(usuario.id),
-        listarCacheAnimais(usuario.id),
-        listarAcoesAnimaisOffline(usuario.id),
-    ]);
-    const pendentes = locais.filter((animal) => animal.salvo_offline);
-
-    function juntarComPendentes(animaisServidor: Animal[]) {
-        const chavesPendentes = new Set(pendentes.map((animal) => animal.idempotency_key).filter(Boolean));
-        const exclusoes = new Set(acoes.filter((acao) => acao.tipo === "excluir").map((acao) => acao.animalId));
-        const edicoes = new Map(
-            acoes.filter((acao) => acao.tipo === "editar" && acao.dados).map((acao) => [acao.animalId, acao.dados!]),
-        );
-        return [
-            ...pendentes,
-            ...animaisServidor
-                .filter((animal) => !chavesPendentes.has(animal.idempotency_key) && !exclusoes.has(animal.id))
-                .map((animal) => edicoes.has(animal.id)
-                    ? { ...animal, ...edicoes.get(animal.id), id: animal.id, acao_offline: "editar" as const }
-                    : animal),
-        ];
-    }
-
-    if (await estaSemInternet()) return juntarComPendentes(cache);
-
-    try {
-        const remotos = await listarAnimais({ timeoutMs: 8000, retryNetwork: false });
-        const listaVisivel = juntarComPendentes(remotos);
-        try {
-            // O cache guarda a cópia do servidor; as ações pendentes são aplicadas ao ler.
-            await salvarCacheAnimais(usuario.id, remotos);
-        } catch (error) {
-            console.warn("Não foi possível atualizar o cache de animais:", error);
-        }
-        return listaVisivel;
-    } catch (error) {
-        // Se a conexão cair durante a consulta, mantém a última lista recebida da API.
-        if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) return juntarComPendentes(cache);
-        throw error;
-    }
-}
-
-export interface TarefaAnimalOffline {
-    id: string | number;
-    tipo: "cadastrar" | "editar" | "excluir";
-    titulo: string;
-    nome: string;
-    identificador: string;
-}
-
-export async function listarTarefasAnimaisOffline(): Promise<TarefaAnimalOffline[]> {
-    const usuario = await getUsuarioParaAnimais();
-    const [cadastros, acoes] = await Promise.all([
-        listarAnimaisOffline(usuario.id),
-        listarAcoesAnimaisOffline(usuario.id),
-    ]);
-    return [
-        ...cadastros.filter((animal) => animal.salvo_offline).map((animal) => ({
-            id: animal.idempotency_key ?? animal.id,
-            tipo: "cadastrar" as const,
-            titulo: "Cadastro de animal",
-            nome: animal.nome || "Animal sem nome",
-            identificador: animal.identificador,
-        })),
-        ...acoes.map((acao: AcaoAnimalOffline) => ({
-            id: acao.id,
-            tipo: acao.tipo,
-            titulo: acao.tipo === "editar" ? "Edição de animal" : "Exclusão de animal",
-            nome: acao.nome || "Animal sem nome",
-            identificador: acao.identificador,
-        })),
-    ];
 }
 
 export async function criarAnimal(dados: {
@@ -568,8 +254,7 @@ export async function criarAnimal(dados: {
     data_ultimo_parto?: string | null;
     dias_descarte_leite?: number | null;
 
-    status_reprodutivo?: Exclude<StatusReprodutivo, "">;
-    vaca_vazia?: boolean;
+    // 🔥 NOVOS CAMPOS
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;
@@ -577,27 +262,16 @@ export async function criarAnimal(dados: {
     mastite: boolean;
     tratamento_mastite?: string | null;
     doente?: boolean;
-    doenca?: "mastite" | "parasitas" | "outra" | null;
+    doenca?: "mastite" | "outra" | null;
     descricao_doenca?: string | null;
-    parasitas?: boolean;
-    tipo_parasita?: "endoparasitas" | "ectoparasitas" | "ambos" | null;
-    data_identificacao?: string | null;
-    observacoes_saude?: string | null;
-    data_inicio_tratamento?: string | null;
-    data_fim_tratamento?: string | null;
 
     data_reproducao?: string | null;
     data_base_gestacao?: string | null;
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
     data_confirmacao_prenhez?: string | null;
-}): Promise<{ id: number; salvo_offline?: boolean }> {
+}) {
     try {
-        const usuario = await getUsuarioParaAnimais();
-        if (await estaSemInternet()) {
-            return await criarAnimalOffline(usuario.id, dados);
-        }
-
         const response = await apiFetch(`/animais`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -605,8 +279,7 @@ export async function criarAnimal(dados: {
         });
 
         if (!response.ok) {
-            const erro = await response.json().catch(() => ({}));
-            throw new Error(erro.erro || `Erro ao cadastrar (status ${response.status})`);
+            throw new Error(`Erro ao cadastrar (status ${response.status})`);
         }
 
         return await response.json();
@@ -631,8 +304,7 @@ export async function atualizarAnimal(id: number, dados: {
     data_ultimo_parto?: string | null;
     dias_descarte_leite?: number | null;
 
-    status_reprodutivo?: Exclude<StatusReprodutivo, "">;
-    vaca_vazia?: boolean;
+    // 🔥 NOVOS CAMPOS
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;
@@ -640,27 +312,15 @@ export async function atualizarAnimal(id: number, dados: {
     mastite: boolean;
     tratamento_mastite?: string | null;
     doente?: boolean;
-    doenca?: "mastite" | "parasitas" | "outra" | null;
+    doenca?: "mastite" | "outra" | null;
     descricao_doenca?: string | null;
-    parasitas?: boolean;
-    tipo_parasita?: "endoparasitas" | "ectoparasitas" | "ambos" | null;
-    data_identificacao?: string | null;
-    observacoes_saude?: string | null;
-    data_inicio_tratamento?: string | null;
-    data_fim_tratamento?: string | null;
 
     data_reproducao?: string | null;
     data_base_gestacao?: string | null;
     data_cobertura?: string | null;
     data_inseminacao?: string | null;
     data_confirmacao_prenhez?: string | null;
-}): Promise<{ salvo_offline?: boolean; mensagem?: string }> {
-    const usuario = await getUsuarioParaAnimais();
-    const jaPossuiAcaoOffline = (await listarAcoesAnimaisOffline(usuario.id)).some((acao) => acao.animalId === id);
-    if (id < 0 || jaPossuiAcaoOffline || await estaSemInternet()) {
-        await editarAnimalOffline(usuario.id, id, dados);
-        return { salvo_offline: true, mensagem: "Edição salva neste dispositivo" };
-    }
+}) {
     try {
         const response = await apiFetch(`/animais/${id}`, {
             method: "PUT",
@@ -669,29 +329,18 @@ export async function atualizarAnimal(id: number, dados: {
         });
 
         if (!response.ok) {
-            const erro = await response.json().catch(() => ({}));
-            throw new Error(erro.erro || `Erro ao atualizar (status ${response.status})`);
+            throw new Error(`Erro ao atualizar (status ${response.status})`);
         }
 
         return await response.json();
 
     } catch (err) {
         console.error("Falha em atualizarAnimal:", err);
-        if (err instanceof Error && err.message === NETWORK_ERROR_MESSAGE) {
-            await editarAnimalOffline(usuario.id, id, dados);
-            return { salvo_offline: true, mensagem: "Edição salva neste dispositivo" };
-        }
         throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
 
-export async function excluirAnimal(id: number): Promise<{ salvo_offline?: boolean; cancelouCadastro?: boolean; mensagem?: string }> {
-    const usuario = await getUsuarioParaAnimais();
-    const jaPossuiAcaoOffline = (await listarAcoesAnimaisOffline(usuario.id)).some((acao) => acao.animalId === id);
-    if (id < 0 || jaPossuiAcaoOffline || await estaSemInternet()) {
-        const resultado = await excluirAnimalOffline(usuario.id, id);
-        return { ...resultado, salvo_offline: !resultado.cancelouCadastro, mensagem: "Exclusão salva neste dispositivo" };
-    }
+export async function excluirAnimal(id: number) {
     try {
         const response = await apiFetch(`/animais/${id}`, {
             method: "DELETE",
@@ -705,10 +354,6 @@ export async function excluirAnimal(id: number): Promise<{ salvo_offline?: boole
 
     } catch (err) {
         console.error("Falha em excluirAnimal:", err);
-        if (err instanceof Error && err.message === NETWORK_ERROR_MESSAGE) {
-            const resultado = await excluirAnimalOffline(usuario.id, id);
-            return { ...resultado, salvo_offline: !resultado.cancelouCadastro, mensagem: "Exclusão salva neste dispositivo" };
-        }
         throw new Error(err instanceof Error ? err.message : NETWORK_ERROR_MESSAGE);
     }
 }
@@ -1213,50 +858,20 @@ export async function quitarParcelaFinanciamento(id: number, dados: {
 // ESTOQUE — TANQUES
 // ============================================
 
-export async function listarTanques(
-    options?: { silentNetworkError?: boolean }
-) {
-    const usuario = await getUsuarioLogado();
-
-    if (!usuario) {
-        throw new Error("Usuário não encontrado.");
-    }
-
-    // OFFLINE: utiliza os tanques que já foram salvos no aparelho
-    if (await estaSemInternet()) {
-        const tanques = await listarTanquesLocal(usuario.id);
-
-        console.log(
-            "Tanques carregados offline:",
-            JSON.stringify(tanques)
-        );
-
-        return tanques;
-    }
-
-    // ONLINE: busca os tanques normalmente na API
+export async function listarTanques(options?: { silentNetworkError?: boolean }) {
     const res = await apiFetch(`/estoque/tanques`, {
         silentNetworkError: options?.silentNetworkError,
     });
-
-    if (!res.ok) {
-        throw new Error("Erro ao listar tanques");
-    }
-
+    if (!res.ok) throw new Error("Erro ao listar tanques");
     const dados = await res.json();
-
-    const tanques = dados.map((t: any) => ({
+    return dados.map((t: any) => ({
         ...t,
         capacidade: Number(t.capacidade),
         volumeAtual: Number(t.volumeAtual),
         temperatura: Number(t.temperatura),
     }));
-
-    // Guarda uma cópia dos tanques existentes para uso offline
-    await salvarTanquesLocal(usuario.id, tanques);
-
-    return tanques;
 }
+
 export async function criarTanque(dados: {
     nome: string;
     capacidade: number;
@@ -1597,7 +1212,6 @@ export async function login(email: string, senha: string) {
         throw new Error("Resposta de login inválida. Tente novamente.");
     }
     await salvarUsuarioLogado({ ...dados.usuario, token: dados.token });
-    void sincronizarAnimaisPendentes().catch((error) => console.warn("Não foi possível iniciar a sincronização:", error));
     return dados;
 }
 
@@ -1673,4 +1287,3 @@ export async function redefinirSenhaPorCpf(dados: {
         throw err;
     }
 }
-

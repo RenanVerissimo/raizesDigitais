@@ -28,7 +28,7 @@ export interface Racao {
     atualizadoEm?: string;
 }
 
-interface MovimentacaoRacao {
+export interface MovimentacaoRacao {
     id: number;
     racaoId: number;
     racaoNome: string;

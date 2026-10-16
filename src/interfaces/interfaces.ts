@@ -25,6 +25,7 @@ export interface InputFieldProps {
 }
 
 export interface Producao {
+    date: string | number | Date;
     id: number;
     tanqueId?: number | null;
     tanqueNome?: string | null;
