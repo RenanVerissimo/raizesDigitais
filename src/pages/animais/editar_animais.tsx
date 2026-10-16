@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import DateInput from "../../components/DateInput";
-import AnimalHealthSection from "../../components/AnimalHealthSection";
 import {
     ActivityIndicator,
     View, Text, TextInput, TouchableOpacity, ScrollView,
@@ -16,6 +15,7 @@ import Toast from "react-native-toast-message";
 import { toBr, toIso } from "../../utils/formatters";
 import { carregarSaudeAnimal, prepararSaudeAnimal } from "../../utils/saudeAnimal";
 import { obterStatusReprodutivo, opcoesStatusReprodutivo } from "../../utils/statusReprodutivo";
+import AnimalHealthSection from "../../components/sicronizacao/AnimalHealthSection";
 
 export default function EditarAnimais() {
 
@@ -438,7 +438,7 @@ export default function EditarAnimais() {
                                         accessibilityState={{ checked: ativo, disabled: salvando }}
                                         onPress={() => {
                                             if (salvando) return;
-                                            setFormData((current) => ({
+                                            setFormData((current: any) => ({
                                                 ...current,
                                                 statusReprodutivo: item.key,
                                                 dataConfirmacaoPrenhez: item.key === "prenha" ? current.dataConfirmacaoPrenhez : "",
@@ -505,7 +505,7 @@ export default function EditarAnimais() {
                         key={animal?.id}
                         value={formData}
                         disabled={salvando}
-                        onChange={(changes) => setFormData((current) => ({ ...current, ...changes }))}
+                        onChange={(changes) => setFormData((current: any) => ({ ...current, ...changes }))}
                     />
 
                     {/* Descrição */}

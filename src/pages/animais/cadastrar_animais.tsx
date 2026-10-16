@@ -17,11 +17,11 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import { criarAnimal, listarAnimaisDisponiveis } from "../../services/api";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
-import AnimalHealthSection from "../../components/AnimalHealthSection";
 import { toIso } from "../../utils/formatters";
 import { carregarSaudeAnimal, prepararSaudeAnimal } from "../../utils/saudeAnimal";
 import { normalizarId } from "../../utils/normalizarId";
 import { opcoesStatusReprodutivo, type StatusReprodutivo } from "../../utils/statusReprodutivo";
+import AnimalHealthSection from "../../components/sicronizacao/AnimalHealthSection";
 
 export default function CadastrarAnimais() {
     const insets = useSafeAreaInsets();
@@ -358,10 +358,8 @@ export default function CadastrarAnimais() {
 
                     <AnimalHealthSection
                         value={formData}
-                        onChange={(changes) => setFormData((current) => ({ ...current, ...changes }))}
+                        onChange={(changes) => setFormData((current: any) => ({ ...current, ...changes }))}
                     />
-
-
 
                     {/* Status Reprodutivo */}
                     <View style={{ backgroundColor: "#eff6ff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#bfdbfe" }}>
@@ -381,7 +379,7 @@ export default function CadastrarAnimais() {
                                         accessibilityLabel={item.label}
                                         accessibilityState={{ checked: ativo }}
                                         onPress={() => {
-                                            setFormData((current) => ({
+                                            setFormData((current: any) => ({
                                                 ...current,
                                                 statusReprodutivo: item.key,
                                                 dataConfirmacaoPrenhez: item.key === "prenha" ? current.dataConfirmacaoPrenhez : "",

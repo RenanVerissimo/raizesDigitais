@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import DateInput from "./DateInput";
+import DateInput from "../DateInput";
+
 
 export type TipoParasita = "" | "endoparasitas" | "ectoparasitas" | "ambos";
 
