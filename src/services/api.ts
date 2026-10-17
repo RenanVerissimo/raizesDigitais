@@ -184,11 +184,12 @@ export async function criarProducao(dados: {
         if (!usuario) throw new Error("Usuário não encontrado.");
 
         const tarefaId = gerarIdempotencyKey("coleta");
+
         await adicionarTarefaOffline(usuario.id, {
             id: tarefaId,
             usuarioId: usuario.id,
-            tipo: "criar",
-            para: "producao",
+            acao: "Novo Registro",
+            area: "Produção de Leite",
             dados: { ...dados },
             criadaEm: new Date().toISOString(),
         });

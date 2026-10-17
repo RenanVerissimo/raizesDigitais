@@ -3,8 +3,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export type novaTarefa = {
     id: string;
     usuarioId: number;
-    tipo: "criar" | "editar" | "excluir";
-    para: string;
+    acao: "Novo Registro" | "Atualização" | "Exclusão de Registro";
+    area: string;
+    dadosAntigos?: Record<string, unknown>;
     dados: Record<string, unknown>;
     criadaEm: string;
 };
@@ -26,7 +27,22 @@ export async function listaDeTarefasOffline(
         return [];
     }
 
-    return JSON.parse(dados) as novaTarefa[];
+    const tarefas = JSON.parse(dados) as (novaTarefa & {
+        tipo?: "criar" | "editar" | "excluir";
+        para?: string;
+    })[];
+    const acoes: Record<"criar" | "editar" | "excluir", novaTarefa["acao"]> = {
+        criar: "Novo Registro",
+        editar: "Atualização",
+        excluir: "Exclusão de Registro",
+    };
+
+    // Converte também as tarefas salvas antes da mudança de formato.
+    return tarefas.map(({ tipo, para, ...tarefa }) => ({
+        ...tarefa,
+        area: tarefa.area ?? (para === "producao" ? "Produção de Leite" : para) ?? "Área não informada",
+        acao: tarefa.acao ?? (tipo ? acoes[tipo] : undefined),
+    })) as novaTarefa[];
 }
 
 

@@ -3,7 +3,8 @@ import {
     View,
     Text,
     FlatList,
-    Pressable
+    Pressable,
+    TouchableOpacity
 } from "react-native";
 
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -14,6 +15,7 @@ import {
     listaDeTarefasOffline,
     novaTarefa
 } from "../../services/offline/sincronizacaoOffline";
+import { Feather } from "@expo/vector-icons";
 
 
 export default function TarefasOffline() {
@@ -55,13 +57,15 @@ export default function TarefasOffline() {
 
 
     return (
-        <View style={{ flex: 1, paddingTop: insets.top + 16, paddingHorizontal: 20, backgroundColor: "#f5f7fa" }}>
+        <View style={{ flex: 1, paddingTop: insets.top + 16, paddingHorizontal: 20, backgroundColor: "#4a90e2" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                <TouchableOpacity onPress={voltar} style={{ padding: 4 }}>
+                    <Feather name="arrow-left" size={24} color="#fff" />
+                </TouchableOpacity>
 
-            <Pressable onPress={voltar}>
-                <Text>← Voltar</Text>
-            </Pressable>
+                <Text style={{ fontSize: 22, fontWeight: "700", marginVertical: 20, color: "#fff" }}>Tarefas Offline</Text>
+            </View>
 
-            <Text style={{ fontSize: 22, fontWeight: "700", marginVertical: 20 }}>Tarefas Offline</Text>
             {erro && <Text style={{ color: "#b91c1c", marginBottom: 12 }}>{erro}</Text>}
 
             <FlatList
@@ -71,18 +75,26 @@ export default function TarefasOffline() {
                     <Text>{carregando ? "Carregando tarefas…" : erro ? "" : "Nenhuma tarefa offline pendente."}</Text>
                 }
                 keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
+                renderItem={({ item, index }) => (
                     <View style={{ backgroundColor: "#fff", padding: 16, borderRadius: 12, marginBottom: 12, gap: 6 }}>
 
-                        <Text selectable>ID: {item.id}</Text>
-
-                        <Text>Para: {item.para}</Text>
-
-                        <Text>Tipo: {item.tipo}</Text>
-						<Text selectable>Dados: {JSON.stringify(item, null, 2)}</Text>
-                        <Text>
-                            Criado em: {new Date(item.criadaEm).toLocaleString("pt-BR")}
-                        </Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Text style={{ fontSize: 16, fontWeight: "700" }}>Tarefa #{index + 1} </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Text style={{ fontSize: 16, fontWeight: "700" }}>Área: </Text>
+                            <Text>{item.area}</Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Text style={{ fontSize: 16, fontWeight: "700" }}>Ação Realizada: </Text>
+                            <Text>{item.acao}</Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Text style={{ fontSize: 16, fontWeight: "700" }}>Criado em: </Text>
+                            <Text>
+                                {new Date(item.criadaEm).toLocaleString("pt-BR")}
+                            </Text>
+                        </View>
 
                     </View>
                 )}
