@@ -95,7 +95,6 @@ export default function TarefasOffline() {
                                 {new Date(item.criadaEm).toLocaleString("pt-BR")}
                             </Text>
                         </View>
-
                     </View>
                 )}
             />

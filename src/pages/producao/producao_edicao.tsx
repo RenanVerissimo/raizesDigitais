@@ -88,13 +88,13 @@ export default function ProducaoEdicao() {
                 }));
             } catch (err: any) {
                 if (!ativo) return;
-                Toast.show({
+/*                 Toast.show({
                     type: "error",
                     text1: "Erro ao carregar tanques",
                     text2: err.message || "Não foi possível carregar os tanques.",
                     position: "top",
                     visibilityTime: 3000,
-                });
+                }); */
             } finally {
                 if (ativo) setCarregandoTanques(false);
             }

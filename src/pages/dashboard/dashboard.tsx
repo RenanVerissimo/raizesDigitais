@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
     View,
     Text,
@@ -9,6 +9,7 @@ import {
     Modal,
     TextInput,
     ActivityIndicator,
+    Animated,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -20,6 +21,7 @@ import { Producao } from "../../interfaces/interfaces";
 import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 import Toast from "react-native-toast-message";
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { estaSemInternet } from "../../utils/conexaoInternet";
 
 
 function formatarDataLocal(data: Date) {
@@ -110,6 +112,46 @@ export default function Dashboard() {
     const [estrelasAvaliacao, setEstrelasAvaliacao] = useState(0);
     const [descricaoAvaliacao, setDescricaoAvaliacao] = useState("");
     const [enviandoAvaliacao, setEnviandoAvaliacao] = useState(false);
+    const [pageOffline, setPageOffline] = useState(false);
+    const [avisoOfflineExpandido, setAvisoOfflineExpandido] = useState(true);
+    const balancoOffline = useRef(new Animated.Value(0)).current;
+    const expansaoOffline = useRef(new Animated.Value(1)).current;
+    const [alturaMensagemOffline, setAlturaMensagemOffline] = useState(34);
+
+    useEffect(() => {
+        const animacao = Animated.timing(expansaoOffline, {
+            toValue: avisoOfflineExpandido ? 1 : 0,
+            duration: 320,
+            useNativeDriver: false,
+        });
+        animacao.start();
+        return () => animacao.stop();
+    }, [avisoOfflineExpandido, expansaoOffline]);
+
+    useEffect(() => {
+        if (!pageOffline) return;
+        const animacao = Animated.loop(
+            Animated.sequence([
+                Animated.timing(balancoOffline, { toValue: -1, duration: 120, useNativeDriver: true }),
+                Animated.timing(balancoOffline, { toValue: 1, duration: 160, useNativeDriver: true }),
+                Animated.timing(balancoOffline, { toValue: -0.6, duration: 160, useNativeDriver: true }),
+                Animated.timing(balancoOffline, { toValue: 0, duration: 120, useNativeDriver: true }),
+                Animated.delay(900),
+            ]),
+        );
+        animacao.start();
+        return () => {
+            animacao.stop();
+            balancoOffline.setValue(0);
+        };
+    }, [pageOffline, balancoOffline]);
+
+    useEffect(() => {
+        setAvisoOfflineExpandido(true);
+        if (!pageOffline) return;
+        const temporizador = setTimeout(() => setAvisoOfflineExpandido(false), 3000);
+        return () => clearTimeout(temporizador);
+    }, [pageOffline]);
 
     async function carregarDados() {
         try {
@@ -186,7 +228,6 @@ export default function Dashboard() {
         setRefreshing(false);
     }
 
-
     function fecharModalAvaliacao() {
         if (enviandoAvaliacao) return;
         setModalAvaliacaoVisible(false);
@@ -236,6 +277,22 @@ export default function Dashboard() {
         }
     }
 
+
+
+    async function offline() {
+
+        if (await estaSemInternet()) {
+             setPageOffline(true);
+        } else {
+             setPageOffline(false);
+        }
+    }
+
+    useEffect(() => {
+        offline();
+    }
+    ), [];
+
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
             <StatusBar barStyle="light-content" />
@@ -263,6 +320,51 @@ export default function Dashboard() {
                         borderBottomRightRadius: 24,
                     }}
                 >
+
+                    {pageOffline && (
+                        <TouchableOpacity
+                            onPress={() => setAvisoOfflineExpandido((expandido) => !expandido)}
+                            activeOpacity={0.8}
+                            accessibilityRole="button"
+                            accessibilityLabel="Você está no modo offline"
+                            accessibilityHint="Toque para expandir ou recolher os detalhes"
+                            accessibilityState={{ expanded: avisoOfflineExpandido }}
+                            accessibilityLiveRegion="polite"
+                            style={{ backgroundColor: "#FFF3E0", borderColor: "#F59E0B", borderWidth: 1, padding: 10, borderRadius: 12, marginBottom: 8, gap: 8 }}
+                        >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <View style={{ backgroundColor: "#FFFFFF", padding: 7, borderRadius: 10 }}>
+                                <Animated.View style={{
+                                    transform: [{ rotate: balancoOffline.interpolate({ inputRange: [-1, 1], outputRange: ["-6deg", "6deg"] }) }],
+                                }}>
+                                    <Feather name="wifi-off" size={18} color="#D97706" />
+                                </Animated.View>
+                            </View>
+                            <View style={{ flex: 1, gap: 2 }}>
+                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#92400E", }}>
+                                    Você está no modo offline
+                                </Text>
+                                <Animated.View
+                                    accessibilityElementsHidden={!avisoOfflineExpandido}
+                                    importantForAccessibility={avisoOfflineExpandido ? "auto" : "no-hide-descendants"}
+                                    style={{
+                                        overflow: "hidden",
+                                        height: expansaoOffline.interpolate({ inputRange: [0, 1], outputRange: [0, alturaMensagemOffline] }),
+                                        opacity: expansaoOffline,
+                                    }}
+                                >
+                                <Text
+                                    onLayout={(event) => setAlturaMensagemOffline(event.nativeEvent.layout.height)}
+                                    style={{ fontSize: 12, color: "#78350F", lineHeight: 17 }}
+                                >
+                                    Você está sem conexão com a internet. 
+                                </Text>
+                                </Animated.View>
+                            </View>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                         <View>
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 4 }}>{farmName}</Text>
