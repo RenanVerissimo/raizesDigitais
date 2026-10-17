@@ -1,5 +1,5 @@
 import type { Animal } from "../interfaces/interfaces";
-import type { SaudeAnimalForm } from "../components/AnimalHealthSection";
+import type { SaudeAnimalForm } from "../components/sicronizacao/AnimalHealthSection";
 import { toBr, toIso } from "./formatters";
 
 export function carregarSaudeAnimal(animal?: Animal): SaudeAnimalForm {

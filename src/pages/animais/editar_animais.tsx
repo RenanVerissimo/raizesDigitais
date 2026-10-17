@@ -131,7 +131,7 @@ export default function EditarAnimais() {
 
         try {
             setSalvando(true);
-            const resultado = await atualizarAnimal(animal.id, {
+            await atualizarAnimal(animal.id, {
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
                 status: formData.status as "ativo" | "inativo" | "vendido",
@@ -158,10 +158,8 @@ export default function EditarAnimais() {
 
             Toast.show({
                 type: "success",
-                text1: resultado.salvo_offline ? "Edição salva offline!" : "Animal atualizado!",
-                text2: resultado.salvo_offline
-                    ? "A alteração aparece em Tarefas offline e será enviada quando houver internet."
-                    : "As alterações foram salvas.",
+                text1: "Animal atualizado!",
+                text2: "As alterações foram salvas.",
                 position: "top", visibilityTime: 3000,
             });
             setTimeout(() => {

@@ -38,8 +38,6 @@ export interface Producao {
 export interface Animal {
     id: number;
     usuario_id?: number;
-    salvo_offline?: boolean;
-    acao_offline?: "editar" | "excluir";
     idempotency_key?: string;
     nome: string;
     identificador: string;
@@ -56,6 +54,7 @@ export interface Animal {
 
     // Novos campos
     vaca_vazia?: boolean | number | null;
+    status_reprodutivo?: import("../utils/statusReprodutivo").StatusReprodutivo;
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;

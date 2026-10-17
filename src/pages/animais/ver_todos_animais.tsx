@@ -5,8 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Animal } from "../../interfaces/interfaces";
-import { atualizarStatusAnimal, listarAnimaisDisponiveis as listarAnimais, excluirAnimal } from "../../services/api";
-import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/sicronizacao/AnimalSyncStatus";
+import { atualizarStatusAnimal, listarAnimais, excluirAnimal } from "../../services/api";
+import { useAnimais } from "../../hooks/useAnimais";
 import ConfirmDeleteModal from "./ConfirmationModal";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
@@ -21,7 +21,7 @@ type FiltroStatusAnimal = "ativos" | "inativos" | "todos";
 export default function VerTodosAnimais() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
-    const { animais, setAnimais, carregando, ...sincronizacao } = useAnimaisComSincronizacao();
+    const { animais, setAnimais, carregando, erro } = useAnimais();
     const [atualizandoStatusId, setAtualizandoStatusId] = useState<number | null>(null);
     const [excluindoId, setExcluindoId] = useState<number | null>(null);
     const [busca, setBusca] = useState("");
@@ -71,17 +71,13 @@ export default function VerTodosAnimais() {
 
         try {
             setExcluindoId(animalSelecionado.id);
-            const resultado = await excluirAnimal(animalSelecionado.id);
+            await excluirAnimal(animalSelecionado.id);
             setAnimais((prev) => prev.filter((a) => a.id !== animalSelecionado.id));
 
             Toast.show({
                 type: "success",
-                text1: resultado.salvo_offline ? "Exclusão salva offline" : "Animal excluído",
-                text2: resultado.salvo_offline
-                    ? `${nomeExcluido} será excluído do servidor quando houver internet.`
-                    : resultado.cancelouCadastro
-                        ? `O cadastro offline de ${nomeExcluido} foi cancelado.`
-                        : `${nomeExcluido} foi removido com sucesso.`,
+                text1: "Animal excluído",
+                text2: `${nomeExcluido} foi removido com sucesso.`,
                 position: "top",
                 visibilityTime: 3000,
             });
@@ -101,13 +97,12 @@ export default function VerTodosAnimais() {
     }
 
     function handleInativarStatus(animal: Animal) {
-        if (animal.salvo_offline || animal.status === "inativo" || animal.status === "vendido") return;
+        if (animal.status === "inativo" || animal.status === "vendido") return;
         setAnimalStatusSelecionado(animal);
         setModalStatusVisible(true);
     }
 
     async function inativarAnimal(animal: Animal) {
-        if (animal.salvo_offline) return false;
         const novoStatus = "inativo";
 
         try {
@@ -206,7 +201,7 @@ export default function VerTodosAnimais() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 10, paddingBottom: insets.bottom + 20 }}>
-                    <AnimalSyncStatus {...sincronizacao} />
+                    {erro && <Text style={{ color: "#b91c1c", marginBottom: 12 }}>{erro}</Text>}
                     {!carregando && animais.length > 0 && (
                         <>
                             <View style={{ backgroundColor: "#fff", borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, borderWidth: 1, borderColor: "#e5e7eb", flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -458,11 +453,6 @@ function CardAnimal({
                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
                             ID: {animal.identificador}
                         </Text>
-                        {(animal.salvo_offline || animal.acao_offline) && (
-                            <Text style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                                Aguardando sincronização
-                            </Text>
-                        )}
                         <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={1}>
                             Raça: {animal.raca || "—"}
                         </Text>
@@ -565,7 +555,7 @@ function CardAnimal({
                         : "—"}
                 </Text>
             </View>
-            {!animal.salvo_offline && !vendido && !inativo && (
+            {!vendido && !inativo && (
                 <TouchableOpacity
                     onPress={(event) => {
                         event.stopPropagation();

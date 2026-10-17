@@ -276,6 +276,8 @@ export async function criarAnimal(dados: {
     dias_descarte_leite?: number | null;
 
     // 🔥 NOVOS CAMPOS
+    status_reprodutivo?: Animal["status_reprodutivo"];
+    vaca_vazia?: boolean;
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;
@@ -283,7 +285,7 @@ export async function criarAnimal(dados: {
     mastite: boolean;
     tratamento_mastite?: string | null;
     doente?: boolean;
-    doenca?: "mastite" | "outra" | null;
+    doenca?: "mastite" | "parasitas" | "outra" | null;
     descricao_doenca?: string | null;
 
     data_reproducao?: string | null;
@@ -326,6 +328,8 @@ export async function atualizarAnimal(id: number, dados: {
     dias_descarte_leite?: number | null;
 
     // 🔥 NOVOS CAMPOS
+    status_reprodutivo?: Animal["status_reprodutivo"];
+    vaca_vazia?: boolean;
     prenha: boolean;
     em_cio: boolean;
     abortou: boolean;
@@ -333,7 +337,7 @@ export async function atualizarAnimal(id: number, dados: {
     mastite: boolean;
     tratamento_mastite?: string | null;
     doente?: boolean;
-    doenca?: "mastite" | "outra" | null;
+    doenca?: "mastite" | "parasitas" | "outra" | null;
     descricao_doenca?: string | null;
 
     data_reproducao?: string | null;

@@ -14,7 +14,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { criarAnimal, listarAnimaisDisponiveis } from "../../services/api";
+import { criarAnimal, listarAnimais } from "../../services/api";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
 import { toIso } from "../../utils/formatters";
@@ -122,7 +122,7 @@ export default function CadastrarAnimais() {
         salvandoRef.current = true;
         setSalvando(true);
         try {
-            const todosAnimais = await listarAnimaisDisponiveis();
+            const todosAnimais = await listarAnimais();
             const novoId = normalizarId(formData.identificador);
             if (todosAnimais.some((a) => normalizarId(a.identificador) === novoId)) {
                 Toast.show({
@@ -135,7 +135,7 @@ export default function CadastrarAnimais() {
                 return;
             }
 
-            const resultado = await criarAnimal({
+            await criarAnimal({
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
                 producao_media_diaria: producao,
@@ -159,10 +159,8 @@ export default function CadastrarAnimais() {
 
             Toast.show({
                 type: "success",
-                text1: resultado.salvo_offline ? "Animal salvo neste dispositivo!" : "Animal cadastrado!",
-                text2: resultado.salvo_offline
-                    ? "Será enviado quando houver conexão e o aplicativo estiver aberto."
-                    : "O animal foi salvo com sucesso.",
+                text1: "Animal cadastrado!",
+                text2: "O animal foi salvo com sucesso.",
                 position: "top",
                 visibilityTime: 3000,
             });

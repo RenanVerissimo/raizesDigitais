@@ -4,7 +4,7 @@ import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import AnimalSyncStatus, { useAnimaisComSincronizacao } from "../../components/sicronizacao/AnimalSyncStatus";
+import { useAnimais } from "../../hooks/useAnimais";
 import { formatarData2 } from "../../utils/formatters";
 import { calcularIdade } from "../../utils/idade";
 import { calcularAvisoDescarteLeite } from "../../utils/alerts";
@@ -16,7 +16,7 @@ export default function Animais() {
 
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
-    const { animais, carregando, ...sincronizacao } = useAnimaisComSincronizacao();
+    const { animais, carregando, erro } = useAnimais();
     const [dicasAberto, setDicasAberto] = useState(true);
 
     const animaisAtivos = animais.filter((a) => a.status !== "inativo" && a.status !== "vendido");
@@ -124,7 +124,7 @@ export default function Animais() {
                 </LinearGradient>
 
                 <View style={{ padding: 20, gap: 16 }}>
-                    <AnimalSyncStatus {...sincronizacao} />
+                    {erro && <Text style={{ color: "#b91c1c", marginBottom: 12 }}>{erro}</Text>}
 
                     {/* Estimativa de Produção */}
                     <View style={{ backgroundColor: "#fff", borderRadius: 16, padding: 20, borderWidth: 1, borderColor: "#f1f5f9" }}>
@@ -227,11 +227,6 @@ export default function Animais() {
                                                         <Text style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }} numberOfLines={1}>
                                                             ID: {animal.identificador}
                                                         </Text>
-                                                        {animal.salvo_offline && (
-                                                            <Text style={{ fontSize: 11, color: "#92400e", marginTop: 4 }}>
-                                                                Aguardando sincronização
-                                                            </Text>
-                                                        )}
                                                         <Text style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }} numberOfLines={1}>
                                                             Raça: {animal.raca || "—"}
                                                         </Text>
