@@ -15,7 +15,7 @@ import {
     listaDeTarefasOffline,
     novaTarefa
 } from "../../services/offline/sincronizacaoOffline";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { formatarData } from "../../utils/formatters";
 import { opcoesStatusReprodutivo } from "../../utils/statusReprodutivo";
 
@@ -73,16 +73,16 @@ function valorFormatado(chave: string, valor: unknown): string {
 function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
     const [expandido, setExpandido] = useState(false);
     const visual = visualArea(tarefa.area);
-    const essenciais = tarefa.area === "Produção de Leite" ? ["dailyProduction", "date"]
+    const essenciais = tarefa.area === "Produção de Leite" ? ["dailyProduction"]
         : tarefa.area === "Animais" ? ["identificador"]
-        : tarefa.area === "Estoque de Leite" ? ["tipo", "volume", "consumoProprio", "data"] : [];
-    const preenchidos = Object.entries(tarefa.dados).filter(([, valor]) =>
+        : tarefa.area === "Estoque de Leite" ? ["tipo", "volume", "consumoProprio"] : [];
+    const preenchidos = Object.entries(tarefa.dados).filter(([chave, valor]) =>
+        !(tarefa.area === "Estoque de Leite" && ["volume", "consumoProprio"].includes(chave) && Number(valor) === 0) &&
         valor !== null && valor !== undefined && !(typeof valor === "string" && valor.trim() === "")
     );
     const resumo: [string, unknown][] = tarefa.area === "Animais"
         ? [
             ["identificador", tarefa.dados.identificador ?? "Sem ID"],
-            ["dataRegistro", new Date(tarefa.criadaEm).toLocaleDateString("pt-BR")],
         ]
         : essenciais.flatMap(chave => preenchidos.filter(([campo]) => campo === chave));
     const detalhes = preenchidos.filter(([chave]) => !essenciais.includes(chave));
@@ -99,8 +99,8 @@ function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
             {resumo.length > 0 && (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                     {resumo.map(([chave, valor]) => (
-                        <View key={chave} style={{ flexGrow: 1, flexBasis: "42%", paddingVertical: 2, gap: 2 }}>
-                            <Text style={{ color: "#748094", fontSize: 11, fontWeight: "600" }}>{rotulos[chave] ?? chave}</Text>
+                        <View key={chave} style={{ flexDirection: "row", alignItems: "baseline", columnGap: 6, paddingRight: 12, paddingVertical: 2 }}>
+                            <Text style={{ color: "#748094", fontSize: 11, fontWeight: "600" }}>{tarefa.area === "Estoque de Leite" && tarefa.dados.tipo === "saida" && chave === "volume" ? "Entrega/Venda" : rotulos[chave] ?? chave}</Text>
                             <Text style={{ color: "#23334b", fontSize: 15, fontWeight: "600" }}>{valorFormatado(chave, valor)}</Text>
                         </View>
                     ))}
@@ -116,10 +116,10 @@ function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
                         activeOpacity={0.7}
                         style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: "#edf0f5", minHeight: 44 }}
                     >
-                        <Text style={{ color: visual.cor, fontWeight: "600", fontSize: 13 }}>{expandido ? "Ocultar detalhes" : "Ver detalhes"}</Text>
+                        <Text style={{ color: visual.cor, fontWeight: "600", fontSize: 13, textAlign: "center" }}>{expandido ? "Ocultar detalhes" : "Ver detalhes"}</Text>
                         <Feather name={expandido ? "chevron-up" : "chevron-down"} size={18} color={visual.cor} />
                     </TouchableOpacity>
-                    {expandido && <View style={{ padding: 10, borderWidth: 1, borderColor: "#edf0f5", borderRadius: 10, gap: 4 }}>{detalhes.map(campo)}</View>}
+                    {expandido && <View style={{ paddingBottom: 8, gap: 4 }}>{detalhes.map(campo)}</View>}
                 </>
             )}
         </View>
@@ -152,7 +152,10 @@ export default function TarefasOffline() {
             try {
                 const usuario = await getUsuarioLogado();
                 const tarefasSalvas = usuario ? await listaDeTarefasOffline(usuario.id) : [];
-                if (ativo) setTarefas(tarefasSalvas);
+                const tarefasOrdenadas = [...tarefasSalvas].sort(
+                    (a, b) => new Date(b.criadaEm).getTime() - new Date(a.criadaEm).getTime()
+                );
+                if (ativo) setTarefas(tarefasOrdenadas);
             } catch {
                 if (ativo) setErro("Não foi possível carregar as tarefas salvas.");
             } finally {
@@ -204,14 +207,23 @@ export default function TarefasOffline() {
                 renderItem={({ item }) => {
                     const visual = visualArea(item.area);
                     return (
-                        <View style={{ backgroundColor: "#fff", padding: 12, paddingBottom: 4, borderRadius: 14, marginBottom: 12, borderWidth: 1, borderColor: "#e7edf5" }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                                <View style={{ width: 34, height: 34, borderRadius: 10, borderWidth: 1, borderColor: visual.cor, backgroundColor: visual.fundo, alignItems: "center", justifyContent: "center" }}>
-                                    <Feather name={visual.icone} size={18} color={visual.cor} />
+                        <View style={{ backgroundColor: "#fff", padding: 12, paddingBottom: 2, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: "#e7edf5" }}>
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", columnGap: 12, rowGap: 4, marginBottom: 10 }}>
+                                <Text style={{ fontSize: 16, fontWeight: "900", color: "#6b7280" }}>{item.acao}</Text>
+                                <Text style={{ color: "#748094", fontSize: 11 }}>
+                                    {new Date(item.criadaEm).toLocaleDateString("pt-BR")} às {new Date(item.criadaEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                </Text>
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: visual.fundo, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderLeftWidth: 3, borderLeftColor: visual.cor }}>
+                                <View style={{ width: 24, height: 26, alignItems: "center", justifyContent: "center" }}>
+                                    {item.area === "Animais" ? (
+                                        <MaterialCommunityIcons name="cow" size={23} color={visual.cor} />
+                                    ) : (
+                                        <Feather name={visual.icone} size={18} color={visual.cor} />
+                                    )}
                                 </View>
                                 <View style={{ flex: 1, gap: 2 }}>
-                                    <Text style={{ fontSize: 16, fontWeight: "700", color: "#23334b" }}>{item.area}</Text>
-                                    <Text style={{ color: "#748094", fontSize: 12 }}>{item.acao}</Text>
+                                    <Text style={{ fontSize: 17, fontWeight: "800", color: visual.cor }}>{item.area}</Text>
                                 </View>
                             </View>
                             <DadosTarefa tarefa={item} />

@@ -16,7 +16,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { criarAvaliacaoApp, getUsuarioLogado, limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes, UsuarioLogado } from "../../services/api";
+import { criarAvaliacaoApp, getUsuarioLogado, limparUsuarioLogado, listarAnimais, listarProducoes, listarProducoesRecentes, listarTanques, UsuarioLogado } from "../../services/api";
 import { Producao } from "../../interfaces/interfaces";
 import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, calcularDias } from "../../utils/alerts";
 import Toast from "react-native-toast-message";
@@ -86,6 +86,13 @@ export default function Dashboard() {
     const navigation = useNavigation<any>();
 
     const [usuario, setUsuario] = useState<UsuarioLogado | null>(null);
+
+    useEffect(() => {
+        if (!usuario?.id) return;
+        listarTanques({ silentNetworkError: true }).catch((erro) => {
+            console.warn("Não foi possível carregar os tanques:", erro);
+        });
+    }, [usuario?.id]);
 
     const userName = usuario?.nome || "Produtor";
     const farmName = usuario?.nome_fazenda || "Minha fazenda";

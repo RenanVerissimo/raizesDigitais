@@ -7,6 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
 import { excluirTanque, listarMovimentacoes, listarTanques } from "../../services/api";
 import Toast from "react-native-toast-message";
+import { estaSemInternet } from "../../utils/conexaoInternet";
 
 export type Qualidade = "excelente" | "boa" | "regular";
 export type TipoMovimento = "entrada" | "saida";
@@ -57,12 +58,8 @@ export default function Estoque() {
     async function carregarDados() {
         setCarregando(true);
         try {
-            const [tanquesDados, movsDados] = await Promise.all([
-                listarTanques({ silentNetworkError: true }),
-                listarMovimentacoes({ silentNetworkError: true }),
-            ]);
+            const tanquesDados = await listarTanques({ silentNetworkError: true });
             setTanques(tanquesDados);
-            setMovimentacoes(movsDados);
         } catch (err: any) {
             Toast.show({
                 type: "error",
@@ -73,6 +70,22 @@ export default function Estoque() {
             });
         } finally {
             setCarregando(false);
+        }
+
+        if (await estaSemInternet()) {
+            setMovimentacoes([]);
+            return;
+        }
+        try {
+            const movsDados = await listarMovimentacoes({ silentNetworkError: true });
+            setMovimentacoes(movsDados);
+        } catch (err: any) {
+            Toast.show({
+                type: "error",
+                text1: "Erro ao carregar movimentações",
+                text2: err.message || "Não foi possível carregar o histórico.",
+                position: "top",
+            });
         }
     }
 
