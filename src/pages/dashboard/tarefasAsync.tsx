@@ -20,12 +20,14 @@ import { formatarData } from "../../utils/formatters";
 import { opcoesStatusReprodutivo } from "../../utils/statusReprodutivo";
 
 function visualArea(area: string) {
+    if (area === "Estoque de Ração") return { icone: "package" as const, cor: "#a16207", fundo: "#fef9c3" };
     if (area === "Animais") return { icone: "heart" as const, cor: "#16836b", fundo: "#e8f6ef" };
     if (area === "Estoque de Leite") return { icone: "archive" as const, cor: "#8655be", fundo: "#f2ecfa" };
     return { icone: "droplet" as const, cor: "#357abd", fundo: "#eaf3fe" };
 }
 
 const rotulos: Record<string, string> = {
+    racaoNome: "Ração", racaoId: "Ração (número)", quantidade: "Quantidade", unidade: "Unidade", destino: "Destino",
     dataRegistro: "Data do registro",
     date: "Data", dailyProduction: "Quantidade", tanqueId: "Tanque (número)",
     notes: "Observações", nome: "Nome", identificador: "Identificação",
@@ -75,8 +77,10 @@ function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
     const visual = visualArea(tarefa.area);
     const essenciais = tarefa.area === "Produção de Leite" ? ["dailyProduction"]
         : tarefa.area === "Animais" ? ["identificador"]
-        : tarefa.area === "Estoque de Leite" ? ["tipo", "volume", "consumoProprio"] : [];
+        : tarefa.area === "Estoque de Leite" ? ["tipo", "volume", "consumoProprio"]
+        : tarefa.area === "Estoque de Ração" ? [tarefa.dados.racaoNome ? "racaoNome" : "racaoId", "quantidade", "unidade"] : [];
     const preenchidos = Object.entries(tarefa.dados).filter(([chave, valor]) =>
+        chave !== "idempotencyKey" &&
         !(tarefa.area === "Estoque de Leite" && ["volume", "consumoProprio"].includes(chave) && Number(valor) === 0) &&
         valor !== null && valor !== undefined && !(typeof valor === "string" && valor.trim() === "")
     );

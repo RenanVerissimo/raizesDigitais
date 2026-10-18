@@ -8,6 +8,7 @@ import Toast from "react-native-toast-message";
 import { Compra } from "../../interfaces/interfaces";
 import { criarRacao, listarCompras, listarMovimentacoesRacao, listarRacoes } from "../../services/api";
 import { toBr } from "../../utils/formatters";
+import { estaSemInternet } from "../../utils/conexaoInternet";
 
 export type TipoRacao = "milho" | "farelo_soja" | "nucleo_mineral";
 export type UnidadeRacao = "kg" | "sacos" | "fardos" | "ton";
@@ -123,7 +124,15 @@ export default function EstoqueRacao() {
     async function carregarDados() {
         try {
             setCarregando(true);
-            const [racoesDados, movsDados, comprasDados] = await Promise.all([listarRacoes(), listarMovimentacoesRacao(), listarCompras()]);
+            const racoesDados = await listarRacoes();
+            setRacoes(racoesDados);
+            setCarregando(false);
+            if (await estaSemInternet()) {
+                setMovimentacoes([]);
+                setComprasRacao([]);
+                return;
+            }
+            const [movsDados, comprasDados] = await Promise.all([listarMovimentacoesRacao(), listarCompras()]);
             const comprasConcluidas = comprasDados
                 .filter((compra) => compra.categoria === "racao" && compra.status === "concluido")
                 .sort((a, b) => String(b.data).localeCompare(String(a.data)));

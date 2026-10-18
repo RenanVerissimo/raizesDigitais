@@ -63,7 +63,7 @@ export default function MovimentarRacao() {
 
         try {
             setSalvando(true);
-            await criarMovimentacaoRacao({
+            const resultado = await criarMovimentacaoRacao({
                 racaoId: Number(formData.racaoId),
                 tipo: formData.tipo,
                 quantidade,
@@ -71,9 +71,9 @@ export default function MovimentarRacao() {
                 motivo,
                 destino: formData.destino.trim() || null,
                 observacoes,
-            });
+            }, racaoSelecionada);
 
-            Toast.show({ type: "success", text1: "Movimentacao registrada", position: "top" });
+            Toast.show({ type: "success", text1: resultado.salvo_offline ? "Movimentação salva offline" : "Movimentacao registrada", text2: resultado.salvo_offline ? "Confira a pendência em Tarefas offline." : undefined, position: "top" });
             setTimeout(() => navigation.goBack(), 500);
         } catch (err: any) {
             Toast.show({ type: "error", text1: "Erro", text2: err.message || "Nao foi possivel movimentar.", position: "top" });

@@ -4,6 +4,8 @@ import { estaSemInternet } from "../utils/conexaoInternet";
 import type { Tanque } from "../pages/controle_de_estoque/estoque";
 import { listarTanquesLocal, salvarMovimentacaoLocal, salvarTanquesLocal } from "./offline/EstoqueDeLeiteOffline";
 import { adicionarTarefaOffline } from "./offline/sincronizacaoOffline";
+import type { Racao } from "../pages/controle_de_estoque/estoque_racao";
+import { aplicarSaidasPendentes, listarRacoesLocal, salvarRacoesLocal } from "./offline/estoqueDeRacaoOffline";
 /* import { API_URL } from "../config";
 
 const BASE_URL = API_URL;
@@ -1150,16 +1152,27 @@ export async function excluirMovimentacao(id: number) {
 // ESTOQUE - RACOES
 // ============================================
 
-export async function listarRacoes() {
-    const res = await apiFetch(`/estoque/racoes`);
+export async function listarRacoes(): Promise<Racao[]> {
+    const usuario = await getUsuarioLogado();
+    if (!usuario) throw new Error("Usuário não encontrado.");
+    if (await estaSemInternet()) return listarRacoesLocal(usuario.id);
+    let res: Response;
+    try {
+        res = await apiFetch(`/estoque/racoes`);
+    } catch (erro) {
+        if (erro instanceof Error && erro.message === NETWORK_ERROR_MESSAGE) return listarRacoesLocal(usuario.id);
+        throw erro;
+    }
     if (!res.ok) throw new Error("Erro ao listar racoes");
     const dados = await res.json();
-    return dados.map((r: any) => ({
+    const racoes: Racao[] = dados.map((r: any) => ({
         ...r,
         quantidadeAtual: Number(r.quantidadeAtual),
         estoqueMinimo: Number(r.estoqueMinimo),
         custoUnitario: r.custoUnitario === null || r.custoUnitario === undefined ? null : Number(r.custoUnitario),
     }));
+    await salvarRacoesLocal(usuario.id, racoes);
+    return aplicarSaidasPendentes(usuario.id, racoes);
 }
 
 export async function criarRacao(dados: {
@@ -1240,8 +1253,34 @@ export async function criarMovimentacaoRacao(dados: {
     motivo: string;
     destino?: string | null;
     observacoes?: string | null;
-}) {
+}, racao?: Racao) {
     const idempotencyKey = gerarIdempotencyKey("mov-racao");
+
+    if (await estaSemInternet()) {
+        const usuario = await getUsuarioLogado();
+        if (!usuario) throw new Error("Usuário não encontrado.");
+        if (!Number.isFinite(dados.quantidade) || dados.quantidade <= 0) {
+            throw new Error("Informe uma quantidade maior que zero.");
+        }
+        const racoes = await listarRacoesLocal(usuario.id);
+        const item = racoes.find(r => r.id === dados.racaoId);
+        if (!item) throw new Error("Ração não encontrada no armazenamento local. Abra o estoque com internet primeiro.");
+        if (dados.tipo === "saida" && dados.quantidade > item.quantidadeAtual) throw new Error("Estoque insuficiente.");
+        await adicionarTarefaOffline(usuario.id, {
+            id: idempotencyKey,
+            usuarioId: usuario.id,
+            acao: "Novo Registro",
+            area: "Estoque de Ração",
+            dados: {
+                ...dados,
+                idempotencyKey,
+                racaoNome: item.nome,
+                unidade: item.unidade,
+            },
+            criadaEm: new Date().toISOString(),
+        });
+        return { salvo_offline: true, tarefaId: idempotencyKey };
+    }
 
     try {
         const res = await apiFetch(`/estoque/racoes/movimentacoes`, {
@@ -1275,10 +1314,7 @@ export async function criarMovimentacaoRacao(dados: {
 
             if (confirmada) return confirmada;
 
-            return {
-                mensagem: "Movimentacao de racao registrada",
-                confirmadoPorResposta: false,
-            };
+            throw new Error("Não foi possível confirmar a movimentação. Confira o histórico antes de tentar novamente.");
         }
 
         throw err;
