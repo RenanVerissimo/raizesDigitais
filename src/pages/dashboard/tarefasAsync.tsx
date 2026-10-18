@@ -4,7 +4,9 @@ import {
     Text,
     FlatList,
     ActivityIndicator,
-    TouchableOpacity
+    TouchableOpacity,
+    Modal,
+    Button
 } from "react-native";
 
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -15,7 +17,7 @@ import {
     listaDeTarefasOffline,
     novaTarefa
 } from "../../services/offline/sincronizacaoOffline";
-import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { formatarData } from "../../utils/formatters";
 import { opcoesStatusReprodutivo } from "../../utils/statusReprodutivo";
 
@@ -52,8 +54,8 @@ function valorFormatado(chave: string, valor: unknown): string {
     if (typeof valor === "number") {
         const unidade = ["dailyProduction", "volume", "consumoProprio"].includes(chave)
             ? " L" : chave === "producao_media_diaria" ? " L/dia"
-            : chave === "peso" ? " kg" : chave === "temperatura" ? " °C"
-            : chave === "dias_descarte_leite" ? " dias" : "";
+                : chave === "peso" ? " kg" : chave === "temperatura" ? " °C"
+                    : chave === "dias_descarte_leite" ? " dias" : "";
         return `${valor.toLocaleString("pt-BR")}${unidade}`;
     }
     if (typeof valor === "string") {
@@ -77,8 +79,8 @@ function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
     const visual = visualArea(tarefa.area);
     const essenciais = tarefa.area === "Produção de Leite" ? ["dailyProduction"]
         : tarefa.area === "Animais" ? ["identificador"]
-        : tarefa.area === "Estoque de Leite" ? ["tipo", "volume", "consumoProprio"]
-        : tarefa.area === "Estoque de Ração" ? [tarefa.dados.racaoNome ? "racaoNome" : "racaoId", "quantidade", "unidade"] : [];
+            : tarefa.area === "Estoque de Leite" ? ["tipo", "volume", "consumoProprio"]
+                : tarefa.area === "Estoque de Ração" ? [tarefa.dados.racaoNome ? "racaoNome" : "racaoId", "quantidade", "unidade"] : [];
     const preenchidos = Object.entries(tarefa.dados).filter(([chave, valor]) =>
         chave !== "idempotencyKey" &&
         !(tarefa.area === "Estoque de Leite" && ["volume", "consumoProprio"].includes(chave) && Number(valor) === 0) &&
@@ -139,7 +141,7 @@ export default function TarefasOffline() {
     const [tarefas, setTarefas] = useState<novaTarefa[]>([]);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState<string | null>(null);
-
+    const [modal, setModal] = useState(false);
 
     function voltar() {
         navigation.goBack();
@@ -183,6 +185,71 @@ export default function TarefasOffline() {
                         <Text style={{ fontSize: 23, fontWeight: "700", color: "#fff" }}>Tarefas offline</Text>
                         <Text style={{ color: "#dceafd", fontSize: 13, marginTop: 4 }}>Seus registros salvos neste aparelho</Text>
                     </View>
+                    <TouchableOpacity
+                        onPress={() => setModal(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Abrir informações"
+                        style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 14,
+                            backgroundColor: "rgba(255,255,255,0.15)",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <AntDesign name="sync" size={24} color="white" />
+                    </TouchableOpacity>
+
+                    <Modal
+                        visible={modal}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setModal(false)}
+                    >
+                        <View
+                            style={{
+                                flex: 1,
+                                backgroundColor: "rgba(0,0,0,0.5)",
+                                justifyContent: "center",
+                                padding: 24,
+                            }}
+                        >
+                            <View
+                                style={{
+                                    backgroundColor: "#fff",
+                                    borderRadius: 16,
+                                    padding: 24,
+                                }}
+                            >
+                                <Text style={{ fontSize: 18, fontWeight: "700", textAlign: "center" }}>Deseja Sincronizar as tarefas?</Text>
+                                <Text style={{ fontSize: 14, color: "#374151", textAlign: "center", marginTop: 8 }}>
+                                    Ao sincronizar, as tarefas salvas neste aparelho serão enviadas para o servidor e removidas do armazenamento local.
+                                </Text>
+
+                                <View style={{ flexDirection: "row", marginTop: 20, justifyContent: "space-around" }}>
+
+                                    <TouchableOpacity
+                                        onPress={() => setModal(false)}
+                                        accessibilityRole="button"
+                                        style={{ marginTop: 20, padding: 8 }}
+                                    >
+                                        <Text
+                                        style={{ color: "#357abd", fontWeight: "700" }}
+                                        >Sim</Text>
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        onPress={() => setModal(false)}
+                                        accessibilityRole="button"
+                                        style={{ marginTop: 20, padding: 8 }}
+                                    >
+                                        <Text style={{color:"black", fontWeight: "700" }}>Nao</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 22, backgroundColor: "rgba(255,255,255,0.12)", padding: 14, borderRadius: 16 }}>
                     <Feather name="save" size={23} color="#fff" />
@@ -213,8 +280,8 @@ export default function TarefasOffline() {
                     return (
                         <View style={{ backgroundColor: "#fff", padding: 12, paddingBottom: 2, borderRadius: 12, marginBottom: 10, borderWidth: 1, borderColor: "#e7edf5" }}>
                             <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", columnGap: 12, rowGap: 4, marginBottom: 10 }}>
-                                <Text style={{ fontSize: 16, fontWeight: "900", color: "#6b7280" }}>{item.acao}</Text>
-                                <Text style={{ color: "#748094", fontSize: 11 }}>
+                                <Text style={{ fontSize: 16, fontWeight: "900", color: "#000000" }}>{item.acao}</Text>
+                                <Text style={{ color: "#000102", fontSize: 11 }}>
                                     {new Date(item.criadaEm).toLocaleDateString("pt-BR")} às {new Date(item.criadaEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                                 </Text>
                             </View>
