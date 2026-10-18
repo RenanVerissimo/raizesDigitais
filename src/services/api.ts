@@ -2,7 +2,7 @@
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
 import { estaSemInternet } from "../utils/conexaoInternet";
 import type { Tanque } from "../pages/controle_de_estoque/estoque";
-import { listarTanquesLocal, salvarTanquesLocal } from "./offline/EstoqueDeLeiteOffline";
+import { listarTanquesLocal, salvarMovimentacaoLocal, salvarTanquesLocal } from "./offline/EstoqueDeLeiteOffline";
 import { adicionarTarefaOffline } from "./offline/sincronizacaoOffline";
 /* import { API_URL } from "../config";
 
@@ -295,6 +295,23 @@ export async function criarAnimal(dados: {
     data_inseminacao?: string | null;
     data_confirmacao_prenhez?: string | null;
 }) {
+    if (await estaSemInternet()) {
+        const usuario = await getUsuarioLogado();
+        if (!usuario) throw new Error("Usuário não encontrado.");
+
+        const tarefaId = gerarIdempotencyKey("animal");
+        await adicionarTarefaOffline(usuario.id, {
+            id: tarefaId,
+            usuarioId: usuario.id,
+            acao: "Novo Registro",
+            area: "Animais",
+            dados: { ...dados },
+            criadaEm: new Date().toISOString(),
+        });
+
+        return { salvo_offline: true, tarefaId };
+    }
+
     try {
         const response = await apiFetch(`/animais`, {
             method: "POST",
@@ -1017,6 +1034,60 @@ export async function criarMovimentacao(dados: {
     consumoProprio?: number;
     observacoes?: string | null;
 }) {
+
+    // =========================
+    // OFFLINE
+    // =========================
+    if (await estaSemInternet()) {
+
+        const usuario = await getUsuarioLogado();
+
+        if (!usuario) {
+            throw new Error("Usuário não encontrado.");
+        }
+
+        const tarefaId = gerarIdempotencyKey("movimentacao");
+
+        const tanques = await listarTanquesLocal(usuario.id);
+        const tanque = tanques.find(t => t.id === dados.tanqueId);
+
+        if (!tanque) {
+            throw new Error("Tanque não encontrado no armazenamento local.");
+        }
+
+        const movimentacaoLocal = {
+            ...dados,
+            id: tarefaId,
+            tanqueNome: tanque.nome,
+            comprador: dados.comprador ?? undefined,
+            observacoes: dados.observacoes ?? undefined,
+        };
+
+        // Salva a movimentação localmente
+        await salvarMovimentacaoLocal(
+            usuario.id,
+            dados.tanqueId,
+            movimentacaoLocal
+        );
+
+        // Adiciona na fila para sincronizar depois
+        await adicionarTarefaOffline(usuario.id, {
+            id: tarefaId,
+            usuarioId: usuario.id,
+            acao: "Novo Registro",
+            area: "Estoque de Leite",
+            dados: { ...dados },
+            criadaEm: new Date().toISOString(),
+        });
+
+        return {
+            salvo_offline: true,
+            tarefaId,
+            movimentacao: movimentacaoLocal,
+        };
+    }
+
+
     const res = await apiFetch(`/estoque/movimentacoes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1031,6 +1102,10 @@ export async function criarMovimentacao(dados: {
     return res.json();
 }
 
+
+
+
+
 export async function atualizarMovimentacao(id: number, dados: {
     tanqueId: number;
     tipo: "entrada" | "saida";
@@ -1042,6 +1117,8 @@ export async function atualizarMovimentacao(id: number, dados: {
     consumoProprio?: number;
     observacoes?: string | null;
 }) {
+
+
     const res = await apiFetch(`/estoque/movimentacoes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

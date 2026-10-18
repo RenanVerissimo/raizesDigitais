@@ -14,7 +14,9 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { criarAnimal, listarAnimais } from "../../services/api";
+import { criarAnimal, getUsuarioLogado, listarAnimais } from "../../services/api";
+import { estaSemInternet } from "../../utils/conexaoInternet";
+import { listaDeTarefasOffline } from "../../services/offline/sincronizacaoOffline";
 import Toast from "react-native-toast-message";
 import DateInput from "../../components/DateInput";
 import { toIso } from "../../utils/formatters";
@@ -122,9 +124,18 @@ export default function CadastrarAnimais() {
         salvandoRef.current = true;
         setSalvando(true);
         try {
-            const todosAnimais = await listarAnimais();
+            const offline = await estaSemInternet();
+            const todosAnimais = offline ? [] : await listarAnimais();
+            const usuario = await getUsuarioLogado();
+            const tarefas = usuario ? await listaDeTarefasOffline(usuario.id) : [];
             const novoId = normalizarId(formData.identificador);
-            if (todosAnimais.some((a) => normalizarId(a.identificador) === novoId)) {
+            const identificadorPendente = tarefas.some(tarefa =>
+                tarefa.area === "Animais" &&
+                tarefa.acao === "Novo Registro" &&
+                typeof tarefa.dados.identificador === "string" &&
+                normalizarId(tarefa.dados.identificador) === novoId
+            );
+            if (identificadorPendente || todosAnimais.some((a) => normalizarId(a.identificador) === novoId)) {
                 Toast.show({
                     type: "error",
                     text1: "Identificador já cadastrado.",
@@ -135,7 +146,7 @@ export default function CadastrarAnimais() {
                 return;
             }
 
-            await criarAnimal({
+            const resultado = await criarAnimal({
                 nome: formData.nome.trim(),
                 identificador: formData.identificador.trim(),
                 producao_media_diaria: producao,
@@ -159,8 +170,10 @@ export default function CadastrarAnimais() {
 
             Toast.show({
                 type: "success",
-                text1: "Animal cadastrado!",
-                text2: "O animal foi salvo com sucesso.",
+                text1: resultado?.salvo_offline ? "Animal salvo offline!" : "Animal cadastrado!",
+                text2: resultado?.salvo_offline
+                    ? "Cadastro adicionado às tarefas offline."
+                    : "O animal foi salvo com sucesso.",
                 position: "top",
                 visibilityTime: 3000,
             });
