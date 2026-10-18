@@ -26,6 +26,7 @@ function visualArea(area: string) {
 }
 
 const rotulos: Record<string, string> = {
+    dataRegistro: "Data do registro",
     date: "Data", dailyProduction: "Quantidade", tanqueId: "Tanque (número)",
     notes: "Observações", nome: "Nome", identificador: "Identificação",
     status: "Status", producao_media_diaria: "Produção média diária",
@@ -73,12 +74,17 @@ function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
     const [expandido, setExpandido] = useState(false);
     const visual = visualArea(tarefa.area);
     const essenciais = tarefa.area === "Produção de Leite" ? ["dailyProduction", "date"]
-        : tarefa.area === "Animais" ? ["identificador", "nome", "status_reprodutivo"]
+        : tarefa.area === "Animais" ? ["identificador"]
         : tarefa.area === "Estoque de Leite" ? ["tipo", "volume", "consumoProprio", "data"] : [];
     const preenchidos = Object.entries(tarefa.dados).filter(([, valor]) =>
         valor !== null && valor !== undefined && !(typeof valor === "string" && valor.trim() === "")
     );
-    const resumo = essenciais.flatMap(chave => preenchidos.filter(([campo]) => campo === chave));
+    const resumo: [string, unknown][] = tarefa.area === "Animais"
+        ? [
+            ["identificador", tarefa.dados.identificador ?? "Sem ID"],
+            ["dataRegistro", new Date(tarefa.criadaEm).toLocaleDateString("pt-BR")],
+        ]
+        : essenciais.flatMap(chave => preenchidos.filter(([campo]) => campo === chave));
     const detalhes = preenchidos.filter(([chave]) => !essenciais.includes(chave));
     function campo([chave, valor]: [string, unknown]) {
         return (
