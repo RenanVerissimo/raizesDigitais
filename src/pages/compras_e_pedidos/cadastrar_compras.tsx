@@ -218,12 +218,12 @@ export default function CadastrarCompra() {
         };
 
         try {
-            await criarCompra(compraPayload);
+            const resultado = await criarCompra(compraPayload);
 
             Toast.show({
                 type: "success",
-                text1: "Compra cadastrada!",
-                text2: `${itemSelecionado} foi salvo com sucesso.`,
+                text1: resultado.salvo_offline ? "Compra salva offline!" : "Compra cadastrada!",
+                text2: resultado.salvo_offline ? "O registro aguarda sincronização nas tarefas offline." : `${itemSelecionado} foi salvo com sucesso.`,
                 position: "top",
                 visibilityTime: 3000,
             });

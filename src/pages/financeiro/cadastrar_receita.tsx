@@ -91,6 +91,7 @@ export default function CadastrarReceita() {
 
         try {
             setSalvando(true);
+            let salvoOffline = false;
             if (formData.tipoReceita === "leite") {
                 const litros = parseDecimal(formData.litros);
                 const preco = parseDecimal(formData.precoPorLitro);
@@ -114,7 +115,8 @@ export default function CadastrarReceita() {
                     observacoes: formData.observacoes.trim() || null,
                 });
 
-                route.params?.onCadastrar?.(nova);
+                salvoOffline = nova.salvo_offline === true;
+                if (!salvoOffline) route.params?.onCadastrar?.(nova);
             } else {
                 const valorAnimal = parseDecimal(formData.valorAnimal);
                 const animalPeso = formData.origemAnimal === "manual" && formData.animalPeso.trim() ? parseDecimal(formData.animalPeso) : null;
@@ -146,13 +148,14 @@ export default function CadastrarReceita() {
                     observacoes: formData.observacoes.trim() || null,
                 });
 
-                route.params?.onCadastrar?.(nova);
+                salvoOffline = nova.salvo_offline === true;
+                if (!salvoOffline) route.params?.onCadastrar?.(nova);
             }
 
             Toast.show({
                 type: "success",
-                text1: "Receita cadastrada!",
-                text2: formData.tipoReceita === "animal" ? "A venda do animal foi registrada." : "A venda de leite foi registrada.",
+                text1: salvoOffline ? "Venda salva offline!" : "Receita cadastrada!",
+                text2: salvoOffline ? "O registro aguarda sincronização nas tarefas offline." : formData.tipoReceita === "animal" ? "A venda do animal foi registrada." : "A venda de leite foi registrada.",
                 position: "top",
                 visibilityTime: 3000,
             });

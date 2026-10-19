@@ -1,6 +1,7 @@
 ﻿import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Animal, Compra, Financiamento, Receita, StatusCompra } from "../interfaces/interfaces";
 import { estaSemInternet } from "../utils/conexaoInternet";
+import { salvarCompraOffline, salvarReceitaOffline, type ReceitaOfflineDados } from "./offline/financeiroOffline";
 import type { Tanque } from "../pages/controle_de_estoque/estoque";
 import { listarTanquesLocal, salvarMovimentacaoLocal, salvarTanquesLocal } from "./offline/EstoqueDeLeiteOffline";
 import { adicionarTarefaOffline } from "./offline/sincronizacaoOffline";
@@ -482,6 +483,12 @@ export async function listarCompras(options?: { silentNetworkError?: boolean }):
 export async function criarCompra(dados: Omit<Compra, "id" | "precoTotal">) {
     const idempotencyKey = gerarIdempotencyKey("compra");
 
+    if (await estaSemInternet()) {
+        const usuario = await getUsuarioLogado();
+        if (!usuario) throw new Error("Usuário não encontrado.");
+        return salvarCompraOffline(usuario.id, idempotencyKey, dados);
+    }
+
     try {
         const res = await apiFetch(`/compras`, {
             method: "POST",
@@ -571,19 +578,7 @@ export async function listarReceitas(options?: { silentNetworkError?: boolean })
     }));
 }
 
-type CriarReceitaDados = {
-    tipoReceita?: "leite" | "animal";
-    data: string;
-    litros?: number;
-    precoPorLitro?: number;
-    animalId?: number | null;
-    animalNome?: string | null;
-    animalIdentificador?: string | null;
-    animalPeso?: number | null;
-    valorAnimal?: number | null;
-    comprador: string;
-    observacoes?: string | null;
-};
+type CriarReceitaDados = ReceitaOfflineDados;
 
 function receitaCorresponde(dados: CriarReceitaDados, receita: Receita) {
     const tipo = dados.tipoReceita || "leite";
@@ -612,6 +607,12 @@ function receitaCorresponde(dados: CriarReceitaDados, receita: Receita) {
 
 export async function criarReceita(dados: CriarReceitaDados) {
     const idempotencyKey = gerarIdempotencyKey("receita");
+
+    if (await estaSemInternet()) {
+        const usuario = await getUsuarioLogado();
+        if (!usuario) throw new Error("Usuário não encontrado.");
+        return salvarReceitaOffline(usuario.id, idempotencyKey, dados);
+    }
 
     try {
         const res = await apiFetch(`/receitas`, {
