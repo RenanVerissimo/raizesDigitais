@@ -1442,3 +1442,60 @@ export async function redefinirSenhaPorCpf(dados: {
         throw err;
     }
 }
+
+
+import type { novaTarefa } from "./offline/sincronizacaoOffline";
+
+export async function enviarTarefaOffline(
+    tarefa: novaTarefa
+): Promise<void> {
+    if (await estaSemInternet()) {
+        throw new Error("Conecte-se à internet para sincronizar.");
+    }
+
+    const usuario = await getUsuarioLogado();
+
+    if (!usuario || usuario.id !== tarefa.usuarioId) {
+        throw new Error("A tarefa pertence a outro usuário.");
+    }
+
+    if (tarefa.acao !== "Novo Registro") {
+        throw new Error("Esta ação ainda não possui sincronização.");
+    }
+
+    const rotas: Record<string, string> = {
+        "Produção de Leite": "/producao",
+        "Animais": "/animais",
+        "Estoque de Leite": "/estoque/movimentacoes",
+        "Estoque de Ração": "/estoque/racoes/movimentacoes",
+        "Compras": "/compras",
+        "Financeiro": "/receitas",
+        "Vendas": "/receitas",
+        "Financiamentos": "/financiamentos",
+    };
+
+    const rota = rotas[tarefa.area];
+
+    if (!rota) {
+        throw new Error(`Área sem sincronização: ${tarefa.area}`);
+    }
+
+    const resposta = await apiFetch(rota, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-idempotency-key": tarefa.id,
+        },
+        body: JSON.stringify(tarefa.dados),
+        silentNetworkError: true,
+        timeoutMs: 90000,
+    });
+
+    if (!resposta.ok) {
+        const erro = await resposta.json().catch(() => ({}));
+
+        throw new Error(
+            erro.erro || erro.error || "Erro ao sincronizar registro."
+        );
+    }
+}

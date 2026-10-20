@@ -12,10 +12,11 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { getUsuarioLogado } from "../../services/api";
+import { enviarTarefaOffline, getUsuarioLogado } from "../../services/api";
 import {
     listaDeTarefasOffline,
-    novaTarefa
+    novaTarefa,
+    sincronizarTarefasOffline
 } from "../../services/offline/sincronizacaoOffline";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { formatarData } from "../../utils/formatters";
@@ -92,6 +93,7 @@ function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
         ]
         : essenciais.flatMap(chave => preenchidos.filter(([campo]) => campo === chave));
     const detalhes = preenchidos.filter(([chave]) => !essenciais.includes(chave));
+
     function campo([chave, valor]: [string, unknown]) {
         return (
             <Text key={chave} style={{ color: "#374151", lineHeight: 22 }}>
@@ -99,7 +101,11 @@ function DadosTarefa({ tarefa }: { tarefa: novaTarefa }) {
                 {valorFormatado(chave, valor)}
             </Text>
         );
+
+
     }
+
+
     return (
         <View style={{ gap: 6, marginTop: 8 }}>
             {resumo.length > 0 && (
@@ -142,6 +148,43 @@ export default function TarefasOffline() {
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState<string | null>(null);
     const [modal, setModal] = useState(false);
+
+    const [sincronizando, setSincronizando] = useState(false);
+
+    async function handleSincronizar() {
+        setSincronizando(true);
+        setErro(null);
+
+        try {
+            const usuario = await getUsuarioLogado();
+
+            if (!usuario) {
+                throw new Error("Usuário não encontrado.");
+            }
+
+            try {
+                await sincronizarTarefasOffline(
+                    usuario.id,
+                    enviarTarefaOffline
+                );
+            } finally {
+                // Atualiza a tela mesmo se parte das tarefas falhar.
+                const restantes = await listaDeTarefasOffline(usuario.id);
+                setTarefas(restantes);
+            }
+
+            setModal(false);
+        } catch (error) {
+            setModal(false);
+            setErro(
+                error instanceof Error
+                    ? error.message
+                    : "Não foi possível sincronizar."
+            );
+        } finally {
+            setSincronizando(false);
+        }
+    }
 
     function voltar() {
         navigation.goBack();
@@ -230,13 +273,18 @@ export default function TarefasOffline() {
                                 <View style={{ flexDirection: "row", marginTop: 20, justifyContent: "space-around" }}>
 
                                     <TouchableOpacity
-                                        onPress={() => setModal(false)}
+                                        onPress={handleSincronizar}
+                                        disabled={sincronizando}
                                         accessibilityRole="button"
-                                        style={{ marginTop: 20, padding: 8 }}
+                                        style={{
+                                            marginTop: 20,
+                                            padding: 8,
+                                            opacity: sincronizando ? 0.5 : 1,
+                                        }}
                                     >
-                                        <Text
-                                        style={{ color: "#357abd", fontWeight: "700" }}
-                                        >Sim</Text>
+                                        <Text style={{ color: "#357abd", fontWeight: "700" }}>
+                                            {sincronizando ? "Sincronizando..." : "Sim"}
+                                        </Text>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
@@ -244,7 +292,7 @@ export default function TarefasOffline() {
                                         accessibilityRole="button"
                                         style={{ marginTop: 20, padding: 8 }}
                                     >
-                                        <Text style={{color:"black", fontWeight: "700" }}>Nao</Text>
+                                        <Text style={{ color: "black", fontWeight: "700" }}>Nao</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>

@@ -22,6 +22,8 @@ import { calcularAvisoDescarteLeite, calcularDataParto, calcularDataSecagem, cal
 import Toast from "react-native-toast-message";
 import AntDesign from '@expo/vector-icons/AntDesign';
 import { estaSemInternet } from "../../utils/conexaoInternet";
+import { listaDeTarefasOffline, sincronizarTarefasOffline } from "../../services/offline/sincronizacaoOffline";
+import { enviarTarefaOffline } from "../../services/api";
 
 
 function formatarDataLocal(data: Date) {
@@ -127,6 +129,9 @@ export default function Dashboard() {
     const balancoOffline = useRef(new Animated.Value(0)).current;
     const expansaoOffline = useRef(new Animated.Value(1)).current;
     const [alturaMensagemOffline, setAlturaMensagemOffline] = useState(34);
+    const [temTarefasOfflineEestaOnline, setTemTarefasOfflineEestaOnline] = useState(false);
+    const [sincronizando, setSincronizando] = useState(false);
+    const sincronizandoRef = useRef(false);
 
     useEffect(() => {
         const animacao = Animated.timing(expansaoOffline, {
@@ -288,20 +293,65 @@ export default function Dashboard() {
     }
 
 
+    async function handleSincronizar() {
+        if (sincronizandoRef.current) return;
+        sincronizandoRef.current = true;
+        setSincronizando(true);
+        try {
+            const usuarioAtual = await getUsuarioLogado();
+            if (!usuarioAtual) throw new Error("Usuário não encontrado.");
+            const quantidade = await sincronizarTarefasOffline(usuarioAtual.id, enviarTarefaOffline);
+            Toast.show({ type: "success", text1: "Sincronização concluída", text2: `${quantidade} registro(s) enviado(s).` });
+        } catch (erro) {
+            Toast.show({ type: "error", text1: "Não foi possível concluir a sincronização", text2: erro instanceof Error ? erro.message : "Tente novamente." });
+        } finally {
+            try {
+                await verificarTarefasOffline();
+            } catch {
+                setTemTarefasOfflineEestaOnline(false);
+            }
+            sincronizandoRef.current = false;
+            setSincronizando(false);
+        }
+    }
+
+    async function verificarTarefasOffline() {
+
+        const usuario = await getUsuarioLogado();
+
+        if (!usuario) {
+            throw new Error("Usuário não encontrado.");
+        }
+
+        const tarefasOffline = await listaDeTarefasOffline(usuario.id);
+        const temInternet = !(await estaSemInternet());
+
+        if (tarefasOffline.length > 0 && temInternet) {
+            console.log(`Existem ${tarefasOffline.length} tarefas offline para sincronizar.`);
+            setTemTarefasOfflineEestaOnline(true);
+        } else {
+            console.log("Não existem tarefas offline para sincronizar.");
+            setTemTarefasOfflineEestaOnline(false);
+        }
+
+    }
 
     async function offline() {
 
         if (await estaSemInternet()) {
-             setPageOffline(true);
+            setPageOffline(true);
         } else {
-             setPageOffline(false);
+            setPageOffline(false);
         }
     }
 
     useEffect(() => {
         offline();
-    }
-    ), [];
+    }, []);
+
+    useFocusEffect(useCallback(() => {
+        void verificarTarefasOffline().catch(() => setTemTarefasOfflineEestaOnline(false));
+    }, []));
 
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
@@ -343,37 +393,136 @@ export default function Dashboard() {
                             style={{ backgroundColor: "#FFF3E0", borderColor: "#F59E0B", borderWidth: 1, padding: 10, borderRadius: 12, marginBottom: 8, gap: 8 }}
                         >
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                            <View style={{ backgroundColor: "#FFFFFF", padding: 7, borderRadius: 10 }}>
-                                <Animated.View style={{
-                                    transform: [{ rotate: balancoOffline.interpolate({ inputRange: [-1, 1], outputRange: ["-6deg", "6deg"] }) }],
-                                }}>
-                                    <Feather name="wifi-off" size={18} color="#D97706" />
-                                </Animated.View>
-                            </View>
-                            <View style={{ flex: 1, gap: 2 }}>
-                                <Text style={{ fontSize: 14, fontWeight: "700", color: "#92400E", }}>
-                                    Você está no modo offline
-                                </Text>
-                                <Animated.View
-                                    accessibilityElementsHidden={!avisoOfflineExpandido}
-                                    importantForAccessibility={avisoOfflineExpandido ? "auto" : "no-hide-descendants"}
-                                    style={{
-                                        overflow: "hidden",
-                                        height: expansaoOffline.interpolate({ inputRange: [0, 1], outputRange: [0, alturaMensagemOffline] }),
-                                        opacity: expansaoOffline,
-                                    }}
-                                >
-                                <Text
-                                    onLayout={(event) => setAlturaMensagemOffline(event.nativeEvent.layout.height)}
-                                    style={{ fontSize: 12, color: "#78350F", lineHeight: 17 }}
-                                >
-                                    Você está sem conexão com a internet. 
-                                </Text>
-                                </Animated.View>
-                            </View>
+                                <View style={{ backgroundColor: "#FFFFFF", padding: 7, borderRadius: 10 }}>
+                                    <Animated.View style={{
+                                        transform: [{ rotate: balancoOffline.interpolate({ inputRange: [-1, 1], outputRange: ["-6deg", "6deg"] }) }],
+                                    }}>
+                                        <Feather name="wifi-off" size={18} color="#D97706" />
+                                    </Animated.View>
+                                </View>
+                                <View style={{ flex: 1, gap: 2 }}>
+                                    <Text style={{ fontSize: 14, fontWeight: "700", color: "#92400E", }}>
+                                        Você está no modo offline
+                                    </Text>
+                                    <Animated.View
+                                        accessibilityElementsHidden={!avisoOfflineExpandido}
+                                        importantForAccessibility={avisoOfflineExpandido ? "auto" : "no-hide-descendants"}
+                                        style={{
+                                            overflow: "hidden",
+                                            height: expansaoOffline.interpolate({ inputRange: [0, 1], outputRange: [0, alturaMensagemOffline] }),
+                                            opacity: expansaoOffline,
+                                        }}
+                                    >
+                                        <Text
+                                            onLayout={(event) => setAlturaMensagemOffline(event.nativeEvent.layout.height)}
+                                            style={{ fontSize: 12, color: "#78350F", lineHeight: 17 }}
+                                        >
+                                            Você está sem conexão com a internet.
+                                        </Text>
+                                    </Animated.View>
+                                </View>
                             </View>
                         </TouchableOpacity>
                     )}
+
+                    {temTarefasOfflineEestaOnline && (
+                        <View
+                            style={{
+                                backgroundColor: "#edf5ff",
+                                borderWidth: 1,
+                                borderColor: "#d4e5fa",
+                                padding: 14,
+                                borderRadius: 14,
+                                marginBottom: 12,
+                                gap: 14,
+                            }}
+                        >
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                <Feather name="wifi" size={20} color="#357abd" />
+
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: "#23334b", fontWeight: "700", fontSize: 14 }}>
+                                        Você está online!
+                                    </Text>
+                                    <Text
+                                        style={{
+                                            color: "#64748b",
+                                            fontSize: 12,
+                                            lineHeight: 18,
+                                            marginTop: 3,
+                                        }}
+                                    >
+                                        Seus registros offline estão prontos para enviar.
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                <TouchableOpacity
+                                    onPress={handleSincronizar}
+                                    disabled={sincronizando}
+                                    accessibilityRole="button"
+                                    activeOpacity={0.8}
+                                    style={{
+                                        flex: 1,
+                                        minHeight: 46,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 10,
+                                        backgroundColor: "#357abd",
+                                        opacity: sincronizando ? 0.6 : 1,
+                                        borderRadius: 10,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 5,
+                                    }}
+                                >
+                                    <Feather name="refresh-cw" size={18} color="#fff" />
+                                    <Text
+                                        style={{
+                                            color: "#fff",
+                                            fontWeight: "700",
+                                            fontSize: 13,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        {sincronizando ? "Sincronizando..." : "Sincronizar agora"}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    onPress={() => navigation.navigate("tarefasAsync")}
+                                    accessibilityRole="button"
+                                    activeOpacity={0.8}
+                                    style={{
+                                        flex: 1,
+                                        minHeight: 46,
+                                        paddingHorizontal: 10,
+                                        paddingVertical: 10,
+                                        borderWidth: 1,
+                                        borderColor: "#b9d2ef",
+                                        borderRadius: 10,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 5,
+                                    }}
+                                >
+                                    <Feather name="list" size={18} color="#357abd" />
+                                    <Text
+                                        style={{
+                                            color: "#357abd",
+                                            fontWeight: "600",
+                                            fontSize: 13,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        Ver tarefas offline
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
+
+
 
                     <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
                         <View>

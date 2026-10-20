@@ -65,3 +65,45 @@ export async function adicionarTarefaOffline(
         JSON.stringify(tarefas)
     );
 }
+
+
+let sincronizando = false;
+
+export async function sincronizarTarefasOffline(
+    usuarioId: number,
+    enviarTarefa: (tarefa: novaTarefa) => Promise<void>
+): Promise<number> {
+    if (sincronizando) {
+        throw new Error("Já existe uma sincronização em andamento.");
+    }
+
+    sincronizando = true;
+    let enviadas = 0;
+
+    try {
+        const tarefas = await listaDeTarefasOffline(usuarioId);
+
+        // A lista já mantém a ordem em que as tarefas foram adicionadas.
+        for (const tarefa of tarefas) {
+            // Só continua quando o servidor confirmar o envio.
+            await enviarTarefa(tarefa);
+
+            // Relê a fila para preservar tarefas adicionadas durante o envio.
+            const filaAtual = await listaDeTarefasOffline(usuarioId);
+            const restantes = filaAtual.filter(
+                item => item.id !== tarefa.id
+            );
+
+            await AsyncStorage.setItem(
+                chaveTarefas(usuarioId),
+                JSON.stringify(restantes)
+            );
+
+            enviadas++;
+        }
+
+        return enviadas;
+    } finally {
+        sincronizando = false;
+    }
+}
