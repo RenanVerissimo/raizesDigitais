@@ -9,6 +9,7 @@ import ProducaoHistorico from "./src/pages/producao/producao_historico";
 import Dashboard from "./src/pages/dashboard/dashboard";
 import TarefasAsync from "./src/pages/dashboard/tarefasAsync";
 import LoginScreen from "./src/pages/login/login";
+import TelaAutorizacao from "./src/pages/login/tela_autorizacao";
 import EsqueciSenha from "./src/pages/login/esqueci_senha";
 
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
@@ -77,6 +78,7 @@ export default function App() {
             <NavigationContainer>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
+                    <Stack.Screen name="tela_autorizacao" component={TelaAutorizacao} />
                     <Stack.Screen name="EsqueciSenha" component={EsqueciSenha} />
                     <Stack.Screen name="Dashboard" component={Dashboard} />
                     <Stack.Screen name="ProducaoRegistro" component={ProducaoRegistro} />

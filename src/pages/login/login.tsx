@@ -236,30 +236,37 @@ export default function LoginScreen() {
     }
 
     async function handleRegisterSubmit() {
-        if (!registerData.name || !registerData.email || !registerData.cpfRg || !registerData.farmName || !registerData.password) {
-            Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
-            return;
-        }
-        if (registerData.password !== registerData.confirmPassword) {
-            Alert.alert("Erro", "As senhas não coincidem!");
-            return;
-        }
-        if (registerData.password.length < 6) {
-            Alert.alert("Erro", "A senha deve ter pelo menos 6 caracteres.");
-            return;
-        }
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setIsLoading(true);
+        /*         if (!registerData.name || !registerData.email || !registerData.cpfRg || !registerData.farmName || !registerData.password) {
+                    Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
+                    return;
+                }
+                if (registerData.password !== registerData.confirmPassword) {
+                    Alert.alert("Erro", "As senhas não coincidem!");
+                    return;
+                }
+                if (registerData.password.length < 6) {
+                    Alert.alert("Erro", "A senha deve ter pelo menos 6 caracteres.");
+                    return;
+                }
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                setIsLoading(true);
+         */
+
         try {
-            await cadastrar({
-                nome: registerData.name.trim(),
-                email: registerData.email.trim(),
-                cpf_rg: somenteNumeros(registerData.cpfRg),
-                telefone: registerData.phone.trim() || undefined,
-                nome_fazenda: registerData.farmName.trim(),
-                senha: registerData.password,
-                confirmar_senha: registerData.confirmPassword,
-            });
+
+            navigation.navigate("tela_autorizacao");
+            return;
+
+
+            /*             await cadastrar({
+                            nome: registerData.name.trim(),
+                            email: registerData.email.trim(),
+                            cpf_rg: somenteNumeros(registerData.cpfRg),
+                            telefone: registerData.phone.trim() || undefined,
+                            nome_fazenda: registerData.farmName.trim(),
+                            senha: registerData.password,
+                            confirmar_senha: registerData.confirmPassword,
+                        }); */
             Alert.alert("Sucesso", "Conta criada com sucesso! Faça login para entrar.");
             setLoginData({ email: registerData.email.trim(), password: "" });
             setRegisterData({
