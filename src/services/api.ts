@@ -1383,7 +1383,7 @@ export async function cadastrar(dados: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dados),
-        retryUnsafe: true,
+        retryUnsafe: false,
         omitUsuarioHeader: true,
         timeoutMs: 120000,
     });

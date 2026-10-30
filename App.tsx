@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
@@ -43,6 +45,9 @@ import VerTodosFinanciamentos from "./src/pages/financeiro/ver_todos_financiamen
 import QuitarFinanciamento from "./src/pages/financeiro/quitar_financiamento";
 import QuitarParcelaFinanciamento from "./src/pages/financeiro/quitar_parcela_financiamento";
 import EditarFinanciamento from "./src/pages/financeiro/editar_financiamento";
+import PoliticaPrivacidade from "./src/pages/login/politica_de_privacidade";
+import TermoDeUso from "./src/pages/login/termo_de_uso";
+
 
 
 const Stack = createNativeStackNavigator();
@@ -73,6 +78,29 @@ const toastConfig = {
 };
 
 export default function App() {
+    const [iconesPreparados, setIconesPreparados] = useState(false);
+
+    useEffect(() => {
+        let ativo = true;
+
+        Ionicons.loadFont()
+            .catch((erro) => console.warn("Não foi possível carregar a fonte dos ícones:", erro))
+            .finally(() => {
+                if (ativo) setIconesPreparados(true);
+            });
+
+        return () => { ativo = false; };
+    }, []);
+
+    if (!iconesPreparados) {
+        return (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#1e3a8a" }}>
+                <ActivityIndicator size="large" color="white" />
+                <StatusBar style="light" />
+            </View>
+        );
+    }
+
     return (
         <SafeAreaProvider>
             <NavigationContainer>
@@ -114,6 +142,8 @@ export default function App() {
                     <Stack.Screen name="quitar_parcela_financiamento" component={QuitarParcelaFinanciamento} />
                     <Stack.Screen name="editar_financiamento" component={EditarFinanciamento} />
                     <Stack.Screen name="tarefasAsync" component={TarefasAsync} />
+                    <Stack.Screen name="termo_de_uso" component={TermoDeUso} />
+                    <Stack.Screen name="politica_de_privacidade" component={PoliticaPrivacidade} />
 
 
                 </Stack.Navigator>

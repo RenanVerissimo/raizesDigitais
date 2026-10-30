@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+﻿import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
@@ -22,7 +22,8 @@ import Toast from "react-native-toast-message";
 import { styles } from "./styles";
 import { FloatingIconProps, InputFieldProps } from "../../interfaces/interfaces";
 import { useNavigation } from "@react-navigation/native";
-import { cadastrar, login } from "../../services/api";
+import { login } from "../../services/api";
+import { definirCadastroPendente } from "../../services/cadastroPendente";
 
 
 const colors = {
@@ -236,70 +237,30 @@ export default function LoginScreen() {
     }
 
     async function handleRegisterSubmit() {
-        /*         if (!registerData.name || !registerData.email || !registerData.cpfRg || !registerData.farmName || !registerData.password) {
-                    Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
-                    return;
-                }
-                if (registerData.password !== registerData.confirmPassword) {
-                    Alert.alert("Erro", "As senhas não coincidem!");
-                    return;
-                }
-                if (registerData.password.length < 6) {
-                    Alert.alert("Erro", "A senha deve ter pelo menos 6 caracteres.");
-                    return;
-                }
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setIsLoading(true);
-         */
-
-        try {
-
-            navigation.navigate("tela_autorizacao");
+        if (isLoading) return;
+        if (!registerData.name.trim() || !registerData.email.trim() || !somenteNumeros(registerData.cpfRg) || !registerData.farmName.trim() || !registerData.password) {
+            Alert.alert("Atenção", "Preencha todos os campos obrigatórios.");
             return;
-
-
-            /*             await cadastrar({
-                            nome: registerData.name.trim(),
-                            email: registerData.email.trim(),
-                            cpf_rg: somenteNumeros(registerData.cpfRg),
-                            telefone: registerData.phone.trim() || undefined,
-                            nome_fazenda: registerData.farmName.trim(),
-                            senha: registerData.password,
-                            confirmar_senha: registerData.confirmPassword,
-                        }); */
-            Alert.alert("Sucesso", "Conta criada com sucesso! Faça login para entrar.");
-            setLoginData({ email: registerData.email.trim(), password: "" });
-            setRegisterData({
-                name: "",
-                email: "",
-                cpfRg: "",
-                phone: "",
-                farmName: "",
-                password: "",
-                confirmPassword: "",
-            });
-            setIsLogin(true);
-            setIsLoading(false);
-        } catch (err: any) {
-            setIsLoading(false);
-            const mensagem = err.message || "Não foi possível criar a conta.";
-            const cpfJaCadastrado = mensagem.toLowerCase().includes("cpf/rg") && mensagem.toLowerCase().includes("cadastrado");
-
-            if (cpfJaCadastrado) {
-                Toast.show({
-                    type: "error",
-                    text1: "CPF/RG já cadastrado",
-                    text2: "Use outro CPF/RG ou recupere a senha dessa conta.",
-                    position: "top",
-                    visibilityTime: 4200,
-                });
-                return;
-            }
-
-            Alert.alert("Erro", mensagem);
         }
+        if (registerData.password !== registerData.confirmPassword) {
+            Alert.alert("Erro", "As senhas não coincidem!");
+            return;
+        }
+        if (registerData.password.length < 6) {
+            Alert.alert("Erro", "A senha deve ter pelo menos 6 caracteres.");
+            return;
+        }
+        definirCadastroPendente({
+            nome: registerData.name.trim(),
+            email: registerData.email.trim(),
+            cpf_rg: somenteNumeros(registerData.cpfRg),
+            telefone: registerData.phone.trim() || undefined,
+            nome_fazenda: registerData.farmName.trim(),
+            senha: registerData.password,
+            confirmar_senha: registerData.confirmPassword,
+        });
+        navigation.navigate("tela_autorizacao");
     }
-
     function switchTab(toLogin: boolean) {
         Haptics.selectionAsync();
         setIsLogin(toLogin);
@@ -424,3 +385,4 @@ export default function LoginScreen() {
         </LinearGradient>
     );
 }
+
