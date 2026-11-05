@@ -37,34 +37,6 @@ export default function Animais() {
     const animaisVisiveis = animais.slice(0, LIMITE_CARDS);
     const temMais = animais.length > LIMITE_CARDS;
 
-
-
-    /*     function handleExcluir(animal: Animal) {
-            Alert.alert(
-                "Excluir animal",
-                `Tem certeza que deseja excluir ${animal.nome}? Esta ação não pode ser desfeita.`,
-                [
-                    { text: "Cancelar", style: "cancel" },
-                    {
-                        text: "Excluir",
-                        style: "destructive",
-                        onPress: async () => {
-                            try {
-                                await excluirAnimal(animal.id);
-                                // Recarrega do servidor pra garantir
-                                const dados = await listarAnimais();
-                                setAnimais(dados);
-                                Alert.alert("Sucesso", `${animal.nome} foi excluído.`);
-                            } catch (err) {
-                                console.error(err);
-                                Alert.alert("Erro", "Não foi possível excluir o animal.");
-                            }
-                        },
-                    },
-                ]
-            );
-        } */
-
     return (
         <View style={{ flex: 1, backgroundColor: "#f5f7fa" }}>
             <StatusBar barStyle="light-content" />
@@ -89,13 +61,6 @@ export default function Animais() {
                                 Gerencie seu rebanho
                             </Text>
                         </View>
-
-{/*                         <AntDesign
-                            name="cloud-sync"
-                            size={24}
-                            color="#ff0000"
-                        /> */}
-
                     </View>
 
                     <TouchableOpacity

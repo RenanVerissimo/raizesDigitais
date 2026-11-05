@@ -24,6 +24,7 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { estaSemInternet } from "../../utils/conexaoInternet";
 import { listaDeTarefasOffline, sincronizarTarefasOffline } from "../../services/offline/sincronizacaoOffline";
 import { enviarTarefaOffline } from "../../services/api";
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 
 function formatarDataLocal(data: Date) {
@@ -109,9 +110,6 @@ export default function Dashboard() {
     const [alertCount, setAlertCount] = useState(0);
 
     const currentMonth = new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-
-
-
 
     async function handleLogout() {
         await limparUsuarioLogado();
@@ -524,8 +522,8 @@ export default function Dashboard() {
 
 
 
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-                        <View>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 20 }}>
+                        <View style={{ flex: 1, minWidth: 0 }}>
                             <Text style={{ fontSize: 22, fontWeight: "700", color: "#fff", marginBottom: 4 }}>{farmName}</Text>
                             <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.9)" }}>Olá, {userName}</Text>
                         </View>
@@ -533,9 +531,17 @@ export default function Dashboard() {
                         <View
                             style={{
                                 flexDirection: "row",
+                                alignItems: "center",
+                                flexShrink: 0,
                                 gap: 5,
                             }}
                         >
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate("configuracoes")}
+                                style={{ backgroundColor: "rgba(255,255,255,0.2)", padding: 10, borderRadius: 10 }}
+                            >
+                                <MaterialIcons name="settings" size={20} color="white" />
+                            </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={() => navigation.navigate("tarefasAsync")}
                                 style={{ backgroundColor: "rgba(255,255,255,0.2)", padding: 10, borderRadius: 10 }}

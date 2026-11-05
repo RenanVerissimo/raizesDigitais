@@ -47,6 +47,7 @@ import QuitarParcelaFinanciamento from "./src/pages/financeiro/quitar_parcela_fi
 import EditarFinanciamento from "./src/pages/financeiro/editar_financiamento";
 import PoliticaPrivacidade from "./src/pages/login/politica_de_privacidade";
 import TermoDeUso from "./src/pages/login/termo_de_uso";
+import Configuracoes from "./src/pages/dashboard/configuracoes";
 
 
 
@@ -144,6 +145,7 @@ export default function App() {
                     <Stack.Screen name="tarefasAsync" component={TarefasAsync} />
                     <Stack.Screen name="termo_de_uso" component={TermoDeUso} />
                     <Stack.Screen name="politica_de_privacidade" component={PoliticaPrivacidade} />
+                    <Stack.Screen name="configuracoes" component={Configuracoes} />
 
 
                 </Stack.Navigator>
