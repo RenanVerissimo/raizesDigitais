@@ -86,6 +86,72 @@ router.post("/cadastrar", async (req, res) => {
     }
 });
 
+
+// EXCLUIR USUARIO
+router.delete("/excluir", async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        const token = authHeader?.startsWith("Bearer ")
+            ? authHeader.split(" ")[1]
+            : null;
+
+        if (!token) {
+            return res.status(401).json({
+                erro: "Token não fornecido"
+            });
+        }
+
+        if (!JWT_SECRET) {
+            return res.status(500).json({
+                erro: "Configuração de autenticação ausente"
+            });
+        }
+
+        // Verifica o token e identifica o usuário
+        let decoded;
+
+        try {
+            decoded = jwt.verify(token, JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({
+                erro: "Token inválido ou expirado"
+            });
+        }
+
+        const idUsuario = decoded.usuarioId;
+
+        if (!Number.isSafeInteger(idUsuario) || idUsuario <= 0) {
+            return res.status(401).json({
+                erro: "Identificação do usuário inválida"
+            });
+        }
+
+        // Exclui o usuário autenticado
+        const [resultado] = await pool.query(
+            "DELETE FROM usuarios WHERE id_usuario = ?",
+            [idUsuario]
+        );
+
+        if (resultado.affectedRows === 0) {
+            return res.status(404).json({
+                erro: "Usuário não encontrado"
+            });
+        }
+
+        return res.status(200).json({
+            mensagem: "Conta excluída com sucesso"
+        });
+
+    } catch (err) {
+        console.error("Erro ao excluir usuário:", err);
+
+        return res.status(500).json({
+            erro: "Erro ao excluir usuário"
+        });
+    }
+});
+
+
 // LOGIN
 router.post("/login", async (req, res) => {
     try {

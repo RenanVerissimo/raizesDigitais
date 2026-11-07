@@ -1395,6 +1395,20 @@ export async function cadastrar(dados: {
     return resposta;
 }
 
+export async function excluirUsuario() {
+    const res = await apiFetch("/auth/excluir", {
+        method: "DELETE",
+        timeoutMs: 120000,
+    });
+
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao excluir usuário");
+    }
+
+    return res.json();
+}
+
 export async function verificarCpfRecuperacao(cpf_rg: string) {
     const res = await apiFetch(`/auth/verificar-cpf`, {
         method: "POST",
