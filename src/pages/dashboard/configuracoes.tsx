@@ -11,7 +11,6 @@ import { goBack } from "expo-router/build/global-state/routing";
 import { TextInput } from "react-native";
 
 
-
 export default function Configuracoes() {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
@@ -19,28 +18,16 @@ export default function Configuracoes() {
     const [confirmExcluir, setConfirmExcluir] = useState(false);
     const [senhaDigitada, setSenhaDigitada] = useState(String);
     const [confirmacaoSenha, setConfirmacaoSenha] = useState(String);
-    const [verificacaoStatus, setVerificacaoStatus] = useState(false);
+    const [mostrarSenha, setMostrarSenha] = useState(false);
+    const [mostrarConfirmacaoSenha, setMostrarConfirmacaoSenha] = useState(false);
 
 
     function resetarCampos() {
-        
+
         setConfirmExcluir(false);
         setSenhaDigitada("");
         setConfirmacaoSenha("");
 
-    }
-
-    async function verificacaoSenhaBackEnd() {
-
-        try {
-            await verificarSenhaUsuario(senhaDigitada);
-            await verificarSenhaUsuario(confirmacaoSenha);
-            setVerificacaoStatus(true);
-
-        } catch (error) {
-            console.log(error);
-            return
-        }
     }
 
     async function deletarUsuario() {
@@ -48,20 +35,14 @@ export default function Configuracoes() {
         await excluirUsuario();
         await limparUsuarioLogado();
         setExcluirConta(false);
+        setConfirmExcluir(false);
         setSenhaDigitada("");
         setConfirmacaoSenha("");
-
-        Toast.show({
-            type: "success",
-            text1: "Sua conta foi excluida com sucesso",
-            position: "top",
-            visibilityTime: 3200,
-        });
 
         navigation.dispatch(
             CommonActions.reset({
                 index: 0,
-                routes: [{ name: "Login" }],
+                routes: [{ name: "Login", params: { contaExcluida: true } }],
             })
         );
 
@@ -83,24 +64,13 @@ export default function Configuracoes() {
 
         try {
             if (senhaDigitada === confirmacaoSenha) {
-                await verificacaoSenhaBackEnd();
-                if (verificacaoStatus) {
-                    await deletarUsuario();
-                } else {
-                    Toast.show({
-                        type: "error",
-                        text1: "Senha Incorreta",
-                        text2: "Essa senha é invalida.",
-                        position: "top",
-                        visibilityTime: 3200,
-                    });
-
-                }
+                await verificarSenhaUsuario(senhaDigitada);
+                await deletarUsuario();
             } else {
                 Toast.show({
                     type: "error",
                     text1: "Senhas Incorretas",
-                    text2: "As senha nao sao iguais, por favor preencha corretamente.",
+                    text2: "As senha não são iguais, por favor preencha corretamente.",
                     position: "top",
                     visibilityTime: 3200,
                 });
@@ -108,9 +78,9 @@ export default function Configuracoes() {
 
         } catch (error) {
             Toast.show({
-                type: "info",
-                text1: "Erro, nao foi possivel excluir sua conta",
-
+                type: "error",
+                text1: "Não foi possível excluir sua conta",
+                text2: error instanceof Error ? error.message : "Tente novamente.",
                 position: "top",
                 visibilityTime: 3200,
             });
@@ -358,47 +328,85 @@ export default function Configuracoes() {
                                 gap: 16,
 
                             }}>
-                                <Text>Para confirmar o processo de exclusao de conta, voce precisa digitar a sua senha</Text>
-                                <View style={{}}>
+                                <Text>
+                                    Para confirmar o processo de exclusão de conta,
+                                    você precisa digitar a sua senha.
+                                </Text>
+                                <View>
                                     <Text
                                         style={{ marginTop: 20 }}>Digite a senha:
                                     </Text>
 
-                                    <TextInput
-                                        value={senhaDigitada}
-                                        onChangeText={setSenhaDigitada}
-                                        placeholder="Sua senha"
-                                        secureTextEntry
-                                        autoCapitalize="none"
-                                        autoCorrect={false}
-                                        style={{
-                                            borderWidth: 1,
-                                            width: "100%",
-                                            height: 48,
-                                            paddingHorizontal: 12,
-                                            borderRadius: 8,
-                                        }}
-                                    />
+                                    <View style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        borderWidth: 1,
+                                        borderColor: "black",
+                                        borderRadius: 8,
+                                        height: 48,
+                                        width: "100%",
+                                    }}>
+                                        <TextInput
+                                            value={senhaDigitada}
+                                            onChangeText={setSenhaDigitada}
+                                            placeholder="Sua senha"
+                                            secureTextEntry={!mostrarSenha}
+                                            autoCapitalize="none"
+                                            autoCorrect={false}
+                                            style={{
+                                                paddingHorizontal: 12,
+                                            }}
+                                        />
 
-                                    <Text
-                                        style={{ marginTop: 20 }}>Confirme a senha:
+                                        <TouchableOpacity
+                                            onPress={() => setMostrarSenha(!mostrarSenha)}
+                                            style={{ paddingHorizontal: 12 }}
+                                        >
+                                            <Feather
+                                                name={mostrarSenha ? "eye-off" : "eye"}
+                                                size={22}
+                                                color="#6B7280"
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <Text style={{ marginTop: 20 }}>
+                                        Confirme a senha:
                                     </Text>
 
-                                    <TextInput
-                                        value={confirmacaoSenha}
-                                        onChangeText={setConfirmacaoSenha}
-                                        placeholder="Confirme sua senha"
-                                        secureTextEntry
-                                        autoCapitalize="none"
-                                        autoCorrect={false}
-                                        style={{
-                                            borderWidth: 1,
-                                            width: "100%",
-                                            height: 48,
-                                            paddingHorizontal: 12,
-                                            borderRadius: 8,
-                                        }}
-                                    />
+                                    <View style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        borderWidth: 1,
+                                        borderRadius: 8,
+                                        height: 48,
+                                        width: "100%",
+                                    }}>
+                                        <TextInput
+                                            value={confirmacaoSenha}
+                                            onChangeText={setConfirmacaoSenha}
+                                            placeholder="Confirme sua senha"
+                                            secureTextEntry={!mostrarConfirmacaoSenha}
+                                            autoCapitalize="none"
+                                            autoCorrect={false}
+                                            style={{
+                                                flex: 1,
+                                                paddingHorizontal: 12,
+                                  
+                                            }}
+                                        />
+
+                                        <TouchableOpacity
+                                            onPress={() => setMostrarConfirmacaoSenha(!mostrarConfirmacaoSenha)}
+                                            style={{ paddingHorizontal: 12 }}
+                                        >
+                                            <Feather
+                                                name={mostrarConfirmacaoSenha ? "eye-off" : "eye"}
+                                                size={22}
+                                                color="#6B7280"
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                                 <View
                                     style={{

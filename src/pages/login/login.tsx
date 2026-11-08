@@ -21,7 +21,7 @@ import Toast from "react-native-toast-message";
 
 import { styles } from "./styles";
 import { FloatingIconProps, InputFieldProps } from "../../interfaces/interfaces";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { login } from "../../services/api";
 import { definirCadastroPendente } from "../../services/cadastroPendente";
 
@@ -194,6 +194,23 @@ function FloatingImage({ source, size, top, left, right, bottom, delay, duration
 export default function LoginScreen() {
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
+    const route = useRoute<RouteProp<{
+        Login: { contaExcluida?: boolean } | undefined;
+    }, "Login">>();
+    const toastExclusaoExibido = useRef(false);
+
+    useEffect(() => {
+        if (!route.params?.contaExcluida || toastExclusaoExibido.current) return;
+
+        toastExclusaoExibido.current = true;
+        Toast.show({
+            type: "success",
+            text1: "Sua conta foi excluída com sucesso",
+            position: "top",
+            visibilityTime: 3200,
+        });
+        navigation.setParams({ contaExcluida: undefined });
+    }, [route.params?.contaExcluida, navigation]);
 
     const [isLogin, setIsLogin] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
