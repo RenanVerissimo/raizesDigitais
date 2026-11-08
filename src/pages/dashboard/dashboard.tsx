@@ -25,6 +25,7 @@ import { estaSemInternet } from "../../utils/conexaoInternet";
 import { listaDeTarefasOffline, sincronizarTarefasOffline } from "../../services/offline/sincronizacaoOffline";
 import { enviarTarefaOffline } from "../../services/api";
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import NetInfo from "@react-native-community/netinfo";
 
 
 function formatarDataLocal(data: Date) {
@@ -334,19 +335,39 @@ export default function Dashboard() {
 
     }
 
-    async function offline() {
-
-        if (await estaSemInternet()) {
-            setPageOffline(true);
-        } else {
-            setPageOffline(false);
+    /*     async function offline() {
+    
+            if (await estaSemInternet()) {
+                setPageOffline(true);
+            } else {
+                setPageOffline(false);
+            }
         }
-    }
+    
+        useEffect(() => {
+            offline();
+        }, []);
+     */
 
     useEffect(() => {
-        offline();
-    }, []);
+        const cancelar = NetInfo.addEventListener((rede) => {
+            const offline =
+                rede.isConnected === false ||
+                rede.isInternetReachable === false;
 
+            const online =
+                rede.isConnected === true &&
+                rede.isInternetReachable === true;
+
+            if (offline) {
+                setPageOffline(true);
+            } else if (online) {
+                setPageOffline(false);
+            }
+        });
+
+        return cancelar;
+    }, []);
     useFocusEffect(useCallback(() => {
         void verificarTarefasOffline().catch(() => setTemTarefasOfflineEestaOnline(false));
     }, []));
