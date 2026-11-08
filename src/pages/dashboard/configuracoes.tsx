@@ -1,16 +1,14 @@
 import { useNavigation, CommonActions } from "@react-navigation/native";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View, Text, TouchableOpacity, ScrollView, StatusBar, Modal, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { excluirUsuario, limparUsuarioLogado } from "../../services/api";
+import { excluirUsuario, limparUsuarioLogado, verificarSenhaUsuario } from "../../services/api";
 import Toast from "react-native-toast-message";
+import { toastConfig } from "../../components/toastConfig";
 import { goBack } from "expo-router/build/global-state/routing";
 import { TextInput } from "react-native";
-
-
-
 
 
 
@@ -21,41 +19,98 @@ export default function Configuracoes() {
     const [confirmExcluir, setConfirmExcluir] = useState(false);
     const [senhaDigitada, setSenhaDigitada] = useState(String);
     const [confirmacaoSenha, setConfirmacaoSenha] = useState(String);
+    const [verificacaoStatus, setVerificacaoStatus] = useState(false);
 
-    /*     async function verificacaoExclusaoConta(senhadig: String){
-    
-    
-    
-            if (senhadig === )
-    
-        }
-     */
-    async function handleExcluirConta() {
+
+    function resetarCampos() {
+        
+        setConfirmExcluir(false);
+        setSenhaDigitada("");
+        setConfirmacaoSenha("");
+
+    }
+
+    async function verificacaoSenhaBackEnd() {
+
         try {
-            const resposta = await excluirUsuario();
+            await verificarSenhaUsuario(senhaDigitada);
+            await verificarSenhaUsuario(confirmacaoSenha);
+            setVerificacaoStatus(true);
 
-            await limparUsuarioLogado();
+        } catch (error) {
+            console.log(error);
+            return
+        }
+    }
 
-            setExcluirConta(false);
+    async function deletarUsuario() {
+
+        await excluirUsuario();
+        await limparUsuarioLogado();
+        setExcluirConta(false);
+        setSenhaDigitada("");
+        setConfirmacaoSenha("");
+
+        Toast.show({
+            type: "success",
+            text1: "Sua conta foi excluida com sucesso",
+            position: "top",
+            visibilityTime: 3200,
+        });
+
+        navigation.dispatch(
+            CommonActions.reset({
+                index: 0,
+                routes: [{ name: "Login" }],
+            })
+        );
+
+    }
+
+    async function verificacaoSenhas() {
+
+        if (!senhaDigitada.trim() || !confirmacaoSenha.trim()) {
 
             Toast.show({
-                type: "success",
-                text1: "Sua conta foi excluida com sucesso",
+                type: "error",
+                text1: "Campo Vazio",
+                text2: "Um ou mais campos de senha estão vazios. Por favor, preencha todos os campos para continuar.",
                 position: "top",
                 visibilityTime: 3200,
             });
+            return
+        }
 
-            navigation.dispatch(
-                CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: "Login" }],
-                })
-            );
+        try {
+            if (senhaDigitada === confirmacaoSenha) {
+                await verificacaoSenhaBackEnd();
+                if (verificacaoStatus) {
+                    await deletarUsuario();
+                } else {
+                    Toast.show({
+                        type: "error",
+                        text1: "Senha Incorreta",
+                        text2: "Essa senha é invalida.",
+                        position: "top",
+                        visibilityTime: 3200,
+                    });
+
+                }
+            } else {
+                Toast.show({
+                    type: "error",
+                    text1: "Senhas Incorretas",
+                    text2: "As senha nao sao iguais, por favor preencha corretamente.",
+                    position: "top",
+                    visibilityTime: 3200,
+                });
+            }
 
         } catch (error) {
             Toast.show({
                 type: "info",
                 text1: "Erro, nao foi possivel excluir sua conta",
+
                 position: "top",
                 visibilityTime: 3200,
             });
@@ -304,7 +359,7 @@ export default function Configuracoes() {
 
                             }}>
                                 <Text>Para confirmar o processo de exclusao de conta, voce precisa digitar a sua senha</Text>
-                                <View style={{borderWidth: 1}}>
+                                <View style={{}}>
                                     <Text
                                         style={{ marginTop: 20 }}>Digite a senha:
                                     </Text>
@@ -332,7 +387,7 @@ export default function Configuracoes() {
                                     <TextInput
                                         value={confirmacaoSenha}
                                         onChangeText={setConfirmacaoSenha}
-                                        placeholder="Sua senha"
+                                        placeholder="Confirme sua senha"
                                         secureTextEntry
                                         autoCapitalize="none"
                                         autoCorrect={false}
@@ -345,17 +400,64 @@ export default function Configuracoes() {
                                         }}
                                     />
                                 </View>
-                                <TouchableOpacity
-                                    onPress={() => setConfirmExcluir(false)}>
-                                    <Text>Voltar</Text>
-                                </TouchableOpacity>
+                                <View
+                                    style={{
+
+                                        width: "100%",
+                                        gap: 18,
+                                        padding: 28,
+                                        alignItems: "stretch",
+
+                                    }}>
+
+                                    <TouchableOpacity
+                                        onPress={verificacaoSenhas}
+                                        style={{
+                                            flex: 1,
+                                            borderWidth: 1,
+                                            borderRadius: 14,
+                                            minHeight: 48,
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 10,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            backgroundColor: "red"
+                                        }}
+                                    >
+                                        <Text
+                                            style={{
+                                                fontWeight: "600",
+                                                textAlign: "center",
+                                                color: "white",
+                                            }}
+                                        >
+                                            Continuar com a Exclusão da Conta
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        onPress={resetarCampos}
+                                        style={{
+                                            borderWidth: 1,
+                                            borderRadius: 14,
+                                            height: 40,
+                                            width: 185,
+                                            alignItems: "center",
+                                            justifyContent: "center",
+
+                                        }}
+                                    >
+                                        <Text
+                                            style={{ fontWeight: "600" }}>
+                                            Voltar
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         </View>
+                        <Toast config={toastConfig} />
                     </Modal>
                 )}
             </ScrollView>
-        </View>
-
-
+        </View >
     )
 }

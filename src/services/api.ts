@@ -1409,6 +1409,26 @@ export async function excluirUsuario() {
     return res.json();
 }
 
+
+
+export async function verificarSenhaUsuario(senha: string) {
+    const res = await apiFetch("/auth/verificar-senha", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ senha }),
+        timeoutMs: 120000,
+    });
+
+    if (!res.ok) {
+        const erro = await res.json().catch(() => ({}));
+        throw new Error(erro.erro || "Erro ao verificar senha do usuário");
+    }
+    const resposta = await res.json();
+    return resposta;
+}
+
 export async function verificarCpfRecuperacao(cpf_rg: string) {
     const res = await apiFetch(`/auth/verificar-cpf`, {
         method: "POST",

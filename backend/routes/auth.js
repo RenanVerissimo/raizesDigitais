@@ -259,6 +259,61 @@ router.post("/redefinir-senha", async (req, res) => {
         console.error(err);
         res.status(500).json({ erro: "Erro ao redefinir senha" });
     }
+
+
+});
+
+// Confirma a senha do usuario autenticado sem retornar o hash.
+router.post("/verificar-senha", async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        const token = authHeader?.startsWith("Bearer ")
+            ? authHeader.split(" ")[1]
+            : null;
+
+        if (!token) {
+            return res.status(401).json({ erro: "Token não fornecido" });
+        }
+
+        if (!JWT_SECRET) {
+            return res.status(500).json({ erro: "Configuração de autenticação ausente" });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET);
+        } catch (err) {
+            return res.status(401).json({ erro: "Token inválido ou expirado" });
+        }
+
+        const idUsuario = decoded?.usuarioId;
+        if (!Number.isSafeInteger(idUsuario) || idUsuario <= 0) {
+            return res.status(401).json({ erro: "Identificação do usuário inválida" });
+        }
+
+        const { senha } = req.body || {};
+        if (typeof senha !== "string" || !senha.trim()) {
+            return res.status(400).json({ erro: "Informe sua senha." });
+        }
+
+        const [rows] = await pool.query(
+            "SELECT senha FROM usuarios WHERE id_usuario = ? LIMIT 1",
+            [idUsuario]
+        );
+        const usuario = rows[0];
+        if (!usuario) {
+            return res.status(401).json({ erro: "Usuário não autenticado." });
+        }
+
+        const senhaCorreta = await bcrypt.compare(senha, usuario.senha);
+        if (!senhaCorreta) {
+            return res.status(403).json({ erro: "Senha incorreta." });
+        }
+
+        return res.status(200).json({ ok: true, mensagem: "Senha confirmada." });
+    } catch (error) {
+        return res.status(500).json({ erro: "Não foi possível verificar a senha." });
+    }
 });
 
 module.exports = router;
