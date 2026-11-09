@@ -12,7 +12,7 @@ import { TextInput } from "react-native";
 
 
 export default function Configuracoes() {
-    const navigation = useNavigation();
+    
     const insets = useSafeAreaInsets();
     const [excluirConta, setExcluirConta] = useState(false);
     const [confirmExcluir, setConfirmExcluir] = useState(false);
@@ -20,6 +20,7 @@ export default function Configuracoes() {
     const [confirmacaoSenha, setConfirmacaoSenha] = useState(String);
     const [mostrarSenha, setMostrarSenha] = useState(false);
     const [mostrarConfirmacaoSenha, setMostrarConfirmacaoSenha] = useState(false);
+    const navigation = useNavigation<any>();
 
 
     function resetarCampos() {
@@ -137,7 +138,9 @@ export default function Configuracoes() {
                     </View>
                 </LinearGradient>
                 <View style={{ marginTop: 200, justifyContent: "space-between", flex: 1, alignItems: "center", gap: 20 }}>
-                    <TouchableOpacity style={{
+                    <TouchableOpacity 
+                    onPress={() => navigation.navigate("termo_de_uso")}
+                    style={{
                         width: 200,
                         height: 50,
                         borderWidth: 1,
@@ -146,10 +149,12 @@ export default function Configuracoes() {
                         justifyContent: "center",
                         backgroundColor: "#4a90e2"
                     }}>
-                        <Text style={{ textAlign: "center" }}>Teste</Text>
+                        <Text style={{ textAlign: "center" }}>Termos de Uso</Text>
 
                     </TouchableOpacity>
-                    <TouchableOpacity style={{
+                    <TouchableOpacity
+                    onPress={() => navigation.navigate("politica_de_privacidade")}
+                     style={{
                         width: 200,
                         height: 50,
                         borderWidth: 1,
@@ -158,7 +163,7 @@ export default function Configuracoes() {
                         justifyContent: "center",
                         backgroundColor: "#4a90e2"
                     }}>
-                        <Text style={{ textAlign: "center" }}>Teste</Text>
+                        <Text style={{ textAlign: "center" }}>Politica de Privacidade</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => setExcluirConta(!excluirConta)}
